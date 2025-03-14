@@ -58,7 +58,7 @@ class OnBoardingCuatro extends StatelessWidget {
                     child: Container(
                       width: 300,
                       height: 300,
-                      child: Lottie.asset('assets/images/balon.json'),
+                      child: Lottie.asset('assets/images/animaciontres.json'),
                     ),
                   ),
                   RotatedBox(
@@ -82,7 +82,7 @@ class OnBoardingCuatro extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Jugá en proximos torneos",
+                        "Juntos hacia el bienestar",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -107,19 +107,14 @@ class OnBoardingCuatro extends StatelessWidget {
                                       fontWeight: FontWeight.w900,
                                       fontSize: getResponsiveText(24),
                                       color: Colors.black),
-                                  text: "Disfruta de torneos amistosos"),
+                                  text:
+                                      "Manten la comunicación con tu fisioterapeuta y "),
                               TextSpan(
                                   style: TextStyle(
-                                    fontWeight: FontWeight.w900,
                                     color: Colors.black,
                                     fontSize: getResponsiveText(24),
                                   ),
-                                  text: " o competitivos organizados "),
-                              TextSpan(
-                                  style: TextStyle(
-                                      fontSize: getResponsiveText(24),
-                                      color: Colors.black),
-                                  text: "por AppFisio "),
+                                  text: "sigue tu avance en un solo lugar"),
                             ],
                           ),
                         ),

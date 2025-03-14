@@ -61,7 +61,7 @@ class OnboardingScreenOne extends StatelessWidget {
                     child: Container(
                       height: 300,
                       width: 300,
-                      child: Lottie.asset('assets/images/jugadordomi.json'),
+                      child: Lottie.asset('assets/images/animaciondos.json'),
                     ),
                   ),
                   ClipPath(
@@ -86,7 +86,7 @@ class OnboardingScreenOne extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "Unite a la comunidad\nfutbolística mas grande del Uruguay", // Salto de línea
+                        "Tu fisioterapeuta, más cerca que nunca", // Salto de línea
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -114,21 +114,7 @@ class OnboardingScreenOne extends StatelessWidget {
                                       fontFamily: 'Viga-Regular',
                                       color: Colors.black),
                                   text:
-                                      "AppFisio APP organiza los partidos por ti "),
-                              TextSpan(
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.black,
-                                    fontSize: getResponsiveText(24),
-                                  ),
-                                  text:
-                                      "consiguiendo compañeros de equipo y/o rivales"),
-                              TextSpan(
-                                  style: TextStyle(
-                                      fontSize: getResponsiveText(24),
-                                      color: Colors.black),
-                                  text:
-                                      " con los que se puede forjar vínculos"),
+                                      "Encuentra expertos cerca de ti y empieza tu recuperación hoy mismo. "),
                             ],
                           ),
                         ),

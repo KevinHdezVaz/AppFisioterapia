@@ -66,9 +66,9 @@ class OnboardingScreenTwo extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 120),
                     child: Container(
-                      width: 270,
+                      width: 300,
                       height: 270,
-                      child: Lottie.asset('assets/images/campo.json'),
+                      child: Lottie.asset('assets/images/animacionuno.json'),
                     ),
                   ),
                 ],
@@ -84,7 +84,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                       const Padding(
                         padding: const EdgeInsets.only(top: 50),
                         child: Text(
-                          "Jugá cuando VOS quieras.",
+                          "Recupérate con confianza",
                           textAlign: TextAlign.start,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -111,14 +111,14 @@ class OnboardingScreenTwo extends StatelessWidget {
                                       fontFamily: 'Viga-Regular',
                                       color: Colors.black),
                                   text:
-                                      "Organizá tu semana y elegí el horario"),
+                                      "Ejercicios personalizados, videollamadas"),
                               TextSpan(
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
                                     color: Colors.black,
                                     fontSize: getResponsiveText(24),
                                   ),
-                                  text: " que más te convenga."),
+                                  text: " y seguimiento en tiempo real."),
                             ],
                           ),
                         ),
