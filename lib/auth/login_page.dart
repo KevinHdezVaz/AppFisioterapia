@@ -1,12 +1,15 @@
+import 'dart:math'; // Necesario para Random
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
+import 'package:particles_flutter/component/particle/particle.dart';
+import 'package:particles_flutter/particles_engine.dart';
+ import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/services/settings/theme_data.dart';
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback showLoginPage;
@@ -20,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   bool isRember = false;
   bool isObscure = true;
 
-  //textControllers
+  // Text controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -28,8 +31,8 @@ class _LoginPageState extends State<LoginPage> {
         '237230625824-uhg81q3ro2at559t31bnorjqrlooe3lr.apps.googleusercontent.com',
   );
   final _authService = AuthService();
-
-  //login logic
+ 
+  // Login logic
   Future<bool> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -59,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
       final success = await _authService.login(
           _emailController.text.trim(), _passwordController.text.trim());
 
-      Navigator.pop(context); // Cierra el loader
+      Navigator.pop(context);
 
       if (success) {
         Navigator.pushReplacement(
@@ -72,7 +75,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  //dispose
   @override
   void dispose() {
     _emailController.dispose();
@@ -115,6 +117,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
@@ -123,6 +127,28 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Stack(
               children: [
+                // Agregar partículas usando Particles
+                SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child:  Particles(
+                awayRadius: 150,
+                particles: ParticleUtils.createParticles(
+                  numberOfParticles: 70,
+                  color: Colors.white, 
+                  maxSize: 5.0,
+                  maxVelocity: 50.0,
+                ),
+                height: screenHeight,
+                width: screenWidth,
+                onTapAnimation: true,
+                awayAnimationDuration: const Duration(milliseconds: 600),
+                awayAnimationCurve: Curves.easeIn,
+                enableHover: true,
+                hoverRadius: 90,
+                connectDots: false,
+              ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(90, 20, 0, 0),
                   child: Image.asset('assets/images/grad2.png'),
@@ -131,15 +157,12 @@ class _LoginPageState extends State<LoginPage> {
                   padding: const EdgeInsets.fromLTRB(0, 0, 100, 0),
                   child: Image.asset('assets/images/grad1.png'),
                 ),
-
-                // Rectángulo blanco
                 Padding(
-                  padding: const EdgeInsets.only(
-                      top: 50), // Ajusta este valor para bajar el rectángulo
+                  padding: const EdgeInsets.only(top: 50),
                   child: Center(
                     child: Container(
-                      height: size.height * 0.75, // 3/4 de la pantalla
-                      width: size.width * 0.9, // Ancho del 90% de la pantalla
+                      height: size.height * 0.75,
+                      width: size.width * 0.9,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
@@ -168,7 +191,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 40),
-                          //email textfield
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 15),
                             child: TextField(
@@ -196,7 +218,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          //password textfield
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 15),
                             child: TextField(
@@ -237,7 +258,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          //remember--forget row
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Row(
@@ -279,8 +299,7 @@ class _LoginPageState extends State<LoginPage> {
                                       fontSize: 14,
                                       decoration: TextDecoration.underline,
                                       decorationColor: Colors.black,
-                                      decorationThickness:
-                                          1.5, // Grosor del subrayado
+                                      decorationThickness: 1.5,
                                     ),
                                   ),
                                 ),
@@ -288,7 +307,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 60),
-                          // Botón "Entrar"
                           Container(
                             width: size.width * 0.8,
                             decoration: BoxDecoration(
@@ -335,8 +353,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 40),
-            TextButton(
+             TextButton(
               onPressed: widget.showLoginPage,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,

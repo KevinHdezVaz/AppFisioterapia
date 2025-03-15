@@ -1,12 +1,13 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/onscreen/screen_two.dart';
 import 'package:user_auth_crudd10/onscreen/slanding_clipper.dart';
-
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
 import 'constants2.dart';
 
 class OnboardingScreenOne extends StatelessWidget {
@@ -16,18 +17,11 @@ class OnboardingScreenOne extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isDarkMode(BuildContext context) {
-      return Theme.of(context).brightness == Brightness.dark;
-    }
-
-    Color fondo = isDarkMode(context) ? Colors.white : Colors.black;
-
     final sizeReference = 700.0;
 
     double getResponsiveText(double size) =>
         size * sizeReference / MediaQuery.of(context).size.longestSide;
 
-    // Obtén el tamaño de la pantalla
     Size size = MediaQuery.of(context).size;
     double screenHeight = size.height;
     double screenWidth = size.width;
@@ -38,17 +32,22 @@ class OnboardingScreenOne extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        body: Container(
+         body: Container(
           child: Stack(
             children: [
               Particles(
                 awayRadius: 150,
-                particles: [], // List of particles
+                particles: ParticleUtils.createParticles(
+                  numberOfParticles: 50,
+                  color: Colors.orange, 
+                  maxSize: 5.0,
+                  maxVelocity: 30,
+                ),
                 height: screenHeight,
                 width: screenWidth,
                 onTapAnimation: true,
-                awayAnimationDuration: const Duration(milliseconds: 100),
-                awayAnimationCurve: Curves.linear,
+                awayAnimationDuration: const Duration(milliseconds: 600),
+                awayAnimationCurve: Curves.easeIn,
                 enableHover: true,
                 hoverRadius: 90,
                 connectDots: false,
@@ -57,7 +56,7 @@ class OnboardingScreenOne extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 50),
+                    padding: const EdgeInsets.only(top: 80),
                     child: Container(
                       height: 300,
                       width: 300,
@@ -74,35 +73,29 @@ class OnboardingScreenOne extends StatelessWidget {
                 ],
               ),
               Positioned(
-                top: size.height * 0.55, // Ajusté posición vertical
+                top: size.height * 0.55,
                 child: Container(
                   width: size.width,
                   padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.03, // Reduje padding lateral
+                    horizontal: screenWidth * 0.03,
                   ),
                   child: Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center, // Centrado vertical
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "Tu fisioterapeuta, más cerca que nunca", // Salto de línea
+                        "Tu fisioterapeuta, más cerca que nunca",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.blue[800],
-                          fontSize: getResponsiveText(
-                              32), // Tamaño responsivo aumentado
-                          height: 1.2, // Espaciado entre líneas
+                          fontSize: getResponsiveText(32),
+                          height: 1.2,
                         ),
                       ),
-                      SizedBox(
-                          height:
-                              size.height * 0.03), // Aumenté espacio vertical
+                      SizedBox(height: size.height * 0.03),
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 20, // Reduje padding lateral
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 20),
                         child: RichText(
                           textAlign: TextAlign.start,
                           text: TextSpan(
@@ -181,7 +174,7 @@ class OnboardingScreenOne extends StatelessWidget {
                         child: Text(
                           "OMITIR",
                           style: TextStyle(
-                            color: fondo,
+                            color: Colors.white, // Color fijo
                             fontSize: 20.0,
                           ),
                         ),

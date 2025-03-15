@@ -1,31 +1,28 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/onscreen/screen_cuatro.dart';
 import 'package:user_auth_crudd10/onscreen/screen_two.dart';
 import 'package:user_auth_crudd10/onscreen/slanding_clipper.dart';
-
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart'; // Importa la utilidad
 import 'constants2.dart';
 
 class OnboardingScreenTwo extends StatelessWidget {
   final PageController pageController;
+
   OnboardingScreenTwo({required this.pageController});
 
   @override
   Widget build(BuildContext context) {
-    bool isDarkMode(BuildContext context) {
-      return Theme.of(context).brightness == Brightness.dark;
-    }
-
-    Color fondo = isDarkMode(context) ? Colors.white : Colors.black;
-
     final sizeReference = 700.0;
 
     double getResponsiveText(double size) =>
         size * sizeReference / MediaQuery.of(context).size.longestSide;
+
     Size size = MediaQuery.of(context).size;
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
@@ -35,17 +32,23 @@ class OnboardingScreenTwo extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        body: Container(
+         body: Container(
           child: Stack(
             children: [
+              // Agregar partículas
               Particles(
                 awayRadius: 150,
-                particles: [], // List of particles
+                particles: ParticleUtils.createParticles(
+                  numberOfParticles: 50,
+                  color: Colors.green, // Color visible contra fondo oscuro
+                  maxSize: 5.0,
+                  maxVelocity: 30.0,
+                ),
                 height: screenHeight,
                 width: screenWidth,
                 onTapAnimation: true,
-                awayAnimationDuration: const Duration(milliseconds: 100),
-                awayAnimationCurve: Curves.linear,
+                awayAnimationDuration: const Duration(milliseconds: 600),
+                awayAnimationCurve: Curves.easeIn,
                 enableHover: true,
                 hoverRadius: 90,
                 connectDots: false,
@@ -64,10 +67,10 @@ class OnboardingScreenTwo extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 120),
+                    padding: const EdgeInsets.only(bottom: 100), // Nota: 'bottom' en lugar de 'custom'
                     child: Container(
                       width: 300,
-                      height: 270,
+                      height: 300,
                       child: Lottie.asset('assets/images/animacionuno.json'),
                     ),
                   ),
@@ -82,7 +85,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Padding(
-                        padding: const EdgeInsets.only(top: 50),
+                        padding: EdgeInsets.only(top: 90),
                         child: Text(
                           "Recupérate con confianza",
                           textAlign: TextAlign.start,
@@ -98,7 +101,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                       ),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 20, // Reduje padding lateral
+                          horizontal: 20,
                         ),
                         child: RichText(
                           textAlign: TextAlign.start,
@@ -110,8 +113,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                                       fontSize: getResponsiveText(24),
                                       fontFamily: 'Viga-Regular',
                                       color: Colors.black),
-                                  text:
-                                      "Ejercicios personalizados, videollamadas"),
+                                  text: "Ejercicios personalizados, videollamadas"),
                               TextSpan(
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
@@ -185,7 +187,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                         child: Text(
                           "OMITIR",
                           style: TextStyle(
-                            color: fondo,
+                            color: Colors.white, // Color fijo
                             fontSize: 20.0,
                           ),
                         ),

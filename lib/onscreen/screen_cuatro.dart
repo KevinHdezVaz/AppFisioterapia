@@ -1,12 +1,13 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/onscreen/screen_two.dart';
 import 'package:user_auth_crudd10/onscreen/slanding_clipper.dart';
-
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart'; // Importa la utilidad
 import 'constants2.dart';
 
 class OnBoardingCuatro extends StatelessWidget {
@@ -16,12 +17,6 @@ class OnBoardingCuatro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isDarkMode(BuildContext context) {
-      return Theme.of(context).brightness == Brightness.dark;
-    }
-
-    Color fondo = isDarkMode(context) ? Colors.white : Colors.black;
-
     Size size = MediaQuery.of(context).size;
     final sizeReference = 700.0;
     double screenHeight = MediaQuery.of(context).size.height;
@@ -35,17 +30,22 @@ class OnBoardingCuatro extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        body: Container(
+         body: Container(
           child: Stack(
             children: [
               Particles(
                 awayRadius: 150,
-                particles: [], // List of particles
+                particles: ParticleUtils.createParticles(
+                  numberOfParticles: 50,
+                  color: Colors.blue, 
+                  maxSize: 5.0,
+                  maxVelocity: 30.0,
+                ),
                 height: screenHeight,
                 width: screenWidth,
                 onTapAnimation: true,
-                awayAnimationDuration: const Duration(milliseconds: 100),
-                awayAnimationCurve: Curves.linear,
+                awayAnimationDuration: const Duration(milliseconds: 600),
+                awayAnimationCurve: Curves.easeIn,
                 enableHover: true,
                 hoverRadius: 90,
                 connectDots: false,
@@ -54,7 +54,7 @@ class OnBoardingCuatro extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 60),
+                    padding: const EdgeInsets.only(top: 140),
                     child: Container(
                       width: 300,
                       height: 300,
@@ -94,9 +94,7 @@ class OnBoardingCuatro extends StatelessWidget {
                         height: size.height * 0.02,
                       ),
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10, // Reduje padding lateral
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 10),
                         child: RichText(
                           textAlign: TextAlign.start,
                           text: TextSpan(
@@ -181,7 +179,7 @@ class OnBoardingCuatro extends StatelessWidget {
                         child: Text(
                           "OMITIR",
                           style: TextStyle(
-                            color: fondo,
+                            color: Colors.white, // Color fijo
                             fontSize: 20.0,
                           ),
                         ),
