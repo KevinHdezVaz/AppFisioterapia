@@ -18,17 +18,19 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   bool isObscure = true;
+  String? _selectedRole;
+  File? _profileImage;
+  File? _dniImage; // Nuevo campo para el DNI
 
   final _emailController = TextEditingController();
-  final _codigPostalController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _referralController = TextEditingController();
   final _authService = AuthService();
-  File? _profileImage;
   final _imagePicker = ImagePicker();
+
+  final List<String> _roles = ['physiotherapist', 'patient'];
 
   Future signUp() async {
     if (!validateRegister()) return;
@@ -58,13 +60,11 @@ class _RegisterPageState extends State<RegisterPage> {
       final success = await _authService.register(
         name: _nameController.text,
         email: _emailController.text,
-        codigpostal: _codigPostalController.text,
         password: _passwordController.text,
         phone: _phoneController.text,
         profileImage: _profileImage,
-        referralCode: _referralController.text.isNotEmpty
-            ? _referralController.text
-            : null,
+        role: _selectedRole!,
+        dniImage: _selectedRole == 'physiotherapist' ? _dniImage : null,
       );
 
       Navigator.pop(context);
@@ -87,12 +87,10 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _emailController.dispose();
-    _codigPostalController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
-    _referralController.dispose();
     super.dispose();
   }
 
@@ -102,7 +100,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _nameController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
         _phoneController.text.isEmpty ||
-        _codigPostalController.text.isEmpty) {
+        _selectedRole == null) {
       showErrorSnackBar("Por favor complete todos los campos obligatorios");
       return false;
     }
@@ -119,10 +117,6 @@ class _RegisterPageState extends State<RegisterPage> {
       showErrorSnackBar("Por favor, sube una foto de perfil");
       return false;
     }
-    if (_codigPostalController.text.length != 5) {
-      showErrorSnackBar("El código postal debe tener 5 dígitos");
-      return false;
-    }
     if (_phoneController.text.length != 10) {
       showErrorSnackBar("El número de teléfono debe tener 10 dígitos");
       return false;
@@ -133,6 +127,10 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     if (_passwordController.text != _confirmPasswordController.text) {
       showErrorSnackBar("Las contraseñas no coinciden");
+      return false;
+    }
+    if (_selectedRole == 'physiotherapist' && _dniImage == null) {
+      showErrorSnackBar("Los fisioterapeutas deben subir un DNI");
       return false;
     }
     return true;
@@ -149,12 +147,15 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile =
-        await _imagePicker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(ImageSource source, {bool isProfile = true}) async {
+    final pickedFile = await _imagePicker.pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
-        _profileImage = File(pickedFile.path);
+        if (isProfile) {
+          _profileImage = File(pickedFile.path);
+        } else {
+          _dniImage = File(pickedFile.path); // Para el DNI
+        }
       });
     }
   }
@@ -192,7 +193,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 10),
                     child: Container(
-                      height: 700,
+                      height: 660, // Ajustado para eliminar campos innecesarios
                       width: 350,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -215,7 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 20),
                               child: GestureDetector(
-                                onTap: _pickImage,
+                                onTap: () => _pickImage(ImageSource.gallery),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     border: Border.all(color: Colors.grey),
@@ -274,19 +275,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             const SizedBox(height: 20),
                             customTextField(
-                              labelText: "Código Postal (C.P)",
-                              prefixIcon:
-                                  Icon(Icons.add_location, color: Colors.grey),
-                              controller: _codigPostalController,
-                              isObscure: false,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(5),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            customTextField(
                               labelText: "Contraseña",
                               prefixIcon: Icon(Icons.lock, color: Colors.grey),
                               controller: _passwordController,
@@ -300,13 +288,77 @@ class _RegisterPageState extends State<RegisterPage> {
                               isObscure: isObscure,
                             ),
                             const SizedBox(height: 20),
-                            customTextField(
-                              labelText: "Código de referido (opcional)",
-                              prefixIcon:
-                                  Icon(Icons.person_add, color: Colors.grey),
-                              controller: _referralController,
-                              isObscure: false,
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedRole,
+                                hint: Text("Selecciona un rol"),
+                                items: _roles.map((String role) {
+                                  return DropdownMenuItem<String>(
+                                    value: role,
+                                    child: Text(role),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedRole = newValue;
+                                  });
+                                },
+                                decoration: InputDecoration(
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                        color: Colors.grey, width: 0.8),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                        color: Colors.black, width: 0.8),
+                                  ),
+                                  prefixIcon: Icon(Icons.person_outline,
+                                      color: Colors.grey),
+                                ),
+                              ),
                             ),
+                            if (_selectedRole == 'physiotherapist') ...[
+                              const SizedBox(height: 20),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                child: GestureDetector(
+                                  onTap: () => _pickImage(ImageSource.gallery,
+                                      isProfile: false),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.all(8),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.card_membership,
+                                            color: Colors.grey),
+                                        SizedBox(width: 8),
+                                        Text("Subir DNI"),
+                                        Spacer(),
+                                        if (_dniImage != null)
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Image.file(
+                                              _dniImage!,
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                           ],
                         ),

@@ -1,8 +1,6 @@
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:user_auth_crudd10/services/storage_service.dart';
 import 'package:user_auth_crudd10/utils/constantes.dart';
 
@@ -240,26 +238,26 @@ class AuthService {
   Future<bool> register({
     required String name,
     required String email,
-    required String codigpostal,
     required String password,
     required String phone,
     File? profileImage,
-    String? referralCode,
+    required String role,
+    File? dniImage,
   }) async {
     try {
       var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://proyect.aftconta.mx/api/register'),
-      );
+        'POST', // Asegúrate de que sea POST
+        Uri.parse('$baseUrl/register'),
+      )..headers.addAll({
+          'Accept':
+              'application/json', // Indica que esperas JSON como respuesta
+        });
 
       request.fields['name'] = name;
       request.fields['email'] = email;
-      request.fields['codigo_postal'] = codigpostal;
       request.fields['password'] = password;
       request.fields['phone'] = phone;
-      if (referralCode != null) {
-        request.fields['referral_code'] = referralCode;
-      }
+      request.fields['role'] = role;
 
       if (profileImage != null) {
         request.files.add(await http.MultipartFile.fromPath(
@@ -268,22 +266,35 @@ class AuthService {
         ));
       }
 
+      if (dniImage != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'dni_image',
+          dniImage.path,
+        ));
+      }
+
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
-      final jsonResponse = jsonDecode(responseData);
 
-      if (response.statusCode == 201) {
-        // Verifica si el token está en la respuesta
-        if (jsonResponse['token'] != null) {
-          // Almacena el token
-          await storage.saveToken(jsonResponse['token']);
-          return true;
+      // Verifica si la respuesta es un JSON válido
+      try {
+        final jsonResponse = jsonDecode(responseData);
+
+        if (response.statusCode == 201) {
+          if (jsonResponse['token'] != null) {
+            await storage.saveToken(jsonResponse['token']);
+            return true;
+          } else {
+            throw Exception('No se recibió un token en la respuesta');
+          }
         } else {
-          throw Exception('No se recibió un token en la respuesta');
+          throw Exception(
+              jsonResponse['message'] ?? 'Error al registrar usuario');
         }
-      } else {
-        throw Exception(
-            jsonResponse['message'] ?? 'Error al registrar usuario');
+      } catch (e) {
+        // Si no es un JSON válido, muestra el contenido de la respuesta
+        print('Respuesta del servidor: $responseData');
+        throw Exception('Error en el servidor: $responseData');
       }
     } catch (e) {
       print('Error en el registro: $e');
