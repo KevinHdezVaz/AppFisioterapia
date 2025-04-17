@@ -1,12 +1,9 @@
-import 'dart:math'; // Necesario para Random
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:particles_flutter/particles_engine.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
+import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/services/settings/theme_data.dart';
 import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
 
@@ -25,51 +22,39 @@ class _LoginPageState extends State<LoginPage> {
   // Text controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:
-        '237230625824-uhg81q3ro2at559t31bnorjqrlooe3lr.apps.googleusercontent.com',
-  );
   final _authService = AuthService();
 
   // Login logic
-  Future<bool> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return false;
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final response = await _authService.loginWithGoogle(googleAuth.idToken);
-
-      return response;
-    } catch (e) {
-      print('Error durante el login con Google: $e');
-      return false;
-    }
-  }
-
-  Future signIn() async {
+  Future<void> signIn() async {
     if (!validateLogin()) return;
 
     try {
       showDialog(
         context: context,
-        builder: (context) => Center(child: CircularProgressIndicator()),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       final success = await _authService.login(
-          _emailController.text.trim(), _passwordController.text.trim());
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
 
       Navigator.pop(context);
 
+      if (!mounted) return;
+
       if (success) {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => AuthCheckMain()));
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
       } else {
         showErrorSnackBar('Credenciales inválidas');
       }
     } catch (e) {
+      Navigator.pop(context);
       showErrorSnackBar(e.toString());
     }
   }
@@ -156,7 +141,7 @@ class _LoginPageState extends State<LoginPage> {
               padding: const EdgeInsets.only(top: 50),
               child: Center(
                 child: Container(
-                  height: size.height * 0.8, // Aumenté un poco para dar espacio
+                  height: size.height * 0.8,
                   width: size.width * 0.9,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
@@ -207,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             labelText: "Correo",
-                            labelStyle: TextStyle(color: Colors.black),
+                            labelStyle: const TextStyle(color: Colors.black),
                           ),
                           style: const TextStyle(color: Colors.black),
                         ),
@@ -235,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             labelText: " Contraseña ",
-                            labelStyle: TextStyle(color: Colors.black),
+                            labelStyle: const TextStyle(color: Colors.black),
                             suffixIcon: IconButton(
                               onPressed: () {
                                 setState(() {
@@ -318,7 +303,7 @@ class _LoginPageState extends State<LoginPage> {
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
                               blurRadius: 10,
-                              offset: Offset(0, 4),
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
@@ -328,8 +313,8 @@ class _LoginPageState extends State<LoginPage> {
                             backgroundColor: Colors.blue,
                             shadowColor: Colors.black.withOpacity(0.3),
                             elevation: 10,
-                            minimumSize: Size(double.infinity, 50),
-                            padding: EdgeInsets.symmetric(vertical: 15),
+                            minimumSize: const Size(double.infinity, 50),
+                            padding: const EdgeInsets.symmetric(vertical: 15),
                           ),
                           child: Text(
                             "Entrar",
@@ -341,21 +326,21 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20), // Espacio antes del botón
+                      const SizedBox(height: 20),
                       TextButton(
                         onPressed: widget.showLoginPage,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          minimumSize: Size(double.infinity, 50),
-                          padding: EdgeInsets.symmetric(vertical: 15),
+                          minimumSize: const Size(double.infinity, 50),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
                         child: Text(
                           "Crea tu cuenta",
                           style: GoogleFonts.inter(
                             fontSize: 17,
                             fontWeight: FontWeight.w500,
-                            color: Colors.blue, // Cambié a azul para contraste
+                            color: Colors.blue,
                             decoration: TextDecoration.underline,
                           ),
                         ),

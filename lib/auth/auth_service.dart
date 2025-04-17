@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:user_auth_crudd10/model/User.dart';
 import 'dart:convert';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 import 'package:user_auth_crudd10/utils/constantes.dart';
@@ -144,7 +146,7 @@ class AuthService {
         Uri.parse('$baseUrl/logout'),
         headers: await getHeaders(),
       );
-      await storage.removeToken();
+      // await storage.removeToken();
     } catch (e) {
       throw Exception('Error al cerrar sesión');
     }
@@ -227,12 +229,12 @@ class AuthService {
   }
 
   Future<void> saveUserId(int id) async {
-    await storage.saveString('user_id', id.toString());
+    //   await storage.saveString('user_id', id.toString());
   }
 
   Future<int?> getUserIdFromStorage() async {
-    final idStr = await storage.getString('user_id');
-    return idStr != null ? int.parse(idStr) : null;
+    //  final idStr = await storage.getString('user_id');
+    //  return idStr != null ? int.parse(idStr) : null;
   }
 
   Future<bool> register({
@@ -240,65 +242,39 @@ class AuthService {
     required String email,
     required String password,
     required String phone,
-    File? profileImage,
-    required String role,
-    File? dniImage,
   }) async {
     try {
-      var request = http.MultipartRequest(
-        'POST', // Asegúrate de que sea POST
+      final response = await http.post(
         Uri.parse('$baseUrl/register'),
-      )..headers.addAll({
-          'Accept':
-              'application/json', // Indica que esperas JSON como respuesta
-        });
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'nombre': name,
+          'email': email,
+          'password': password,
+          'telefono': phone,
+        }),
+      );
 
-      request.fields['name'] = name;
-      request.fields['email'] = email;
-      request.fields['password'] = password;
-      request.fields['phone'] = phone;
-      request.fields['role'] = role;
+      debugPrint('Register Response status: ${response.statusCode}');
+      debugPrint('Register Response body: ${response.body}');
 
-      if (profileImage != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'profile_image',
-          profileImage.path,
-        ));
-      }
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final token = data['token'] as String;
+        final user = User.fromJson(data['user']);
 
-      if (dniImage != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'dni_image',
-          dniImage.path,
-        ));
-      }
+        await storage.saveToken(token);
+        await storage.saveUser(user);
 
-      final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-
-      // Verifica si la respuesta es un JSON válido
-      try {
-        final jsonResponse = jsonDecode(responseData);
-
-        if (response.statusCode == 201) {
-          if (jsonResponse['token'] != null) {
-            await storage.saveToken(jsonResponse['token']);
-            return true;
-          } else {
-            throw Exception('No se recibió un token en la respuesta');
-          }
-        } else {
-          throw Exception(
-              jsonResponse['message'] ?? 'Error al registrar usuario');
-        }
-      } catch (e) {
-        // Si no es un JSON válido, muestra el contenido de la respuesta
-        print('Respuesta del servidor: $responseData');
-        throw Exception('Error en el servidor: $responseData');
+        return true;
+      } else {
+        throw Exception('Error al registrar: ${response.body}');
       }
     } catch (e) {
-      print('Error en el registro: $e');
-      return false;
+      throw Exception('Error de conexión: $e');
     }
   }
 }

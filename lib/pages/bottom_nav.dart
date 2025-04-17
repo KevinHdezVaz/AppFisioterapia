@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:user_auth_crudd10/pages/PromotionsScreen.dart';
+import 'package:user_auth_crudd10/pages/RewardsScreen.dart';
+import 'package:user_auth_crudd10/pages/TicketUploadScreen.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/pages/others/TiendaScreen.dart';
 import 'package:user_auth_crudd10/pages/others/profile_page.dart';
-import 'package:user_auth_crudd10/pages/screens/BonoScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/fields_screen.dart';
-import 'package:user_auth_crudd10/services/BonoService.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
-import 'package:user_auth_crudd10/utils/constantes.dart';
 
 class BottomNavBar extends StatefulWidget {
   final int initialIndex;
@@ -21,11 +17,8 @@ class BottomNavBar extends StatefulWidget {
 
 class _BottomNavBarState extends State<BottomNavBar> {
   late int _selectedIndex;
-  final BonoService _bonoService = BonoService(baseUrl: baseUrl);
   final StorageService _storageService = StorageService();
   late final List<Widget> _pages;
-  bool _showStore = true; // Bandera para mostrar/ocultar "Tienda"
-  bool _isLoadingSettings = true;
 
   void _changeIndex(int index) {
     setState(() {
@@ -37,76 +30,20 @@ class _BottomNavBarState extends State<BottomNavBar> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    fetchSettings();
 
-    // Lista completa de páginas
     _pages = [
-      HomePage(),
-      BonosScreen(bonoService: _bonoService),
-      FieldsScreen(),
-      TiendaScreen(),
-      ProfilePage(),
+      const HomeScreen(),
+      const TicketUploadScreen(),
+      const RewardsScreen(),
+      const PromotionsScreen(),
+      const ProfilePage(),
     ];
-  }
-
-  Future<void> fetchSettings() async {
-    final token = await _storageService.getToken();
-
-    try {
-      final url = Uri.parse('$baseUrl/settings/show_store');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        setState(() {
-          _showStore = data['show_store'] == 'true';
-          _isLoadingSettings = false;
-        });
-      } else {
-        throw Exception(
-            'Error al cargar configuraciones: Código de estado ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoadingSettings = false;
-        _showStore = true; // Valor por defecto si falla la solicitud
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar configuraciones: $e')),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingSettings) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    // Filtrar las páginas según _showStore
-    List<Widget> filteredPages = _pages;
-    if (!_showStore) {
-      filteredPages =
-          _pages.where((page) => page.runtimeType != TiendaScreen).toList();
-      // Ajustar el índice seleccionado si está fuera del rango
-      if (_selectedIndex >= filteredPages.length) {
-        _selectedIndex = 0;
-      }
-    }
-
     return Scaffold(
-      body: filteredPages[_selectedIndex],
+      body: _pages[_selectedIndex],
       bottomNavigationBar: Container(
         color: Colors.white,
         child: Padding(
@@ -117,7 +54,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
               type: BottomNavigationBarType.fixed,
               selectedItemColor: Colors.white,
               unselectedItemColor: Colors.white.withOpacity(0.6),
-              backgroundColor: Colors.blue,
+              backgroundColor: const Color(0xFF1E88E5),
               currentIndex: _selectedIndex,
               onTap: _changeIndex,
               elevation: 0,
@@ -126,102 +63,26 @@ class _BottomNavBarState extends State<BottomNavBar> {
               unselectedFontSize: 12,
               showSelectedLabels: true,
               showUnselectedLabels: true,
-              items: [
+              items: const [
                 BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _selectedIndex == 0
-                          ? Colors.white.withOpacity(0.2)
-                          : Colors.transparent,
-                    ),
-                    child: Icon(
-                      Icons.home,
-                      color: _selectedIndex == 0
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      size: 22,
-                    ),
-                  ),
-                  label: "Eventos",
+                  icon: Icon(Icons.home),
+                  label: 'Inicio',
                 ),
                 BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _selectedIndex == 1
-                          ? Colors.white.withOpacity(0.2)
-                          : Colors.transparent,
-                    ),
-                    child: Icon(
-                      Icons.shopping_cart_sharp,
-                      color: _selectedIndex == 1
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      size: 22,
-                    ),
-                  ),
-                  label: "Bonos",
+                  icon: Icon(Icons.camera_alt),
+                  label: 'Subir Ticket',
                 ),
                 BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _selectedIndex == 2
-                          ? Colors.white.withOpacity(0.2)
-                          : Colors.transparent,
-                    ),
-                    child: Icon(
-                      Icons.location_on,
-                      color: _selectedIndex == 2
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      size: 22,
-                    ),
-                  ),
-                  label: "Canchas",
+                  icon: Icon(Icons.card_giftcard),
+                  label: 'Premios',
                 ),
-                if (_showStore) // Mostrar "Tienda" solo si _showStore es true
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _selectedIndex == 3
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.transparent,
-                      ),
-                      child: Icon(
-                        Icons.shop,
-                        color: _selectedIndex == 3
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.6),
-                        size: 22,
-                      ),
-                    ),
-                    label: "Tienda",
-                  ),
                 BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _selectedIndex == (_showStore ? 4 : 3)
-                          ? Colors.white.withOpacity(0.2)
-                          : Colors.transparent,
-                    ),
-                    child: Icon(
-                      Icons.person,
-                      color: _selectedIndex == (_showStore ? 4 : 3)
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      size: 22,
-                    ),
-                  ),
-                  label: "Perfil",
+                  icon: Icon(Icons.local_offer),
+                  label: 'Promociones',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: 'Perfil',
                 ),
               ],
             ),

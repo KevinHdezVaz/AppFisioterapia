@@ -7,10 +7,6 @@ import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/pages/InvitationsScreen.dart';
 import 'package:user_auth_crudd10/pages/VerifyProfilePage.dart';
 import 'package:user_auth_crudd10/pages/WalletScreen.dart';
-import 'package:user_auth_crudd10/pages/others/StatsTab.dart';
-import 'package:user_auth_crudd10/pages/screens/Equipos/NotificationHistoryScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/Equipos/detalle_equipo.screen.dart';
-import 'package:user_auth_crudd10/pages/screens/Equipos/lista_equipos_screen.dart';
 import 'package:user_auth_crudd10/pages/screens/UpdateProfileScreen.dart';
 import 'package:user_auth_crudd10/pages/screens/bookin/booking_screen.dart';
 import 'package:user_auth_crudd10/services/equipo_service.dart';
@@ -55,14 +51,6 @@ class _ProfilePageState extends State<ProfilePage> {
       final miEquipo = equipos
           .where((e) => e.miembros.any((m) => m.id == userId))
           .firstOrNull;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => miEquipo != null
-              ? DetalleEquipoScreen(equipo: miEquipo, userId: userId)
-              : ListaEquiposScreen(),
-        ),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error al cargar equipos: $e')));
@@ -203,7 +191,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (userData!['is_verified'] == true)  
+                                  if (userData!['is_verified'] == true)
                                     const SizedBox(width: 8),
                                   if (userData!['is_verified'] == true)
                                     const Icon(
@@ -227,38 +215,42 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                           Center(
-  child: userData!['is_verified'] == true
-      ? SizedBox.shrink() // Oculta el botón si está verificado
-      : ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VerifyProfilePage(),
-              ),
-            ).then((_) {
-              // Recargar el perfil después de verificar
-              _loadUserProfile();
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueGrey,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
-          ),
-          child: Text(
-            'Verificar Perfil',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-),
+                              Center(
+                                child: userData!['is_verified'] == true
+                                    ? SizedBox
+                                        .shrink() // Oculta el botón si está verificado
+                                    : ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  VerifyProfilePage(),
+                                            ),
+                                          ).then((_) {
+                                            // Recargar el perfil después de verificar
+                                            _loadUserProfile();
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blueGrey,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 17, vertical: 12),
+                                        ),
+                                        child: Text(
+                                          'Verificar Perfil',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ],
                           ),
                         ),
@@ -352,7 +344,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                         ),
-                        const StatsTab(), // Usar la nueva clase StatsTab
+                        //    const StatsTab(), // Usar la nueva clase StatsTab
                       ],
                     ),
                   ),

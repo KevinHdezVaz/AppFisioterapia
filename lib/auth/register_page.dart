@@ -1,12 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
 
 class RegisterPage extends StatefulWidget {
   final VoidCallback showLoginPage;
@@ -18,9 +15,6 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   bool isObscure = true;
-  String? _selectedRole;
-  File? _profileImage;
-  File? _dniImage; // Nuevo campo para el DNI
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -28,55 +22,33 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _authService = AuthService();
-  final _imagePicker = ImagePicker();
 
-  final List<String> _roles = ['physiotherapist', 'patient'];
-
-  Future signUp() async {
+  Future<void> signUp() async {
     if (!validateRegister()) return;
     try {
       showDialog(
-          context: context,
-          builder: (_) => Center(child: CircularProgressIndicator()));
-
-      final emailExists =
-          await _authService.checkEmailExists(_emailController.text);
-      if (emailExists) {
-        Navigator.pop(context);
-        showErrorSnackBar(
-            "Este correo electrónico ya está registrado, agrega otro.");
-        _emailController.clear();
-        return;
-      }
-      final phoneExists =
-          await _authService.checkPhoneExists(_phoneController.text);
-      if (phoneExists) {
-        Navigator.pop(context);
-        showErrorSnackBar("Este teléfono ya está registrado, agrega otro.");
-        _phoneController.clear();
-        return;
-      }
+        context: context,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
 
       final success = await _authService.register(
-        name: _nameController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-        phone: _phoneController.text,
-        profileImage: _profileImage,
-        role: _selectedRole!,
-        dniImage: _selectedRole == 'physiotherapist' ? _dniImage : null,
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        phone: _phoneController.text.trim(),
       );
 
       Navigator.pop(context);
 
+      if (!mounted) return;
+
       if (success) {
-        print("Registration successful");
-        final token = await StorageService().getToken();
-        print("Token after registration: $token");
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => AuthCheckMain()));
+          context,
+          MaterialPageRoute(builder: (_) => const AuthCheckMain()),
+        );
       } else {
-        print("Registration failed");
+        showErrorSnackBar("No se pudo completar el registro.");
       }
     } catch (e) {
       Navigator.pop(context);
@@ -99,8 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
-        _phoneController.text.isEmpty ||
-        _selectedRole == null) {
+        _phoneController.text.isEmpty) {
       showErrorSnackBar("Por favor complete todos los campos obligatorios");
       return false;
     }
@@ -109,30 +80,27 @@ class _RegisterPageState extends State<RegisterPage> {
       showErrorSnackBar("Correo electrónico inválido");
       return false;
     }
+
     if (_nameController.text.contains(RegExp(r'[^a-zA-Z\s]'))) {
       showErrorSnackBar("El nombre solo debe contener letras");
       return false;
     }
-    if (_profileImage == null) {
-      showErrorSnackBar("Por favor, sube una foto de perfil");
-      return false;
-    }
+
     if (_phoneController.text.length != 10) {
       showErrorSnackBar("El número de teléfono debe tener 10 dígitos");
       return false;
     }
+
     if (_passwordController.text.length < 6) {
       showErrorSnackBar("La contraseña debe tener al menos 6 caracteres");
       return false;
     }
+
     if (_passwordController.text != _confirmPasswordController.text) {
       showErrorSnackBar("Las contraseñas no coinciden");
       return false;
     }
-    if (_selectedRole == 'physiotherapist' && _dniImage == null) {
-      showErrorSnackBar("Los fisioterapeutas deben subir un DNI");
-      return false;
-    }
+
     return true;
   }
 
@@ -147,19 +115,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source, {bool isProfile = true}) async {
-    final pickedFile = await _imagePicker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        if (isProfile) {
-          _profileImage = File(pickedFile.path);
-        } else {
-          _dniImage = File(pickedFile.path); // Para el DNI
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -167,9 +122,11 @@ class _RegisterPageState extends State<RegisterPage> {
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => LoginPage(showLoginPage: () {})));
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginPage(showLoginPage: () {}),
+          ),
+        );
         return false;
       },
       child: Scaffold(
@@ -191,9 +148,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
                     child: Container(
-                      height: 660, // Ajustado para eliminar campos innecesarios
+                      height: 500, // Reducido para los campos actuales
                       width: 350,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -212,52 +171,18 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                             ),
                             const SizedBox(height: 30),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: GestureDetector(
-                                onTap: () => _pickImage(ImageSource.gallery),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: EdgeInsets.all(8),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.photo_camera,
-                                          color: Colors.grey),
-                                      SizedBox(width: 8),
-                                      Text("Foto de perfil"),
-                                      Spacer(),
-                                      if (_profileImage != null)
-                                        ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          child: Image.file(
-                                            _profileImage!,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
                             customTextField(
                               labelText: "Nombre completo",
                               prefixIcon:
-                                  Icon(Icons.person, color: Colors.grey),
+                                  const Icon(Icons.person, color: Colors.grey),
                               controller: _nameController,
                               isObscure: false,
                             ),
                             const SizedBox(height: 20),
                             customTextField(
                               labelText: "Teléfono",
-                              prefixIcon: Icon(Icons.phone, color: Colors.grey),
+                              prefixIcon:
+                                  const Icon(Icons.phone, color: Colors.grey),
                               controller: _phoneController,
                               isObscure: false,
                               keyboardType: TextInputType.phone,
@@ -269,96 +194,27 @@ class _RegisterPageState extends State<RegisterPage> {
                             const SizedBox(height: 20),
                             customTextField(
                               labelText: "Correo electrónico",
-                              prefixIcon: Icon(Icons.email, color: Colors.grey),
+                              prefixIcon:
+                                  const Icon(Icons.email, color: Colors.grey),
                               controller: _emailController,
                               isObscure: false,
                             ),
                             const SizedBox(height: 20),
                             customTextField(
                               labelText: "Contraseña",
-                              prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                              prefixIcon:
+                                  const Icon(Icons.lock, color: Colors.grey),
                               controller: _passwordController,
                               isObscure: isObscure,
                             ),
                             const SizedBox(height: 20),
                             customTextField(
                               labelText: "Confirmar Contraseña",
-                              prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                              prefixIcon:
+                                  const Icon(Icons.lock, color: Colors.grey),
                               controller: _confirmPasswordController,
                               isObscure: isObscure,
                             ),
-                            const SizedBox(height: 20),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedRole,
-                                hint: Text("Selecciona un rol"),
-                                items: _roles.map((String role) {
-                                  return DropdownMenuItem<String>(
-                                    value: role,
-                                    child: Text(role),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedRole = newValue;
-                                  });
-                                },
-                                decoration: InputDecoration(
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                        color: Colors.grey, width: 0.8),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                        color: Colors.black, width: 0.8),
-                                  ),
-                                  prefixIcon: Icon(Icons.person_outline,
-                                      color: Colors.grey),
-                                ),
-                              ),
-                            ),
-                            if (_selectedRole == 'physiotherapist') ...[
-                              const SizedBox(height: 20),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: GestureDetector(
-                                  onTap: () => _pickImage(ImageSource.gallery,
-                                      isProfile: false),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: EdgeInsets.all(8),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.card_membership,
-                                            color: Colors.grey),
-                                        SizedBox(width: 8),
-                                        Text("Subir DNI"),
-                                        Spacer(),
-                                        if (_dniImage != null)
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            child: Image.file(
-                                              _dniImage!,
-                                              width: 50,
-                                              height: 50,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -423,7 +279,7 @@ class _RegisterPageState extends State<RegisterPage> {
             borderSide: const BorderSide(color: Colors.black, width: 0.8),
           ),
           labelText: labelText,
-          labelStyle: TextStyle(color: Colors.black),
+          labelStyle: const TextStyle(color: Colors.black),
           prefixIcon: prefixIcon,
         ),
       ),

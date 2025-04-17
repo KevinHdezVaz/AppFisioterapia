@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:857700626576:android:27c5657164c128c23aa815",
         "android_client_info": {
-          "package_name": "com.app.fisioterapia.mx"
+          "package_name": "com.app.lealtad.mx"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "857700626576-h6sm2r7d7cujhb8vvsi9pibjfbknhavt.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.app.fisioterapia.mx",
+            "package_name": "com.app.lealtad.mx",
             "certificate_hash": "4830c044e3db168d4c593379fe6f48c69919d3fb"
           }
         },
