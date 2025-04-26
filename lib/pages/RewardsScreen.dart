@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:user_auth_crudd10/model/Premio.dart';
 import 'package:user_auth_crudd10/services/PremioService.dart';
 
+// Define custom colors based on the logo
+const Color romanOrange = Color(0xFFF26522);
+const Color romanLightGray = Color(0xFFB0B7C0);
+const Color romanDarkGray = Color(0xFF4A4E54);
+const Color romanWhite = Color(0xFFFFFFFF);
+
 class RewardsScreen extends StatelessWidget {
   const RewardsScreen({super.key});
 
@@ -10,21 +16,19 @@ class RewardsScreen extends StatelessWidget {
     final premioService = PremioService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Premios Disponibles'),
-        backgroundColor: const Color(0xFF1E88E5),
-        elevation: 0,
-        centerTitle: true,
-      ),
       body: FutureBuilder<List<Premio>>(
         future: premioService.fetchPremios(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator(color: romanOrange));
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+                child: Text('Error: ${snapshot.error}',
+                    style: TextStyle(color: romanDarkGray)));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No hay premios disponibles'));
+            return Center(
+                child: Text('No hay premios disponibles',
+                    style: TextStyle(color: romanDarkGray)));
           }
 
           final premios = snapshot.data!;
@@ -34,11 +38,7 @@ class RewardsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: romanOrange, // Changed to solid orange
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
@@ -49,24 +49,24 @@ class RewardsScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 36),
+                    Icon(Icons.star,
+                        color: Colors.amber, size: 36), // Kept amber for star
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'TUS PUNTOS',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: romanWhite.withOpacity(0.7),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // Aquí deberías obtener los puntos reales del usuario
-                        const Text(
+                        Text(
                           '1250', // Simulado, ajusta con tu lógica
                           style: TextStyle(
-                            color: Colors.white,
+                            color: romanWhite,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                           ),
@@ -106,15 +106,16 @@ class RewardsScreen extends StatelessWidget {
                                     width: double.infinity,
                                     fit: BoxFit.cover,
                                     errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.broken_image),
+                                        (context, error, stackTrace) => Icon(
+                                            Icons.broken_image,
+                                            color: romanLightGray),
                                   )
                                 : Container(
                                     height: 150,
                                     width: double.infinity,
-                                    color: Colors.grey,
-                                    child:
-                                        const Icon(Icons.image_not_supported),
+                                    color: romanLightGray,
+                                    child: Icon(Icons.image_not_supported,
+                                        color: romanDarkGray),
                                   ),
                           ),
                           Padding(
@@ -140,9 +141,10 @@ class RewardsScreen extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     Text(
                                       premio.titulo,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
+                                        color: romanDarkGray,
                                       ),
                                     ),
                                   ],
@@ -151,7 +153,7 @@ class RewardsScreen extends StatelessWidget {
                                 Text(
                                   premio.descripcion ?? 'Sin descripción',
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: romanLightGray,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -159,10 +161,10 @@ class RewardsScreen extends StatelessWidget {
                                   children: [
                                     Text(
                                       '$requiredPoints puntos',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E88E5),
+                                        color: romanOrange,
                                       ),
                                     ),
                                     const Spacer(),
@@ -186,8 +188,9 @@ class RewardsScreen extends StatelessWidget {
                                         : null,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: canRedeem
-                                          ? const Color(0xFF1E88E5)
-                                          : Colors.grey[400],
+                                          ? romanOrange
+                                          : romanLightGray,
+                                      foregroundColor: romanWhite,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -196,8 +199,9 @@ class RewardsScreen extends StatelessWidget {
                                       canRedeem
                                           ? 'CANJEAR AHORA'
                                           : 'PUNTOS INSUFICIENTES',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
+                                        color: romanWhite,
                                       ),
                                     ),
                                   ),
@@ -230,32 +234,33 @@ class RewardsScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.card_giftcard,
-                color: Color(0xFF1E88E5),
+                color: romanOrange,
                 size: 50,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '¿Confirmar canje?',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: romanDarkGray,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Estás por canjear ${premio.puntosRequeridos} puntos por:',
-                style: const TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, color: romanDarkGray),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 premio.titulo,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E88E5),
+                  color: romanOrange,
                 ),
               ),
               const SizedBox(height: 24),
@@ -265,12 +270,15 @@ class RewardsScreen extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: romanOrange,
+                        side: BorderSide(color: romanOrange),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Cancelar'),
+                      child: Text('Cancelar',
+                          style: TextStyle(color: romanOrange)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -290,13 +298,15 @@ class RewardsScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E88E5),
+                        backgroundColor: romanOrange,
+                        foregroundColor: romanWhite,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Confirmar'),
+                      child: Text('Confirmar',
+                          style: TextStyle(color: romanWhite)),
                     ),
                   ),
                 ],
@@ -311,13 +321,13 @@ class RewardsScreen extends StatelessWidget {
   Color _getColorForEstado(String estado) {
     switch (estado.toLowerCase()) {
       case 'activo':
-        return Colors.green;
+        return romanOrange; // Updated to logo orange
       case 'inactivo':
-        return Colors.grey;
+        return romanLightGray; // Updated to logo light gray
       case 'sin_stock':
-        return Colors.red;
+        return Colors.red; // Kept red for out-of-stock
       default:
-        return Colors.blue;
+        return romanDarkGray; // Updated to logo dark gray
     }
   }
 }

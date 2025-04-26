@@ -6,6 +6,7 @@ import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/services/settings/theme_data.dart';
 import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback showLoginPage;
@@ -31,7 +32,11 @@ class _LoginPageState extends State<LoginPage> {
     try {
       showDialog(
         context: context,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
+        builder: (context) => Center(
+          child: CircularProgressIndicator(
+            color: LumorahColors.primary,
+          ),
+        ),
       );
 
       final success = await _authService.login(
@@ -89,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color.fromARGB(255, 234, 61, 61),
+        backgroundColor: LumorahColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
@@ -103,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: LumorahColors.primary,
       body: SingleChildScrollView(
         child: Stack(
           children: [
@@ -144,8 +149,15 @@ class _LoginPageState extends State<LoginPage> {
                   height: size.height * 0.8,
                   width: size.width * 0.9,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
+                    color: LumorahColors.lightBackground,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: LumorahColors.primaryDark.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -166,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: GoogleFonts.lato(
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
-                            color: Colors.black,
+                            color: LumorahColors.textLight,
                           ),
                         ),
                       ),
@@ -174,53 +186,55 @@ class _LoginPageState extends State<LoginPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 15),
                         child: TextField(
-                          cursorColor: lightTheme.primaryColor,
+                          cursorColor: LumorahColors.primary,
                           controller: _emailController,
                           decoration: InputDecoration(
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.grey,
-                                width: 0.8,
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.black,
-                                width: 0.8,
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
                               ),
                             ),
                             labelText: "Correo",
-                            labelStyle: const TextStyle(color: Colors.black),
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
                           ),
-                          style: const TextStyle(color: Colors.black),
+                          style: TextStyle(color: LumorahColors.textLight),
                         ),
                       ),
                       const SizedBox(height: 20),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 15),
                         child: TextField(
-                          cursorColor: lightTheme.primaryColor,
+                          cursorColor: LumorahColors.primary,
                           controller: _passwordController,
                           obscureText: isObscure,
                           decoration: InputDecoration(
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.grey,
-                                width: 0.8,
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.black,
-                                width: 0.8,
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
                               ),
                             ),
                             labelText: " Contraseña ",
-                            labelStyle: const TextStyle(color: Colors.black),
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
                             suffixIcon: IconButton(
                               onPressed: () {
                                 setState(() {
@@ -231,10 +245,11 @@ class _LoginPageState extends State<LoginPage> {
                                 isObscure
                                     ? Icons.visibility_off
                                     : Icons.visibility,
+                                color: LumorahColors.primary,
                               ),
                             ),
                           ),
-                          style: const TextStyle(color: Colors.black),
+                          style: TextStyle(color: LumorahColors.textLight),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -253,12 +268,13 @@ class _LoginPageState extends State<LoginPage> {
                                 isRember
                                     ? Icons.check_box_outline_blank
                                     : Icons.check_box,
+                                color: LumorahColors.primary,
                               ),
                             ),
-                            const Text(
+                            Text(
                               'Recordarme',
-                              style:
-                                  TextStyle(fontSize: 16, color: Colors.black),
+                              style: TextStyle(
+                                  fontSize: 16, color: LumorahColors.textLight),
                             ),
                             const SizedBox(width: 40),
                             GestureDetector(
@@ -271,14 +287,14 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 );
                               },
-                              child: const Text(
+                              child: Text(
                                 "Olvide contraseña",
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: LumorahColors.primaryDark,
                                   fontWeight: FontWeight.w400,
                                   fontSize: 14,
                                   decoration: TextDecoration.underline,
-                                  decorationColor: Colors.black,
+                                  decorationColor: LumorahColors.primaryDark,
                                   decorationThickness: 1.5,
                                 ),
                               ),
@@ -291,17 +307,10 @@ class _LoginPageState extends State<LoginPage> {
                         width: size.width * 0.8,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.9),
-                              Colors.white.withOpacity(0.7)
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          gradient: LumorahColors.primaryGradient,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: LumorahColors.primaryDark.withOpacity(0.3),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -310,9 +319,9 @@ class _LoginPageState extends State<LoginPage> {
                         child: ElevatedButton(
                           onPressed: signIn,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            shadowColor: Colors.black.withOpacity(0.3),
-                            elevation: 10,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            elevation: 0,
                             minimumSize: const Size(double.infinity, 50),
                             padding: const EdgeInsets.symmetric(vertical: 15),
                           ),
@@ -340,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: GoogleFonts.inter(
                             fontSize: 17,
                             fontWeight: FontWeight.w500,
-                            color: Colors.blue,
+                            color: LumorahColors.primaryDark,
                             decoration: TextDecoration.underline,
                           ),
                         ),

@@ -5,6 +5,7 @@ import 'package:user_auth_crudd10/pages/TicketUploadScreen.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/pages/others/profile_page.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 
 class BottomNavBar extends StatefulWidget {
   final int initialIndex;
@@ -35,7 +36,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
       const HomeScreen(),
       const TicketUploadScreen(),
       const RewardsScreen(),
-      const PromotionsScreen(),
       const ProfilePage(),
     ];
   }
@@ -45,47 +45,53 @@ class _BottomNavBarState extends State<BottomNavBar> {
     return Scaffold(
       body: _pages[_selectedIndex],
       bottomNavigationBar: Container(
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white.withOpacity(0.6),
-              backgroundColor: const Color(0xFF1E88E5),
-              currentIndex: _selectedIndex,
-              onTap: _changeIndex,
-              elevation: 0,
-              iconSize: 22,
-              selectedFontSize: 12,
-              unselectedFontSize: 12,
-              showSelectedLabels: true,
-              showUnselectedLabels: true,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: 'Inicio',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.camera_alt),
-                  label: 'Subir Ticket',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.card_giftcard),
-                  label: 'Premios',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.local_offer),
-                  label: 'Promociones',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: 'Perfil',
-                ),
-              ],
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: LumorahColors.primary.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+              offset: Offset(0, -2),
             ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white.withOpacity(0.7),
+            backgroundColor: LumorahColors.primary,
+            currentIndex: _selectedIndex,
+            onTap: _changeIndex,
+            elevation: 0,
+            iconSize: 24,
+            selectedFontSize: 12,
+            unselectedFontSize: 12,
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.camera_alt_outlined),
+                activeIcon: Icon(Icons.camera_alt),
+                label: 'Subir Ticket',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.card_giftcard_outlined),
+                activeIcon: Icon(Icons.card_giftcard),
+                label: 'Premios',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                activeIcon: Icon(Icons.person),
+                label: 'Perfil',
+              ),
+            ],
           ),
         ),
       ),

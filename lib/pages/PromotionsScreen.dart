@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:user_auth_crudd10/model/Promocion.dart';
 import 'package:user_auth_crudd10/services/PromocionesService.dart';
 
+// Define custom colors based on the logo
+const Color romanOrange = Color(0xFFF26522);
+const Color romanLightGray = Color(0xFFB0B7C0);
+const Color romanDarkGray = Color(0xFF4A4E54);
+const Color romanWhite = Color(0xFFFFFFFF);
+
 class PromotionsScreen extends StatelessWidget {
   const PromotionsScreen({super.key});
 
@@ -11,20 +17,26 @@ class PromotionsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Promociones'),
-        backgroundColor: const Color(0xFF1E88E5),
+        title: Text('Promociones', style: TextStyle(color: romanWhite)),
+        backgroundColor: romanOrange,
         elevation: 0,
-        centerTitle: true,
+
+        automaticallyImplyLeading: false, // Disable back arrow
+        leading: null, // Ensure no leading widget
       ),
       body: FutureBuilder<List<Promocion>>(
         future: promocionService.fetchPromociones(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator(color: romanOrange));
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+                child: Text('Error: ${snapshot.error}',
+                    style: TextStyle(color: romanDarkGray)));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No hay promociones disponibles'));
+            return Center(
+                child: Text('No hay promociones disponibles',
+                    style: TextStyle(color: romanDarkGray)));
           }
 
           final promociones = snapshot.data!;
@@ -56,13 +68,15 @@ class PromotionsScreen extends StatelessWidget {
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.broken_image),
+                                      Icon(Icons.broken_image,
+                                          color: romanLightGray),
                                 )
                               : Container(
                                   height: 150,
                                   width: double.infinity,
-                                  color: Colors.grey,
-                                  child: const Icon(Icons.image_not_supported),
+                                  color: romanLightGray,
+                                  child: Icon(Icons.image_not_supported,
+                                      color: romanDarkGray),
                                 ),
                           Container(
                             height: 150,
@@ -86,16 +100,16 @@ class PromotionsScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   promocion.titulo,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: romanWhite,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
                                   'Puntos por ticket: ${promocion.puntosPorTicket}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: romanWhite,
                                     fontSize: 18,
                                   ),
                                 ),
@@ -120,7 +134,7 @@ class PromotionsScreen extends StatelessWidget {
                               Text(
                                 'Estado: ${promocion.estado}',
                                 style: TextStyle(
-                                  color: Colors.grey[700],
+                                  color: romanDarkGray,
                                   fontSize: 16,
                                 ),
                               ),
@@ -135,15 +149,17 @@ class PromotionsScreen extends StatelessWidget {
                                 // Acción para obtener promoción
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1E88E5),
+                                backgroundColor: romanOrange,
+                                foregroundColor: romanWhite,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'OBTENER PROMOCIÓN',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
+                                  color: romanWhite,
                                 ),
                               ),
                             ),
@@ -164,13 +180,13 @@ class PromotionsScreen extends StatelessWidget {
   Color _getColorForEstado(String estado) {
     switch (estado.toLowerCase()) {
       case 'activa':
-        return Colors.green;
+        return romanOrange; // Updated to logo orange
       case 'inactiva':
-        return Colors.grey;
+        return romanLightGray; // Updated to logo light gray
       case 'expirada':
-        return Colors.red;
+        return Colors.red; // Kept red for expired
       default:
-        return Colors.blue;
+        return romanDarkGray; // Updated to logo dark gray
     }
   }
 }

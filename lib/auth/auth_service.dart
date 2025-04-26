@@ -146,7 +146,7 @@ class AuthService {
         Uri.parse('$baseUrl/logout'),
         headers: await getHeaders(),
       );
-      // await storage.removeToken();
+      await storage.removeToken();
     } catch (e) {
       throw Exception('Error al cerrar sesión');
     }

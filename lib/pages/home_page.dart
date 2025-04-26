@@ -8,6 +8,7 @@ import 'package:user_auth_crudd10/pages/RewardsScreen.dart';
 import 'package:user_auth_crudd10/services/PremioService.dart';
 import 'package:user_auth_crudd10/services/PromocionesService.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,43 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tus puntos'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Pantalla de historial no implementada aún')),
-              );
-            },
-            child: const Text(
-              'Historial →',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              try {
-                await authService.logout();
-                if (!context.mounted) return;
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => LoginPage(showLoginPage: () {})),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error al cerrar sesión: $e')),
-                );
-              }
-            },
-          ),
-        ],
+        title: const Text('Home'),
+        automaticallyImplyLeading: false,
+        backgroundColor: LumorahColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -95,13 +64,17 @@ class _HomeScreenState extends State<HomeScreen> {
               future: _userPointsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: LumorahColors.primary,
+                    ),
+                  );
                 }
 
                 final userPoints = snapshot.data ?? 0;
 
                 return Card(
-                  color: Colors.blue[800],
+                  color: LumorahColors.primary,
                   elevation: 4,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -128,10 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Puntos disponibles',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: Colors.white.withOpacity(0.7),
                             fontSize: 16,
                           ),
                         ),
@@ -142,12 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: _buildActionButton(
                                 icon: Icons.qr_code_scanner,
                                 label: 'Escanear ticket',
-                                color: Colors.blue[700]!,
+                                color: LumorahColors.primaryDark,
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'Pantalla de escaneo no implementada aún')),
+                                      content: Text(
+                                          'Pantalla de escaneo no implementada aún'),
+                                      backgroundColor: LumorahColors.primary,
+                                    ),
                                   );
                                 },
                               ),
@@ -157,13 +132,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: _buildActionButton(
                                 icon: Icons.card_giftcard,
                                 label: 'Canjear',
-                                color: Colors.orange[700]!,
+                                color: LumorahColors.secondary,
                                 onPressed: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) =>
-                                            const RewardsScreen()),
+                                      builder: (context) =>
+                                          const RewardsScreen(),
+                                    ),
                                   );
                                 },
                               ),
@@ -178,12 +154,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Promotions Card - Ahora con datos reales
+            // Promotions Card
             FutureBuilder<List<Promocion>>(
               future: _promocionesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: LumorahColors.primary,
+                    ),
+                  );
                 }
 
                 if (snapshot.hasError) {
@@ -205,7 +185,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                // Tomamos la primera promoción activa o la primera disponible
                 final promocion = promociones.firstWhere(
                   (p) => p.estado.toLowerCase() == 'activa',
                   orElse: () => promociones.first,
@@ -221,23 +200,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Promociones',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: LumorahColors.primaryDark,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           promocion.titulo,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: LumorahColors.textLight,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           promocion.descripcion ?? 'Oferta especial',
-                          style: const TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: LumorahColors.textLight,
+                          ),
                         ),
                         if (promocion.puntosPorTicket > 0) ...[
                           const SizedBox(height: 4),
@@ -245,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             'Gana ${promocion.puntosPorTicket} puntos por ticket',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.blue[800],
+                              color: LumorahColors.primary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -255,7 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[700],
+                              backgroundColor: LumorahColors.primary,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -264,14 +251,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PromotionsScreen()),
+                                  builder: (context) =>
+                                      const PromotionsScreen(),
+                                ),
                               );
                             },
-                            child: const Text(
-                              'Ver promociones',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            child: const Text('Ver promociones'),
                           ),
                         ),
                       ],
@@ -282,12 +267,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Awards Card - Ahora con datos reales
+            // Awards Card
             FutureBuilder<List<Premio>>(
               future: _premiosFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: LumorahColors.primary,
+                    ),
+                  );
                 }
 
                 if (snapshot.hasError) {
@@ -309,7 +298,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                // Filtramos premios activos y tomamos los primeros 2
                 final premiosActivos = premios
                     .where((p) => p.estado.toLowerCase() == 'activo')
                     .toList();
@@ -327,11 +315,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Premios disponibles',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: LumorahColors.primaryDark,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -346,8 +335,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                          builder: (context) =>
-                                              const RewardsScreen()),
+                                        builder: (context) =>
+                                            const RewardsScreen(),
+                                      ),
                                     );
                                   },
                                 ),
@@ -360,7 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[800],
+                              backgroundColor: LumorahColors.primary,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -369,14 +360,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                        const RewardsScreen()),
+                                  builder: (context) => const RewardsScreen(),
+                                ),
                               );
                             },
-                            child: const Text(
-                              'Ver todos los premios',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            child: const Text('Ver todos los premios'),
                           ),
                         ),
                       ],
@@ -394,13 +382,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Color _getColorForPremio(Premio premio) {
     switch (premio.estado.toLowerCase()) {
       case 'activo':
-        return Colors.green;
+        return LumorahColors.primary;
       case 'inactivo':
-        return Colors.grey;
+        return LumorahColors.primaryLighter;
       case 'sin_stock':
-        return Colors.red;
+        return LumorahColors.error;
       default:
-        return Colors.blue;
+        return LumorahColors.primaryDark;
     }
   }
 
@@ -413,6 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -452,22 +441,26 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
+                  color: LumorahColors.textLight,
                 ),
               ),
               Text(
                 points,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: LumorahColors.primary.withOpacity(0.7),
                 ),
               ),
             ],
           ),
           const Spacer(),
-          const Icon(Icons.chevron_right),
+          Icon(
+            Icons.chevron_right,
+            color: LumorahColors.primary,
+          ),
         ],
       ),
     );

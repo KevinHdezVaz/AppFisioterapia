@@ -1,15 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/pages/InvitationsScreen.dart';
-import 'package:user_auth_crudd10/pages/VerifyProfilePage.dart';
-import 'package:user_auth_crudd10/pages/WalletScreen.dart';
+import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/pages/screens/UpdateProfileScreen.dart';
+import 'package:user_auth_crudd10/pages/WalletScreen.dart';
 import 'package:user_auth_crudd10/pages/screens/bookin/booking_screen.dart';
-import 'package:user_auth_crudd10/services/equipo_service.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -19,338 +15,274 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _authService = AuthService();
-  Map<String, dynamic>? userData;
-  final _equipoService = EquipoService();
-  bool _isLoadingEquipos = false;
-  int _invitacionesPendientes = 0;
+  final AuthService _authService = AuthService();
+  // Mock user data for visual purposes
+  final Map<String, dynamic> userData = {
+    'name': 'Juan Pérez',
+    'email': 'juan.perez@example.com',
+    'is_verified': true,
+    'profile_image': null, // No network image for static UI
+  };
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-    _loadInvitaciones();
-  }
-
-  Future<void> _loadInvitaciones() async {
+  Future<void> _signOut() async {
     try {
-      final count = await _equipoService.getInvitacionesPendientesCount();
-      setState(() => _invitacionesPendientes = count);
-    } catch (e) {
-      print('Error cargando invitaciones: $e');
-    }
-  }
-
-  Future<void> navegarEquipos(BuildContext context) async {
-    setState(() => _isLoadingEquipos = true);
-    try {
-      if (userData == null || userData!['id'] == null)
-        throw Exception('No hay datos del usuario');
-      final userId = userData!['id'];
-      final equipos = await _equipoService.getEquipos();
-      final miEquipo = equipos
-          .where((e) => e.miembros.any((m) => m.id == userId))
-          .firstOrNull;
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error al cargar equipos: $e')));
-    } finally {
-      setState(() => _isLoadingEquipos = false);
-    }
-  }
-
-  void _mostrarCodigo() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Mi Código para unirme a equipos',
-            style: TextStyle(color: Colors.black)),
-        content: Container(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.qr_code, size: 50, color: Colors.blue),
-              SizedBox(height: 20),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      userData!['invite_code'] ?? '',
-                      style: TextStyle(
-                          fontSize: 24,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2),
-                    ),
-                    SizedBox(width: 10),
-                    IconButton(
-                      icon: Icon(Icons.copy),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(
-                            text: userData!['invite_code'] ?? ''));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Código copiado!')));
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(
+            color: LumorahColors.primary,
           ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cerrar', style: TextStyle(color: Colors.black))),
-        ],
-      ),
-    );
-  }
+      );
 
-  Future<void> _loadUserProfile() async {
-    try {
-      final response = await _authService.getProfile();
-      setState(() => userData = response);
-    } catch (e) {
-      print('Error cargando perfil: $e');
-    }
-  }
-
-  Future<void> _logout() async {
-    try {
-      showDialog(
-          context: context,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()));
       await _authService.logout();
-      Navigator.of(context, rootNavigator: true).pop();
-      Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => AuthCheckMain()),
-          (route) => false);
+
+      if (!mounted) return;
+
+      // Cerrar el diálogo de carga
+      Navigator.pop(context);
+
+      // Navegar a LoginPage reemplazando toda la pila de navegación
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoginPage(
+            showLoginPage: () {
+              // Esta función se usa para alternar entre login/register
+              // Asegúrate de pasar la implementación correcta
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LoginPage(showLoginPage: () {}),
+                ),
+              );
+            },
+          ),
+        ),
+        (route) => false, // Elimina todas las rutas anteriores
+      );
     } catch (e) {
-      Navigator.of(context, rootNavigator: true).pop();
-      print('Error cerrando sesión: $e');
+      if (!mounted) return;
+      Navigator.pop(context); // Cerrar el loading si hay error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cerrar sesión: ${e.toString()}'),
+          backgroundColor: LumorahColors.error,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 1,
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: userData == null
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  ProfilePic(userData: userData),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Card(
-                      elevation: 10,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(32),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color.fromARGB(255, 127, 205, 234),
-                              Color.fromARGB(255, 104, 151, 193)
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+        backgroundColor: LumorahColors.lightBackground,
+        appBar: AppBar(
+          title: Text('Perfil', style: TextStyle(color: Colors.white)),
+          backgroundColor: LumorahColors.primary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: null,
+        ),
+        body: Column(
+          children: [
+            ProfilePic(userData: userData),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Card(
+                elevation: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LumorahColors.primaryGradient,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 50, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.person, color: Colors.white, size: 24),
+                            const SizedBox(width: 20),
+                            Text(
+                              userData['name'] ?? '',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (userData['is_verified'] == true)
+                              const SizedBox(width: 8),
+                            if (userData['is_verified'] == true)
+                              Icon(
+                                Icons.verified,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                          ],
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 50, vertical: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.person,
-                                      color: Colors.blueGrey, size: 24),
-                                  const SizedBox(width: 20),
-                                  Text(
-                                    userData!['name'] ?? '',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (userData!['is_verified'] == true)
-                                    const SizedBox(width: 8),
-                                  if (userData!['is_verified'] == true)
-                                    const Icon(
-                                      Icons.verified,
-                                      color: Colors.white,
-                                      size: 30,
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  const Icon(Icons.email,
-                                      color: Colors.blueGrey, size: 24),
-                                  const SizedBox(width: 20),
-                                  Text(
-                                    userData!['email'] ?? '',
-                                    style: GoogleFonts.inter(
-                                        fontSize: 13, color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Center(
-                                child: userData!['is_verified'] == true
-                                    ? SizedBox
-                                        .shrink() // Oculta el botón si está verificado
-                                    : ElevatedButton(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  VerifyProfilePage(),
-                                            ),
-                                          ).then((_) {
-                                            // Recargar el perfil después de verificar
-                                            _loadUserProfile();
-                                          });
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blueGrey,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 17, vertical: 12),
-                                        ),
-                                        child: Text(
-                                          'Verificar Perfil',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.email, color: Colors.white, size: 24),
+                            const SizedBox(width: 20),
+                            Text(
+                              userData['email'] ?? '',
+                              style: GoogleFonts.inter(
+                                  fontSize: 13, color: Colors.white),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  TabBar(
-                    tabs: [
-                      Tab(
-                          child: Text('OPCIONES',
-                              style: GoogleFonts.inter(
-                                  fontSize: 16, fontWeight: FontWeight.w600))),
-                      Tab(
-                          child: Text('ESTADÍSTICAS',
-                              style: GoogleFonts.inter(
-                                  fontSize: 16, fontWeight: FontWeight.w600))),
-                    ],
-                    indicatorColor: Colors.green,
-                    labelColor: Colors.green,
-                    unselectedLabelColor: Colors.grey,
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                _buildMenuItem(
-                                  icon: Icons.person,
-                                  title: 'Editar Perfil',
-                                  subtitle: 'Datos de usuario',
-                                  onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              UpdateProfileScreen())),
+                ),
+              ),
+            ),
+            TabBar(
+              tabs: [
+                Tab(
+                    child: Text('OPCIONES',
+                        style: GoogleFonts.inter(
+                            fontSize: 16, fontWeight: FontWeight.w600))),
+              ],
+              indicatorColor: LumorahColors.primary,
+              labelColor: LumorahColors.primary,
+              unselectedLabelColor: LumorahColors.primary.withOpacity(0.5),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _buildMenuItem(
+                            icon: Icons.person,
+                            title: 'Editar Perfil',
+                            subtitle: 'Datos de usuario',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        UpdateProfileScreen())),
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.monetization_on,
+                            title: 'Monedero',
+                            subtitle: 'Ver mi Monedero',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => WalletScreen())),
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.sports_soccer,
+                            title: 'Mis Reservaciones',
+                            subtitle: 'Ver Reservaciones',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => BookingScreen())),
+                          ),
+                          const SizedBox(height: 20),
+                          // Botón de Cerrar Sesión
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: LumorahColors.error,
+                                  foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                                _buildMenuItem(
-                                  icon: Icons.notifications,
-                                  title: 'Invitaciones',
-                                  subtitle: 'Ver invitaciones',
-                                  count: _invitacionesPendientes,
-                                  onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              InvitationsScreen())),
+                                onPressed: () {
+                                  _showLogoutConfirmationDialog();
+                                },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.logout, size: 20),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Cerrar Sesión',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                _buildMenuItem(
-                                  icon: Icons.monetization_on,
-                                  title: 'Monedero',
-                                  subtitle: 'Ver mi Monedero',
-                                  count: _invitacionesPendientes,
-                                  onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              WalletScreen())),
-                                ),
-                                _buildMenuItem(
-                                  icon: Icons.qr_code,
-                                  title: 'Mi Código',
-                                  subtitle: 'Para unirme a equipos',
-                                  onTap: _mostrarCodigo,
-                                ),
-                                _buildMenuItem(
-                                  icon: Icons.sports_soccer,
-                                  title: 'Mis Reservaciones',
-                                  subtitle: 'Ver Reservaciones',
-                                  onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              BookingScreen())),
-                                ),
-                                _buildMenuItem(
-                                  icon: Icons.group,
-                                  title: 'Mi Equipo',
-                                  subtitle: 'Ver equipo',
-                                  onTap: () => navegarEquipos(context),
-                                ),
-                                _buildMenuItem(
-                                  icon: Icons.exit_to_app,
-                                  title: 'Cerrar sesión',
-                                  subtitle: 'Salir',
-                                  onTap: _logout,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                        //    const StatsTab(), // Usar la nueva clase StatsTab
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showLogoutConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Cerrar Sesión',
+            style: GoogleFonts.inter(
+              color: LumorahColors.primaryDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '¿Estás seguro que deseas cerrar tu sesión?',
+            style: GoogleFonts.inter(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.inter(color: LumorahColors.primary),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _signOut();
+              },
+              child: Text(
+                'Cerrar Sesión',
+                style: GoogleFonts.inter(color: LumorahColors.error),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -369,7 +301,7 @@ class _ProfilePageState extends State<ProfilePage> {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
+                color: LumorahColors.primary.withOpacity(0.2),
                 spreadRadius: 1,
                 blurRadius: 2,
                 offset: const Offset(0, 1))
@@ -378,34 +310,43 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Icon(icon, color: Colors.black),
+            Icon(icon, color: LumorahColors.primaryDark),
             if (count > 0)
               Positioned(
                 right: -8,
                 top: -8,
                 child: Container(
                   padding: EdgeInsets.all(4),
-                  decoration:
-                      BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                      color: LumorahColors.primary, shape: BoxShape.circle),
                   constraints: BoxConstraints(minWidth: 16, minHeight: 16),
                   child: Center(
-                    child: Text(count.toString(),
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
+                    child: Text(
+                      count.toString(),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ),
           ],
         ),
       ),
-      title: Text(title,
-          style: GoogleFonts.inter(
-              color: Colors.blue, fontSize: 16, fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle,
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.green),
+      title: Text(
+        title,
+        style: GoogleFonts.inter(
+            color: LumorahColors.primary,
+            fontSize: 16,
+            fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: GoogleFonts.inter(
+            fontSize: 14, color: LumorahColors.primary.withOpacity(0.7)),
+      ),
+      trailing: Icon(Icons.chevron_right, color: LumorahColors.primary),
       onTap: onTap,
     );
   }
@@ -417,9 +358,6 @@ class ProfilePic extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? imageUrl = userData != null && userData!['profile_image'] != null
-        ? 'https://proyect.aftconta.mx/storage/${userData!['profile_image']}'
-        : null;
     return SafeArea(
       child: SizedBox(
         height: 115,
@@ -429,12 +367,8 @@ class ProfilePic extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             CircleAvatar(
-              backgroundImage: imageUrl != null
-                  ? NetworkImage(imageUrl)
-                  : const AssetImage('assets/icons/jugadore.png')
-                      as ImageProvider,
-              onBackgroundImageError: (exception, stackTrace) =>
-                  print('Error loading image: $exception'),
+              backgroundColor: LumorahColors.primaryLight,
+              backgroundImage: const AssetImage('assets/icons/jugadore.png'),
             ),
           ],
         ),

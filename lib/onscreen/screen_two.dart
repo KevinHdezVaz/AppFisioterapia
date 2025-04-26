@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
- import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/onscreen/screen_cuatro.dart';
 import 'package:user_auth_crudd10/onscreen/screen_two.dart';
 import 'package:user_auth_crudd10/onscreen/slanding_clipper.dart';
-import 'package:user_auth_crudd10/utils/ParticleUtils.dart'; // Importa la utilidad
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 import 'constants2.dart';
 
 class OnboardingScreenTwo extends StatelessWidget {
@@ -24,23 +25,21 @@ class OnboardingScreenTwo extends StatelessWidget {
         size * sizeReference / MediaQuery.of(context).size.longestSide;
 
     Size size = MediaQuery.of(context).size;
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
-    final double itemHeight = (size.height - kToolbarHeight - 24) / 2;
-    final double itemWidth = size.width / 1.6;
+    double screenHeight = size.height;
+    double screenWidth = size.width;
 
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-         body: Container(
+        body: Container(
           child: Stack(
             children: [
-              // Agregar partículas
+              // Partículas con color de la paleta Lumorah
               Particles(
                 awayRadius: 150,
                 particles: ParticleUtils.createParticles(
                   numberOfParticles: 50,
-                  color: Colors.green, // Color visible contra fondo oscuro
+                  color: LumorahColors.primaryLight,
                   maxSize: 5.0,
                   maxVelocity: 30.0,
                 ),
@@ -62,12 +61,12 @@ class OnboardingScreenTwo extends StatelessWidget {
                       clipper: SlandingClipper(),
                       child: Container(
                         height: size.height * 0.5,
-                        color: Colors.lightBlue[100],
+                        color: LumorahColors.primaryLighter,
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 100), // Nota: 'bottom' en lugar de 'custom'
+                    padding: const EdgeInsets.only(bottom: 100),
                     child: Container(
                       width: 300,
                       height: 300,
@@ -91,33 +90,31 @@ class OnboardingScreenTwo extends StatelessWidget {
                           textAlign: TextAlign.start,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: LumorahColors.darkBackground,
                             fontSize: 27,
                           ),
                         ),
                       ),
-                      SizedBox(
-                        height: size.height * 0.02,
-                      ),
+                      SizedBox(height: size.height * 0.02),
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 20),
                         child: RichText(
                           textAlign: TextAlign.start,
                           text: TextSpan(
-                            style: TextStyle(color: Colors.black, fontSize: 16),
+                            style: TextStyle(
+                                color: LumorahColors.textLight, fontSize: 16),
                             children: <TextSpan>[
                               TextSpan(
                                   style: TextStyle(
                                       fontSize: getResponsiveText(24),
                                       fontFamily: 'Viga-Regular',
-                                      color: Colors.black),
-                                  text: "Ejercicios personalizados, videollamadas"),
+                                      color: LumorahColors.textLight),
+                                  text:
+                                      "Ejercicios personalizados, videollamadas"),
                               TextSpan(
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
-                                    color: Colors.black,
+                                    color: LumorahColors.textLight,
                                     fontSize: getResponsiveText(24),
                                   ),
                                   text: " y seguimiento en tiempo real."),
@@ -141,25 +138,28 @@ class OnboardingScreenTwo extends StatelessWidget {
                       width: 15,
                       height: 15,
                       decoration: BoxDecoration(
-                          border: Border.all(color: black, width: 2),
+                          border: Border.all(
+                              color: LumorahColors.primaryDark, width: 2),
                           shape: BoxShape.circle,
-                          color: white),
+                          color: Colors.white),
                     ),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: appPadding / 4),
                       width: 15,
                       height: 15,
                       decoration: BoxDecoration(
-                          border: Border.all(color: black, width: 2),
+                          border: Border.all(
+                              color: LumorahColors.primaryDark, width: 2),
                           shape: BoxShape.circle,
-                          color: Colors.blue),
+                          color: LumorahColors.primary),
                     ),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: appPadding / 4),
                       width: 15,
                       height: 15,
                       decoration: BoxDecoration(
-                          border: Border.all(color: black, width: 2),
+                          border: Border.all(
+                              color: LumorahColors.primaryDark, width: 2),
                           shape: BoxShape.circle,
                           color: Colors.white),
                     ),
@@ -187,7 +187,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                         child: Text(
                           "OMITIR",
                           style: TextStyle(
-                            color: Colors.white, // Color fijo
+                            color: Colors.white, // Mantenido para contraste
                             fontSize: 20.0,
                           ),
                         ),
@@ -202,10 +202,10 @@ class OnboardingScreenTwo extends StatelessWidget {
                             curve: Curves.easeInOut,
                           );
                         },
-                        backgroundColor: white,
+                        backgroundColor: Colors.white,
                         child: Icon(
                           Icons.navigate_next_rounded,
-                          color: black,
+                          color: LumorahColors.primary,
                           size: 30,
                         ),
                       ),
