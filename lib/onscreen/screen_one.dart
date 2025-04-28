@@ -82,7 +82,7 @@ class OnboardingScreenOne extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "Tu fisioterapeuta, más cerca que nunca",
+                        "Hola, ¡Soy Lumorah!, Estoy aquí para acompañarte",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -110,7 +110,7 @@ class OnboardingScreenOne extends StatelessWidget {
                                       color: LumorahColors
                                           .textLight), // Color actualizado
                                   text:
-                                      "Encuentra expertos cerca de ti y empieza tu recuperación hoy mismo. "),
+                                      "Un espacio seguro para expresar lo que sientes, sin juicios ni prisas."),
                             ],
                           ),
                         ),

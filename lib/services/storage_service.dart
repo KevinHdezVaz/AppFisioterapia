@@ -28,7 +28,6 @@ class StorageService {
           'id': user.id,
           'nombre': user.nombre,
           'email': user.email,
-          'saldo_puntos': user.saldoPuntos,
         }));
   }
 

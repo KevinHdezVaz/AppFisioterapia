@@ -18,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<int> _userPointsFuture;
   late Future<List<Promocion>> _promocionesFuture;
   late Future<List<Premio>> _premiosFuture;
   final PromocionService _promocionService = PromocionService();
@@ -31,8 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadData() {
-    _userPointsFuture =
-        StorageService().getUser().then((user) => user?.saldoPuntos ?? 0);
     _promocionesFuture = _promocionService.fetchPromociones();
     _premiosFuture = _premioService.fetchPremios();
   }
@@ -60,98 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             // Main Points Card
-            FutureBuilder<int>(
-              future: _userPointsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      color: LumorahColors.primary,
-                    ),
-                  );
-                }
 
-                final userPoints = snapshot.data ?? 0;
-
-                return Card(
-                  color: LumorahColors.primary,
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Tus puntos',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '$userPoints',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Puntos disponibles',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildActionButton(
-                                icon: Icons.qr_code_scanner,
-                                label: 'Escanear ticket',
-                                color: LumorahColors.primaryDark,
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Pantalla de escaneo no implementada aún'),
-                                      backgroundColor: LumorahColors.primary,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildActionButton(
-                                icon: Icons.card_giftcard,
-                                label: 'Canjear',
-                                color: LumorahColors.secondary,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const RewardsScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
             const SizedBox(height: 16),
 
             // Promotions Card

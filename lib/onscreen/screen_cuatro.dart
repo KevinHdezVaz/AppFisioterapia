@@ -82,7 +82,7 @@ class OnBoardingCuatro extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Juntos hacia el bienestar",
+                        "Expresate libremente sin prejuicios.",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -105,13 +105,13 @@ class OnBoardingCuatro extends StatelessWidget {
                                       fontSize: getResponsiveText(24),
                                       color: LumorahColors.textLight),
                                   text:
-                                      "Manten la comunicación con tu fisioterapeuta y "),
+                                      "Este es un espacio donde todo lo que sientes tiene lugar"),
                               TextSpan(
                                   style: TextStyle(
                                     color: LumorahColors.textLight,
                                     fontSize: getResponsiveText(24),
                                   ),
-                                  text: "sigue tu avance en un solo lugar"),
+                                  text: ". Crea tu atsmofera de seguridad."),
                             ],
                           ),
                         ),

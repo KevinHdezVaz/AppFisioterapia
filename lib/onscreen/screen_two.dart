@@ -68,9 +68,9 @@ class OnboardingScreenTwo extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 100),
                     child: Container(
-                      width: 300,
+                      width: 350,
                       height: 300,
-                      child: Lottie.asset('assets/images/animacionuno.json'),
+                      child: Lottie.asset('assets/images/nubeBreathe.json'),
                     ),
                   ),
                 ],
@@ -86,7 +86,7 @@ class OnboardingScreenTwo extends StatelessWidget {
                       const Padding(
                         padding: EdgeInsets.only(top: 90),
                         child: Text(
-                          "Recupérate con confianza",
+                          "Lumorah es para ti. ",
                           textAlign: TextAlign.start,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -110,14 +110,14 @@ class OnboardingScreenTwo extends StatelessWidget {
                                       fontFamily: 'Viga-Regular',
                                       color: LumorahColors.textLight),
                                   text:
-                                      "Ejercicios personalizados, videollamadas"),
+                                      "Aquí puedes sentir, escribir o simplemente ser."),
                               TextSpan(
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
                                     color: LumorahColors.textLight,
                                     fontSize: getResponsiveText(24),
                                   ),
-                                  text: " y seguimiento en tiempo real."),
+                                  text: " Todo vale."),
                             ],
                           ),
                         ),

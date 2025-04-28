@@ -236,12 +236,10 @@ class AuthService {
     //  final idStr = await storage.getString('user_id');
     //  return idStr != null ? int.parse(idStr) : null;
   }
-
   Future<bool> register({
     required String name,
     required String email,
     required String password,
-    required String phone,
   }) async {
     try {
       final response = await http.post(
@@ -254,27 +252,47 @@ class AuthService {
           'nombre': name,
           'email': email,
           'password': password,
-          'telefono': phone,
         }),
       );
 
       debugPrint('Register Response status: ${response.statusCode}');
       debugPrint('Register Response body: ${response.body}');
 
+      final data = jsonDecode(response.body);
+
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final token = data['token'] as String;
-        final user = User.fromJson(data['user']);
+        // Verificación más robusta
+        if (data['token'] == null || data['user'] == null) {
+          throw Exception('El servidor no devolvió todos los datos necesarios');
+        }
+
+        // Extrae el token correctamente
+        final token = data['token'] is Map
+            ? data['token']['plainTextToken'] ?? data['token']['accessToken']
+            : data['token'].toString();
+
+        if (token.isEmpty) {
+          throw Exception('Token vacío recibido del servidor');
+        }
 
         await storage.saveToken(token);
+
+        // Verifica que user es un Map
+        if (data['user'] is! Map<String, dynamic>) {
+          throw Exception('Formato de usuario inválido');
+        }
+
+        final user = User.fromJson(data['user'] as Map<String, dynamic>);
         await storage.saveUser(user);
 
         return true;
       } else {
-        throw Exception('Error al registrar: ${response.body}');
+        final errorMsg = data['message'] ?? 'Error desconocido';
+        throw Exception('Error del servidor: $errorMsg');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      debugPrint('Error en register: $e');
+      throw Exception('Error en el registro: ${e.toString()}');
     }
   }
 }

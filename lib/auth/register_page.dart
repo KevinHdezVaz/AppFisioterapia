@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:particles_flutter/particles_engine.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
+import 'package:user_auth_crudd10/utils/colors.dart';
 
 class RegisterPage extends StatefulWidget {
   final VoidCallback showLoginPage;
@@ -15,12 +18,10 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   bool isObscure = true;
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _authService = AuthService();
 
   Future<void> signUp() async {
@@ -28,14 +29,17 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       showDialog(
         context: context,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
+        builder: (_) => Center(
+          child: CircularProgressIndicator(
+            color: LumorahColors.primary,
+          ),
+        ),
       );
 
       final success = await _authService.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        phone: _phoneController.text.trim(),
       );
 
       Navigator.pop(context);
@@ -62,7 +66,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordController.dispose();
     _nameController.dispose();
     _confirmPasswordController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -70,8 +73,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty ||
-        _phoneController.text.isEmpty) {
+        _confirmPasswordController.text.isEmpty) {
       showErrorSnackBar("Por favor complete todos los campos obligatorios");
       return false;
     }
@@ -83,11 +85,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (_nameController.text.contains(RegExp(r'[^a-zA-Z\s]'))) {
       showErrorSnackBar("El nombre solo debe contener letras");
-      return false;
-    }
-
-    if (_phoneController.text.length != 10) {
-      showErrorSnackBar("El número de teléfono debe tener 10 dígitos");
       return false;
     }
 
@@ -108,9 +105,11 @@ class _RegisterPageState extends State<RegisterPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color.fromARGB(255, 207, 80, 80),
+        backgroundColor: LumorahColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }
@@ -121,166 +120,316 @@ class _RegisterPageState extends State<RegisterPage> {
 
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LoginPage(showLoginPage: () {}),
-          ),
-        );
-        return false;
+        widget.showLoginPage();
+        return false; // Evita el pop predeterminado
       },
       child: Scaffold(
+        backgroundColor: LumorahColors.lightBackground,
         appBar: AppBar(
-          title: const Text("Registro"),
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
-          backgroundColor: Colors.transparent,
-          elevation: 10,
+          backgroundColor: LumorahColors.primary,
+          elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+            icon: Icon(Icons.arrow_back, color: LumorahColors.textOnPrimary),
             onPressed: widget.showLoginPage,
           ),
+          title: Text(
+            "Registro",
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: LumorahColors.textOnPrimary,
+            ),
+          ),
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
-                    child: Container(
-                      height: 500, // Reducido para los campos actuales
-                      width: 350,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
+        body: Stack(
+          children: [
+            // Fondo con partículas
+            SizedBox(
+              width: size.width,
+              height: size.height,
+              child: Particles(
+                awayRadius: 150,
+                particles: ParticleUtils.createParticles(
+                  numberOfParticles: 70,
+                  color: LumorahColors.accent,
+                  maxSize: 5.0,
+                  maxVelocity: 50.0,
+                ),
+                height: size.height,
+                width: size.width,
+                onTapAnimation: true,
+                awayAnimationDuration: const Duration(milliseconds: 600),
+                awayAnimationCurve: Curves.easeIn,
+                enableHover: true,
+                hoverRadius: 90,
+                connectDots: false,
+              ),
+            ),
+
+            SingleChildScrollView(
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 20),
+                  width: size.width * 0.9,
+                  decoration: BoxDecoration(
+                    color: LumorahColors.primary,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 15),
-                            Text(
-                              "Bienvenido, Completa tu registro.",
-                              style: GoogleFonts.lato(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color.fromARGB(255, 42, 179, 33),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 20),
+                      Text(
+                        "Comienza tu viaje con Lumorah",
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: LumorahColors.textOnPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          "Estoy aquí para acompañarte en cada paso",
+                          style: GoogleFonts.lato(
+                            fontSize: 16,
+                            color: LumorahColors.textOnPrimary.withOpacity(0.9),
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TextField(
+                          cursorColor: LumorahColors.primary,
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
                               ),
                             ),
-                            const SizedBox(height: 30),
-                            customTextField(
-                              labelText: "Nombre completo",
-                              prefixIcon:
-                                  const Icon(Icons.person, color: Colors.grey),
-                              controller: _nameController,
-                              isObscure: false,
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
+                              ),
                             ),
-                            const SizedBox(height: 20),
-                            customTextField(
-                              labelText: "Teléfono",
-                              prefixIcon:
-                                  const Icon(Icons.phone, color: Colors.grey),
-                              controller: _phoneController,
-                              isObscure: false,
-                              keyboardType: TextInputType.phone,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(10),
-                              ],
+                            labelText: "Nombre",
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
+                            floatingLabelStyle: TextStyle(
+                              color: LumorahColors.primaryDark,
+                              fontSize: 14,
                             ),
-                            const SizedBox(height: 20),
-                            customTextField(
-                              labelText: "Correo electrónico",
-                              prefixIcon:
-                                  const Icon(Icons.email, color: Colors.grey),
-                              controller: _emailController,
-                              isObscure: false,
-                            ),
-                            const SizedBox(height: 20),
-                            customTextField(
-                              labelText: "Contraseña",
-                              prefixIcon:
-                                  const Icon(Icons.lock, color: Colors.grey),
-                              controller: _passwordController,
-                              isObscure: isObscure,
-                            ),
-                            const SizedBox(height: 20),
-                            customTextField(
-                              labelText: "Confirmar Contraseña",
-                              prefixIcon:
-                                  const Icon(Icons.lock, color: Colors.grey),
-                              controller: _confirmPasswordController,
-                              isObscure: isObscure,
-                            ),
-                            const SizedBox(height: 20),
-                          ],
+                            floatingLabelBehavior: FloatingLabelBehavior.auto,
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            prefixIcon: Icon(Icons.person,
+                                color: LumorahColors.primary),
+                          ),
+                          style: TextStyle(color: LumorahColors.textLight),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 50),
-                child: GestureDetector(
-                  onTap: signUp,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Image.asset('assets/icons/ic_button.png'),
-                      Text(
-                        "Crea tu cuenta",
-                        style: GoogleFonts.inter(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TextField(
+                          cursorColor: LumorahColors.primary,
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            labelText: "Correo",
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
+                            floatingLabelStyle: TextStyle(
+                              color: LumorahColors.primaryDark,
+                              fontSize: 14,
+                            ),
+                            floatingLabelBehavior: FloatingLabelBehavior.auto,
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            prefixIcon:
+                                Icon(Icons.email, color: LumorahColors.primary),
+                          ),
+                          style: TextStyle(color: LumorahColors.textLight),
+                          keyboardType: TextInputType.emailAddress,
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TextField(
+                          cursorColor: LumorahColors.primary,
+                          controller: _passwordController,
+                          obscureText: isObscure,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            labelText: "Contraseña",
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
+                            floatingLabelStyle: TextStyle(
+                              color: LumorahColors.primaryDark,
+                              fontSize: 14,
+                            ),
+                            floatingLabelBehavior: FloatingLabelBehavior.auto,
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            prefixIcon:
+                                Icon(Icons.lock, color: LumorahColors.primary),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                isObscure
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: LumorahColors.primary,
+                              ),
+                              onPressed: () =>
+                                  setState(() => isObscure = !isObscure),
+                            ),
+                          ),
+                          style: TextStyle(color: LumorahColors.textLight),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TextField(
+                          cursorColor: LumorahColors.primary,
+                          controller: _confirmPasswordController,
+                          obscureText: isObscure,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: LumorahColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            labelText: "Confirmar contraseña",
+                            labelStyle:
+                                TextStyle(color: LumorahColors.primaryDark),
+                            floatingLabelStyle: TextStyle(
+                              color: LumorahColors.primaryDark,
+                              fontSize: 14,
+                            ),
+                            floatingLabelBehavior: FloatingLabelBehavior.auto,
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            prefixIcon:
+                                Icon(Icons.lock, color: LumorahColors.primary),
+                          ),
+                          style: TextStyle(color: LumorahColors.textLight),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: signUp,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: LumorahColors.primaryDarker,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              "Crear cuenta",
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: widget.showLoginPage,
+                        child: RichText(
+                          text: TextSpan(
+                            text: "¿Ya tienes una cuenta? ",
+                            style: TextStyle(
+                              color: LumorahColors.textOnPrimary,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "Inicia sesión",
+                                style: TextStyle(
+                                  color: LumorahColors.textOnPrimary,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget customTextField({
-    required String labelText,
-    required Icon prefixIcon,
-    required TextEditingController controller,
-    bool isObscure = false,
-    TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
-        cursorColor: Colors.white,
-        controller: controller,
-        obscureText: isObscure,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        style: const TextStyle(color: Colors.black),
-        decoration: InputDecoration(
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.grey, width: 0.8),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.black, width: 0.8),
-          ),
-          labelText: labelText,
-          labelStyle: const TextStyle(color: Colors.black),
-          prefixIcon: prefixIcon,
+            ),
+          ],
         ),
       ),
     );

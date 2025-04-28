@@ -10,6 +10,12 @@ class LumorahColors {
   static const Color primaryDark = Color(0xFF2A8C80);
   static const Color primaryDarker = Color(0xFF1A6D63);
 
+// En tu archivo LumorahColors.dart, agrega estos nuevos colores:
+  static const Color textOnPrimary =
+      Color(0xFFFFFFFF); // Blanco para fondos primary
+  static const Color textOnLight =
+      Color(0xFF333333); // Gris oscuro para fondos claros
+
   // Colores complementarios
   static const Color secondary = Color(0xFFAC4070); // Complementario análogo
   static const Color accent = Color(0xFFAC8440); // Color de acento

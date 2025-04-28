@@ -4,7 +4,6 @@ import 'package:particles_flutter/particles_engine.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/services/settings/theme_data.dart';
 import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
@@ -19,13 +18,10 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool isRember = false;
   bool isObscure = true;
-
-  // Text controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
 
-  // Login logic
   Future<void> signIn() async {
     if (!validateLogin()) return;
 
@@ -108,259 +104,265 @@ class _LoginPageState extends State<LoginPage> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: LumorahColors.primary,
-      body: SingleChildScrollView(
-        child: Stack(
-          children: [
-            // Fondo con partículas
-            SizedBox(
-              width: size.width,
-              height: size.height,
-              child: Particles(
-                awayRadius: 150,
-                particles: ParticleUtils.createParticles(
-                  numberOfParticles: 70,
-                  color: Colors.white,
-                  maxSize: 5.0,
-                  maxVelocity: 50.0,
-                ),
-                height: size.height,
-                width: size.width,
-                onTapAnimation: true,
-                awayAnimationDuration: const Duration(milliseconds: 600),
-                awayAnimationCurve: Curves.easeIn,
-                enableHover: true,
-                hoverRadius: 90,
-                connectDots: false,
+      backgroundColor: LumorahColors.lightBackground,
+      body: Stack(
+        children: [
+          // Fondo con partículas (opcional)
+          SizedBox(
+            width: size.width,
+            height: size.height,
+            child: Particles(
+              awayRadius: 150,
+              particles: ParticleUtils.createParticles(
+                numberOfParticles: 70,
+                color: LumorahColors.accent,
+                maxSize: 5.0,
+                maxVelocity: 50.0,
               ),
+              height: size.height,
+              width: size.width,
+              onTapAnimation: true,
+              awayAnimationDuration: const Duration(milliseconds: 600),
+              awayAnimationCurve: Curves.easeIn,
+              enableHover: true,
+              hoverRadius: 90,
+              connectDots: false,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(90, 20, 0, 0),
-              child: Image.asset('assets/images/grad2.png'),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 100, 0),
-              child: Image.asset('assets/images/grad1.png'),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 50),
-              child: Center(
-                child: Container(
-                  height: size.height * 0.8,
-                  width: size.width * 0.9,
-                  decoration: BoxDecoration(
-                    color: LumorahColors.lightBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: LumorahColors.primaryDark.withOpacity(0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+          ),
+
+          SingleChildScrollView(
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 80),
+                width: size.width * 0.9,
+                decoration: BoxDecoration(
+                  color: LumorahColors.primary,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 30, 0, 0),
+                      child: Image.asset(
+                        'assets/icons/logoapp.webp',
+                        width: 100,
+                        height: 100,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 30, 0, 0),
-                        child: Image.asset(
-                          'assets/icons/logoapp.webp',
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Bienvenido a Lumorah",
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: LumorahColors.textOnPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        "Estoy aquí para acompañarte",
+                        style: GoogleFonts.lato(
+                          fontSize: 16,
+                          color: LumorahColors.textOnPrimary.withOpacity(0.9),
+                          fontStyle: FontStyle.italic,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          "Ingresa tu correo y contraseña o crea una cuenta.",
-                          style: GoogleFonts.lato(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                            color: LumorahColors.textLight,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: TextField(
-                          cursorColor: LumorahColors.primary,
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: LumorahColors.primary.withOpacity(0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: LumorahColors.primary,
-                                width: 1.5,
-                              ),
-                            ),
-                            labelText: "Correo",
-                            labelStyle:
-                                TextStyle(color: LumorahColors.primaryDark),
-                          ),
-                          style: TextStyle(color: LumorahColors.textLight),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: TextField(
-                          cursorColor: LumorahColors.primary,
-                          controller: _passwordController,
-                          obscureText: isObscure,
-                          decoration: InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: LumorahColors.primary.withOpacity(0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: LumorahColors.primary,
-                                width: 1.5,
-                              ),
-                            ),
-                            labelText: " Contraseña ",
-                            labelStyle:
-                                TextStyle(color: LumorahColors.primaryDark),
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  isObscure = !isObscure;
-                                });
-                              },
-                              icon: Icon(
-                                isObscure
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                                color: LumorahColors.primary,
-                              ),
+                    ),
+                    const SizedBox(height: 40),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        cursorColor: LumorahColors.primary,
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: LumorahColors.primary.withOpacity(0.5),
+                              width: 1.5,
                             ),
                           ),
-                          style: TextStyle(color: LumorahColors.textLight),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: LumorahColors.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                          labelText: "Correo",
+                          labelStyle:
+                              TextStyle(color: LumorahColors.primaryDark),
+                          floatingLabelStyle: TextStyle(
+                            color: LumorahColors.primaryDark,
+                            fontSize: 14,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.auto,
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 20, horizontal: 16),
+                          prefixIcon:
+                              Icon(Icons.email, color: LumorahColors.primary),
                         ),
+                        style: TextStyle(color: LumorahColors.textLight),
+                        keyboardType: TextInputType.emailAddress,
                       ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              onPressed: () {
-                                setState(() {
-                                  isRember = !isRember;
-                                });
-                              },
-                              icon: Icon(
-                                isRember
-                                    ? Icons.check_box_outline_blank
-                                    : Icons.check_box,
-                                color: LumorahColors.primary,
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        cursorColor: LumorahColors.primary,
+                        controller: _passwordController,
+                        obscureText: isObscure,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: LumorahColors.primary.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: LumorahColors.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                          labelText: "Contraseña",
+                          labelStyle:
+                              TextStyle(color: LumorahColors.primaryDark),
+                          floatingLabelStyle: TextStyle(
+                            color: LumorahColors.primaryDark,
+                            fontSize: 14,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.auto,
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 20, horizontal: 16),
+                          prefixIcon:
+                              Icon(Icons.lock, color: LumorahColors.primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              isObscure
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: LumorahColors.primary,
+                            ),
+                            onPressed: () =>
+                                setState(() => isObscure = !isObscure),
+                          ),
+                        ),
+                        style: TextStyle(color: LumorahColors.textLight),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: isRember,
+                                onChanged: (value) =>
+                                    setState(() => isRember = value ?? false),
+                                activeColor: LumorahColors.primary,
                               ),
-                            ),
-                            Text(
-                              'Recordarme',
-                              style: TextStyle(
-                                  fontSize: 16, color: LumorahColors.textLight),
-                            ),
-                            const SizedBox(width: 40),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ForgetPassPage(),
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                "Olvide contraseña",
+                              Text(
+                                "Recordarme",
                                 style: TextStyle(
-                                  color: LumorahColors.primaryDark,
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 14,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: LumorahColors.primaryDark,
-                                  decorationThickness: 1.5,
+                                  color: LumorahColors.textOnPrimary,
                                 ),
                               ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgetPassPage(),
+                              ),
                             ),
-                          ],
-                        ),
+                            child: Text(
+                              "¿Olvidaste tu contraseña?",
+                              style: TextStyle(
+                                color: LumorahColors.textOnPrimary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 60),
-                      Container(
-                        width: size.width * 0.8,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LumorahColors.primaryGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: LumorahColors.primaryDark.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(height: 30),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                        width: double.infinity,
                         child: ElevatedButton(
                           onPressed: signIn,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            minimumSize: const Size(double.infinity, 50),
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            backgroundColor: LumorahColors.primaryDarker,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
                             "Entrar",
                             style: GoogleFonts.inter(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      TextButton(
-                        onPressed: widget.showLoginPage,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          minimumSize: const Size(double.infinity, 50),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                        ),
-                        child: Text(
-                          "Crea tu cuenta",
-                          style: GoogleFonts.inter(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w500,
-                            color: LumorahColors.primaryDark,
-                            decoration: TextDecoration.underline,
+                    ),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: widget.showLoginPage,
+                      child: RichText(
+                        text: TextSpan(
+                          text: "¿No tienes una cuenta? ",
+                          style: TextStyle(
+                            color: LumorahColors.textOnPrimary,
                           ),
+                          children: [
+                            TextSpan(
+                              text: "Regístrate",
+                              style: TextStyle(
+                                color: LumorahColors.textOnPrimary,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
