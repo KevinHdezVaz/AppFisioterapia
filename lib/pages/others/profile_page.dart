@@ -4,7 +4,6 @@ import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/pages/screens/UpdateProfileScreen.dart';
 import 'package:user_auth_crudd10/pages/WalletScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/bookin/booking_screen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -188,15 +187,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 MaterialPageRoute(
                                     builder: (context) => WalletScreen())),
                           ),
-                          _buildMenuItem(
-                            icon: Icons.sports_soccer,
-                            title: 'Mis Reservaciones',
-                            subtitle: 'Ver Reservaciones',
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => BookingScreen())),
-                          ),
+
                           const SizedBox(height: 20),
                           // Botón de Cerrar Sesión
                           Padding(

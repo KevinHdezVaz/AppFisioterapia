@@ -1,371 +1,341 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/model/Premio.dart';
-import 'package:user_auth_crudd10/model/Promocion.dart';
-import 'package:user_auth_crudd10/pages/PromotionsScreen.dart';
-import 'package:user_auth_crudd10/pages/RewardsScreen.dart';
-import 'package:user_auth_crudd10/services/PremioService.dart';
-import 'package:user_auth_crudd10/services/PromocionesService.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<List<Promocion>> _promocionesFuture;
-  late Future<List<Premio>> _premiosFuture;
-  final PromocionService _promocionService = PromocionService();
-  final PremioService _premioService = PremioService();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  void _loadData() {
-    _promocionesFuture = _promocionService.fetchPromociones();
-    _premiosFuture = _premioService.fetchPremios();
-  }
-
-  void _refreshData() {
-    setState(() {
-      _loadData();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-
     return Scaffold(
+      backgroundColor: LumorahColors.lightBackground,
       appBar: AppBar(
-        title: const Text('Home'),
-        automaticallyImplyLeading: false,
         backgroundColor: LumorahColors.primary,
-        foregroundColor: Colors.white,
         elevation: 0,
+        title: Text(
+          'Lumorah Terapia',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Main Points Card
-
+            _buildWelcomeCard(),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Sesiones recientes'),
             const SizedBox(height: 16),
-
-            // Promotions Card
-            FutureBuilder<List<Promocion>>(
-              future: _promocionesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      color: LumorahColors.primary,
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text('Error: ${snapshot.error}'),
-                    ),
-                  );
-                }
-
-                final promociones = snapshot.data ?? [];
-                if (promociones.isEmpty) {
-                  return Card(
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No hay promociones disponibles'),
-                    ),
-                  );
-                }
-
-                final promocion = promociones.firstWhere(
-                  (p) => p.estado.toLowerCase() == 'activa',
-                  orElse: () => promociones.first,
-                );
-
-                return Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Promociones',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: LumorahColors.primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          promocion.titulo,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: LumorahColors.textLight,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          promocion.descripcion ?? 'Oferta especial',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: LumorahColors.textLight,
-                          ),
-                        ),
-                        if (promocion.puntosPorTicket > 0) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Gana ${promocion.puntosPorTicket} puntos por ticket',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: LumorahColors.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: LumorahColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const PromotionsScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text('Ver promociones'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            _buildRecentSessions(),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Herramientas'),
             const SizedBox(height: 16),
-
-            // Awards Card
-            FutureBuilder<List<Premio>>(
-              future: _premiosFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      color: LumorahColors.primary,
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text('Error: ${snapshot.error}'),
-                    ),
-                  );
-                }
-
-                final premios = snapshot.data ?? [];
-                if (premios.isEmpty) {
-                  return Card(
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No hay premios disponibles'),
-                    ),
-                  );
-                }
-
-                final premiosActivos = premios
-                    .where((p) => p.estado.toLowerCase() == 'activo')
-                    .toList();
-                final premiosMostrar = premiosActivos.length >= 2
-                    ? premiosActivos.sublist(0, 2)
-                    : premiosActivos;
-
-                return Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Premios disponibles',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: LumorahColors.primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...premiosMostrar.map((premio) => Column(
-                              children: [
-                                _buildAwardItem(
-                                  premio.titulo,
-                                  '${premio.puntosRequeridos} puntos',
-                                  Icons.card_giftcard,
-                                  _getColorForPremio(premio),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const RewardsScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                if (premio != premiosMostrar.last)
-                                  const Divider(height: 16),
-                              ],
-                            )),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: LumorahColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RewardsScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text('Ver todos los premios'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            _buildToolsGrid(),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Estado emocional'),
+            const SizedBox(height: 16),
+            _buildMoodTracker(),
           ],
         ),
       ),
     );
   }
 
-  Color _getColorForPremio(Premio premio) {
-    switch (premio.estado.toLowerCase()) {
-      case 'activo':
-        return LumorahColors.primary;
-      case 'inactivo':
-        return LumorahColors.primaryLighter;
-      case 'sin_stock':
-        return LumorahColors.error;
-      default:
-        return LumorahColors.primaryDark;
-    }
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: LumorahColors.primary,
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            LumorahColors.primary,
+            LumorahColors.primaryDark,
+          ],
         ),
-        padding: const EdgeInsets.symmetric(vertical: 12),
       ),
-      onPressed: onPressed,
-      icon: Icon(icon, color: Colors.white),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.white),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Hola, Alejandro',
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '¿Cómo te sientes hoy?',
+            style: GoogleFonts.lato(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // Navegar al chat
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: LumorahColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.chat_bubble_outline, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Iniciar sesión de terapia',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildAwardItem(
-    String title,
-    String points,
-    IconData icon,
-    Color color, {
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: LumorahColors.textDark,
+      ),
+    );
+  }
+
+  Widget _buildRecentSessions() {
+    return SizedBox(
+      height: 120,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color),
-          ),
+          _buildSessionCard('Hoy', '10:30 AM', 'Ansiedad'),
           const SizedBox(width: 12),
+          _buildSessionCard('Ayer', '4:15 PM', 'Relaciones'),
+          const SizedBox(width: 12),
+          _buildSessionCard('Lunes', '9:00 AM', 'Autoestima'),
+          const SizedBox(width: 12),
+          _buildSessionCard('Viernes', '11:45 AM', 'Estrés'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionCard(String day, String time, String topic) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: LumorahColors.textLight,
+                day,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: LumorahColors.primaryDark,
                 ),
               ),
               Text(
-                points,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: LumorahColors.primary.withOpacity(0.7),
+                time,
+                style: GoogleFonts.lato(
+                  color: LumorahColors.textLight,
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          Icon(
-            Icons.chevron_right,
-            color: LumorahColors.primary,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: LumorahColors.accent.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              topic,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: LumorahColors.primaryDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.2,
+      children: [
+        _buildToolCard(Icons.self_improvement, 'Meditación'),
+        _buildToolCard(Icons.music_note, 'Sonidos relajantes'),
+        _buildToolCard(Icons.article_outlined, 'Diario emocional'),
+        _buildToolCard(Icons.psychology_outlined, 'Ejercicios'),
+      ],
+    );
+  }
+
+  Widget _buildToolCard(IconData icon, String title) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: LumorahColors.primary),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w500,
+                  color: LumorahColors.textDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoodTracker() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tu estado esta semana',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: LumorahColors.textDark,
+                ),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: Text(
+                  'Registrar',
+                  style: GoogleFonts.inter(
+                    color: LumorahColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 100,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildMoodDay('L', '😊', true),
+                _buildMoodDay('M', '😔', false),
+                _buildMoodDay('M', '😊', true),
+                _buildMoodDay('J', '😐', false),
+                _buildMoodDay('V', '😊', true),
+                _buildMoodDay('S', '😃', true),
+                _buildMoodDay('D', '😢', false),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoodDay(String day, String emoji, bool positive) {
+    return Container(
+      width: 60,
+      margin: const EdgeInsets.only(right: 8),
+      child: Column(
+        children: [
+          Text(
+            day,
+            style: GoogleFonts.inter(
+              color: LumorahColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: positive
+                  ? LumorahColors.success.withOpacity(0.1)
+                  : LumorahColors.error.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                emoji,
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
@@ -149,12 +150,19 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Por esto:
                     Padding(
                       padding: const EdgeInsets.fromLTRB(0, 30, 0, 0),
-                      child: Image.asset(
-                        'assets/icons/logoapp.webp',
-                        width: 100,
-                        height: 100,
+                      child: SizedBox(
+                        // Añade este SizedBox
+                        width: 150,
+                        height: 150,
+                        child: Lottie.asset(
+                          'assets/images/circuloIA.json',
+                          fit: BoxFit.contain,
+                          repeat: true,
+                          animate: true,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
