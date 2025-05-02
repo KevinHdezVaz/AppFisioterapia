@@ -1,42 +1,49 @@
+import 'package:flutter/material.dart';
+
 class ChatMessage {
   final int id;
+  final int chatSessionId;
   final int userId;
-  final String message;
-  final String userName;
-  final String? userImage;
-  final String? fileUrl;
-  final String? fileType;
-  final String? fileName;
+  final String text;
+  final bool isUser;
+  final String? imageUrl; // Nuevo campo para la imagen
   final DateTime createdAt;
-  final ChatMessage? replyTo;  // Mensaje al que se responde
+  final DateTime updatedAt;
 
   ChatMessage({
     required this.id,
+    required this.chatSessionId,
     required this.userId,
-    required this.message,
-    required this.userName,
-    this.userImage,
-    this.fileUrl,
-    this.fileType,
-    this.fileName,
+    required this.text,
+    required this.isUser,
+    this.imageUrl, // Opcional
     required this.createdAt,
-    this.replyTo,
+    required this.updatedAt,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: json['id'],
-      userId: json['user_id'],
-      message: json['mensaje'] ?? '',
-      userName: json['user_name'] ?? 'Usuario',
-      userImage: json['user_image'],
-      fileUrl: json['file_url'],
-      fileType: json['file_type'],
-      fileName: json['file_name'],
-      createdAt: DateTime.parse(json['created_at']),
-      replyTo: json['reply_to'] != null 
-          ? ChatMessage.fromJson(json['reply_to']) 
-          : null,
+      id: int.parse(json['id'].toString()),
+      chatSessionId: int.parse(json['chat_session_id'].toString()),
+      userId: int.parse(json['user_id'].toString()),
+      text: json['text'] as String,
+      isUser: (json['is_user'] as int) == 1,
+      imageUrl: json['image_url'] as String?, // Nuevo campo en el JSON
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'chat_session_id': chatSessionId,
+      'user_id': userId,
+      'text': text,
+      'is_user': isUser ? 1 : 0,
+      'image_url': imageUrl, // Nuevo campo en el JSON
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
   }
 }

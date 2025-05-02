@@ -1,10 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
+import 'package:particles_flutter/particles_engine.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:user_auth_crudd10/model/ChatMessage.dart';
+import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
+import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
+import 'package:user_auth_crudd10/utils/TypingIndicator.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({Key? key}) : super(key: key);
+  final int? sessionId;
+  const ChatScreen({Key? key, this.sessionId}) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -13,30 +23,28 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final SpeechToText _speech = SpeechToText();
+  final ChatServiceApi _chatService = ChatServiceApi();
+  final StorageService _storageService = StorageService();
+  final ImagePicker _picker = ImagePicker();
   bool _isRecording = false;
   bool _isKeyboardVisible = false;
-
-  List<ChatMessage> _messages = [
-    ChatMessage(
-      text: 'Hola, ¿cómo te sientes hoy?',
-      isMe: false,
-      time: '10:30 AM',
-    ),
-    ChatMessage(
-      text: 'Hola, me siento un poco ansioso hoy',
-      isMe: true,
-      time: '10:32 AM',
-    ),
-  ];
+  bool _isLoading = false;
+  bool _isSending = false;
+  List<ChatMessage> _messages = [];
+  File? _selectedImage;
 
   @override
   void initState() {
     super.initState();
-    // Listener para detectar cuando el teclado aparece/desaparece
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final viewInsets = MediaQuery.of(context).viewInsets;
-      _isKeyboardVisible = viewInsets.bottom > 0;
-    });
+    _initSpeech();
+    if (widget.sessionId != null) {
+      _fetchMessages();
+    }
+  }
+
+  Future<void> _initSpeech() async {
+    await _speech.initialize();
   }
 
   @override
@@ -46,22 +54,89 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-
+  Future<void> _fetchMessages() async {
     setState(() {
-      _messages.add(
-        ChatMessage(
-          text: _messageController.text,
-          isMe: true,
-          time: _formatTime(DateTime.now()),
-        ),
-      );
-      _messageController.clear();
+      _isLoading = true;
     });
 
-    _scrollToBottom();
-    _simulateReply();
+    try {
+      final messagesJson =
+          await _chatService.getSessionMessages(widget.sessionId!);
+      setState(() {
+        _messages =
+            messagesJson.map((json) => ChatMessage.fromJson(json)).toList();
+      });
+      _scrollToBottom();
+    } catch (e) {
+      _showError('Error al cargar los mensajes: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      _showError('Error al seleccionar la imagen: $e');
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty && _selectedImage == null)
+      return;
+
+    final message = _messageController.text.isNotEmpty
+        ? _messageController.text
+        : 'Imagen enviada';
+    setState(() {
+      _messages.add(ChatMessage(
+        id: 0,
+        chatSessionId: widget.sessionId ?? 0,
+        userId: 0,
+        text: message,
+        isUser: true,
+        imageUrl: _selectedImage?.path,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+      _messageController.clear();
+      _selectedImage = null;
+      _isSending = true;
+    });
+
+    try {
+      final response =
+          await _chatService.sendMessage(message, sessionId: widget.sessionId);
+      setState(() {
+        _messages.add(ChatMessage(
+          id: response['ai_message']['id'] as int,
+          chatSessionId: response['ai_message']['chat_session_id'] as int,
+          userId: response['ai_message']['user_id'] as int,
+          text: response['ai_message']['text'] as String,
+          isUser: false,
+          imageUrl: 'https://via.placeholder.com/150',
+          createdAt:
+              DateTime.parse(response['ai_message']['created_at'] as String),
+          updatedAt:
+              DateTime.parse(response['ai_message']['updated_at'] as String),
+        ));
+      });
+      _scrollToBottom();
+    } catch (e) {
+      _showError('Error al enviar el mensaje: $e');
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -76,93 +151,116 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _simulateReply() {
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _messages.add(
-          ChatMessage(
-            text: 'Entiendo cómo te sientes. ¿Quieres hablar más sobre eso?',
-            isMe: false,
-            time: _formatTime(DateTime.now()),
-          ),
-        );
-      });
-      _scrollToBottom();
-    });
-  }
-
   String _formatTime(DateTime time) {
     return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _toggleRecording() async {
     if (_isRecording) {
-      // Detener grabación
+      _speech.stop();
       setState(() => _isRecording = false);
-      // Simular resultado de voz a texto
-      await Future.delayed(const Duration(milliseconds: 500));
-      _messageController.text = "Esto es un mensaje de prueba por voz";
     } else {
-      // Iniciar grabación
-      setState(() {
-        _isRecording = true;
-        // Ocultar teclado si está visible
-        if (_isKeyboardVisible) {
-          SystemChannels.textInput.invokeMethod('TextInput.hide');
-        }
-      });
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isRecording = true);
+        _speech.listen(onResult: (result) {
+          setState(() {
+            _messageController.text = result.recognizedWords;
+          });
+        });
+      } else {
+        _showError('No se puede acceder al micrófono');
+      }
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+
+    double screenHeight = size.height;
+    double screenWidth = size.width;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Dra. Martínez',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                'En línea',
-                style: GoogleFonts.lato(
-                  fontSize: 12,
-                  color: Colors.green,
-                ),
-              ),
-            ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.video_call),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.call),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {},
-            ),
-          ],
         ),
         body: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  return _buildMessageBubble(_messages[index]);
-                },
+              child: Stack(
+                children: [
+                  SizedBox(
+                    width: size.width,
+                    height: size.height,
+                    child: Particles(
+                      awayRadius: 150,
+                      particles: ParticleUtils.createParticles(
+                        numberOfParticles: 70,
+                        color: LumorahColors.primary,
+                        maxSize: 4.0,
+                        maxVelocity: 20.0,
+                      ),
+                      height: size.height,
+                      width: size.width,
+                      onTapAnimation: true,
+                      awayAnimationDuration: const Duration(milliseconds: 600),
+                      awayAnimationCurve: Curves.easeIn,
+                      enableHover: true,
+                      hoverRadius: 50,
+                      connectDots: false,
+                    ),
+                  ),
+                  ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length +
+                        (_isSending ? 1 : 0), // +1 si está enviando
+                    itemBuilder: (context, index) {
+                      if (_isSending && index == _messages.length) {
+                        // Mostrar el indicador de "escribiendo" como último mensaje
+                        return _buildTypingIndicator();
+                      }
+                      return _buildMessageBubble(_messages[index]);
+                    },
+                  ),
+                  if (_isLoading)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            LumorahColors.primary),
+                      ),
+                    ),
+                  if (_isSending)
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: LumorahColors.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                LumorahColors.primary),
+                            strokeWidth: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             _buildInputArea(),
@@ -174,53 +272,153 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Align(
-        alignment: message.isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.8,
-          ),
-          child: Column(
-            crossAxisAlignment: message.isMe
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      message.isMe ? LumorahColors.primary : Colors.grey[200],
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(message.isMe ? 16 : 4),
-                    topRight: Radius.circular(message.isMe ? 4 : 16),
-                    bottomLeft: const Radius.circular(16),
-                    bottomRight: const Radius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  message.text,
-                  style: TextStyle(
-                    color: message.isMe ? Colors.white : Colors.black,
-                  ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment:
+            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!message.isUser) // Animación para la IA (lado izquierdo)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Lottie.asset(
+                  'assets/images/circuloIA.json',
+                  repeat: true,
+                  animate: true,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  message.time,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.7,
+            ),
+            child: Column(
+              crossAxisAlignment: message.isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: message.isUser
+                        ? LumorahColors.primary
+                        : Colors.grey[200],
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(message.isUser ? 16 : 4),
+                      topRight: Radius.circular(message.isUser ? 4 : 16),
+                      bottomLeft: const Radius.circular(16),
+                      bottomRight: const Radius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.isUser ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                if (message.imageUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: message.imageUrl!.startsWith('http')
+                          ? Image.network(
+                              message.imageUrl!,
+                              width: 150,
+                              height: 150,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.error,
+                                    color: Colors.red);
+                              },
+                            )
+                          : Image.file(
+                              File(message.imageUrl!),
+                              width: 150,
+                              height: 150,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.error,
+                                    color: Colors.red);
+                              },
+                            ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _formatTime(message.createdAt),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          if (message.isUser) // Animación para el usuario (lado derecho)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Lottie.asset(
+                  'assets/images/user.json',
+                  repeat: true,
+                  animate: true,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Lottie.asset(
+                'assets/images/circuloIA.json',
+                repeat: true,
+                animate: true,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child:
+                const TypingIndicator(), // Usamos nuestro widget personalizado
+          ),
+        ],
       ),
     );
   }
@@ -241,65 +439,98 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          IconButton(
-            icon: Icon(
-              Icons.add,
-              color: LumorahColors.primary,
+          if (_selectedImage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      _selectedImage!,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          _selectedImage = null;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-            onPressed: () {},
-          ),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Escribe un mensaje...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.image,
+                  color: LumorahColors.primary,
                 ),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                onPressed: _pickImage,
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintStyle: const TextStyle(
+                        color:
+                            Colors.black), // Negro con un poco de transparencia
+
+                    hintText: 'Escribe un mensaje...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onTap: () => setState(() => _isKeyboardVisible = true),
                 ),
               ),
-              onTap: () => setState(() => _isKeyboardVisible = true),
-              onSubmitted: (_) => _sendMessage(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onLongPress: _toggleRecording,
-            onLongPressUp: _toggleRecording,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording ? Colors.red : LumorahColors.primary,
+              const SizedBox(width: 4),
+              // Botón de enviar
+              IconButton(
+                icon: Icon(
+                  Icons.send,
+                  color: LumorahColors.primary,
+                ),
+                onPressed: _sendMessage,
               ),
-              child: Icon(
-                _isRecording ? Icons.mic : Icons.mic_none,
-                color: Colors.white,
+              const SizedBox(width: 4),
+              GestureDetector(
+                onLongPress: _toggleRecording,
+                onLongPressUp: _toggleRecording,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isRecording ? Colors.red : LumorahColors.primary,
+                  ),
+                  child: Icon(
+                    _isRecording ? Icons.mic : Icons.mic_none,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isMe;
-  final String time;
-
-  ChatMessage({
-    required this.text,
-    required this.isMe,
-    required this.time,
-  });
 }

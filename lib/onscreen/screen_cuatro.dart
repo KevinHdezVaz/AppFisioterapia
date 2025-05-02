@@ -58,7 +58,7 @@ class OnBoardingCuatro extends StatelessWidget {
                     child: Container(
                       width: 300,
                       height: 300,
-                      child: Lottie.asset('assets/images/animaciontres.json'),
+                      child: Lottie.asset('assets/images/circuloIA.json'),
                     ),
                   ),
                   RotatedBox(

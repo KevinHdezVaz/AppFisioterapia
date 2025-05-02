@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_auth_crudd10/auth/auth_check.dart';
+import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/onscreen/onboardingWrapper.dart';
 import 'package:user_auth_crudd10/pages/Mercadopago/payment_service.dart';
 import 'package:user_auth_crudd10/pages/bottom_nav.dart';
@@ -103,6 +104,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => StorageProvider()),
         ChangeNotifierProvider(create: (context) => StorageAnsProvider()),
+        Provider<AuthService>(create: (_) => AuthService()),
+        Provider<BonoService>(
+            create: (_) => BonoService(baseUrl: baseUrl)), // Opcional
+        Provider<PaymentService>(create: (_) => PaymentService()), // Opcional
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

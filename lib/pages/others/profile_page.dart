@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/pages/screens/UpdateProfileScreen.dart';
-import 'package:user_auth_crudd10/pages/WalletScreen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -15,56 +16,62 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
-  // Mock user data for visual purposes
-  final Map<String, dynamic> userData = {
-    'name': 'Juan Pérez',
-    'email': 'juan.perez@example.com',
-    'is_verified': true,
-    'profile_image': null, // No network image for static UI
-  };
+  Map<String, dynamic> _userData = {}; // Almacenar los datos del usuario
+  bool _isLoading = true; // Estado de carga
+  String? _errorMessage; // Mensaje de error
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile(); // Obtener datos del usuario al iniciar
+  }
+
+  // Método para obtener el perfil del usuario
+  Future<void> _fetchUserProfile() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final profileData = await _authService.getProfile();
+      setState(() {
+        _userData = profileData;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error al cargar el perfil: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   Future<void> _signOut() async {
     try {
-      // Mostrar indicador de carga
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => Center(
-          child: CircularProgressIndicator(
-            color: LumorahColors.primary,
-          ),
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
         ),
       );
 
       await _authService.logout();
 
       if (!mounted) return;
-
-      // Cerrar el diálogo de carga
       Navigator.pop(context);
 
-      // Navegar a LoginPage reemplazando toda la pila de navegación
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => LoginPage(
-            showLoginPage: () {
-              // Esta función se usa para alternar entre login/register
-              // Asegúrate de pasar la implementación correcta
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => LoginPage(showLoginPage: () {}),
-                ),
-              );
-            },
-          ),
+          builder: (context) => AuthCheckMain(),
         ),
-        (route) => false, // Elimina todas las rutas anteriores
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Cerrar el loading si hay error
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cerrar sesión: ${e.toString()}'),
@@ -76,159 +83,203 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 1,
-      child: Scaffold(
-        backgroundColor: LumorahColors.lightBackground,
-        appBar: AppBar(
-          title: Text('Perfil', style: TextStyle(color: Colors.white)),
-          backgroundColor: LumorahColors.primary,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          leading: null,
-        ),
-        body: Column(
-          children: [
-            ProfilePic(userData: userData),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32),
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 250,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      LumorahColors.primaryDark,
+                      LumorahColors.primary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LumorahColors.primaryGradient,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 50, vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.person, color: Colors.white, size: 24),
-                            const SizedBox(width: 20),
-                            Text(
-                              userData['name'] ?? '',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isLoading)
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                    else if (_errorMessage != null)
+                      Column(
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            style: GoogleFonts.inter(
+                              color: Colors.redAccent,
+                              fontSize: 16,
                             ),
-                            if (userData['is_verified'] == true)
-                              const SizedBox(width: 8),
-                            if (userData['is_verified'] == true)
-                              Icon(
-                                Icons.verified,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Icon(Icons.email, color: Colors.white, size: 24),
-                            const SizedBox(width: 20),
-                            Text(
-                              userData['email'] ?? '',
-                              style: GoogleFonts.inter(
-                                  fontSize: 13, color: Colors.white),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 10),
+                          ElevatedButton(
+                            onPressed: _fetchUserProfile,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: LumorahColors.primary,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      )
+                    else
+                      ProfileHeader(userData: _userData),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
             ),
-            TabBar(
-              tabs: [
-                Tab(
-                    child: Text('OPCIONES',
-                        style: GoogleFonts.inter(
-                            fontSize: 16, fontWeight: FontWeight.w600))),
-              ],
-              indicatorColor: LumorahColors.primary,
-              labelColor: LumorahColors.primary,
-              unselectedLabelColor: LumorahColors.primary.withOpacity(0.5),
-            ),
-            Expanded(
-              child: TabBarView(
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
                 children: [
-                  SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildMenuItem(
-                            icon: Icons.person,
-                            title: 'Editar Perfil',
-                            subtitle: 'Datos de usuario',
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        UpdateProfileScreen())),
-                          ),
-                          _buildMenuItem(
-                            icon: Icons.monetization_on,
-                            title: 'Monedero',
-                            subtitle: 'Ver mi Monedero',
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => WalletScreen())),
-                          ),
-
-                          const SizedBox(height: 20),
-                          // Botón de Cerrar Sesión
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: LumorahColors.error,
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  _showLogoutConfirmationDialog();
-                                },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.logout, size: 20),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Cerrar Sesión',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                  _buildSectionTitle('Configuración'),
+                  _buildProfileOption(
+                    icon: Icons.person_outline,
+                    title: 'Editar perfil',
+                    subtitle: 'Actualiza tu información personal',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UpdateProfileScreen(),
                       ),
                     ),
                   ),
+                  _buildProfileOption(
+                    icon: Icons.notifications_outlined,
+                    title: 'Notificaciones',
+                    subtitle: 'Configura tus preferencias',
+                    onTap: () {},
+                  ),
+                  _buildProfileOption(
+                    icon: Icons.security_outlined,
+                    title: 'Privacidad',
+                    subtitle: 'Controla tu información',
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Cuenta'),
+                  _buildProfileOption(
+                    icon: Icons.help_outline,
+                    title: 'Ayuda y soporte',
+                    subtitle: 'Centro de ayuda y preguntas frecuentes',
+                    onTap: () {},
+                  ),
+                  _buildProfileOption(
+                    icon: Icons.info_outline,
+                    title: 'Acerca de',
+                    subtitle: 'Información de la aplicación',
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 32),
+                  _buildLogoutButton(),
+                  const SizedBox(height: 20),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 8, top: 16),
+        child: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[600],
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: LumorahColors.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: LumorahColors.primary),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+        trailing: Icon(
+          Icons.chevron_right,
+          color: Colors.grey[400],
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: BorderSide(color: LumorahColors.error),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: _showLogoutConfirmationDialog,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.logout, color: LumorahColors.error, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Cerrar Sesión',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: LumorahColors.error,
               ),
             ),
           ],
@@ -241,128 +292,167 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Cerrar Sesión',
-            style: GoogleFonts.inter(
-              color: LumorahColors.primaryDark,
-              fontWeight: FontWeight.bold,
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.logout,
+                  size: 48,
+                  color: LumorahColors.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '¿Cerrar sesión?',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Estás a punto de cerrar tu sesión. ¿Estás seguro?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            'Cancelar',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: LumorahColors.error,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _signOut();
+                        },
+                        child: Text(
+                          'Cerrar sesión',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          content: Text(
-            '¿Estás seguro que deseas cerrar tu sesión?',
-            style: GoogleFonts.inter(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancelar',
-                style: GoogleFonts.inter(color: LumorahColors.primary),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _signOut();
-              },
-              child: Text(
-                'Cerrar Sesión',
-                style: GoogleFonts.inter(color: LumorahColors.error),
-              ),
-            ),
-          ],
         );
       },
     );
   }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    int count = 0,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-                color: LumorahColors.primary.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 2,
-                offset: const Offset(0, 1))
-          ],
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(icon, color: LumorahColors.primaryDark),
-            if (count > 0)
-              Positioned(
-                right: -8,
-                top: -8,
-                child: Container(
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                      color: LumorahColors.primary, shape: BoxShape.circle),
-                  constraints: BoxConstraints(minWidth: 16, minHeight: 16),
-                  child: Center(
-                    child: Text(
-                      count.toString(),
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.inter(
-            color: LumorahColors.primary,
-            fontSize: 16,
-            fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: GoogleFonts.inter(
-            fontSize: 14, color: LumorahColors.primary.withOpacity(0.7)),
-      ),
-      trailing: Icon(Icons.chevron_right, color: LumorahColors.primary),
-      onTap: onTap,
-    );
-  }
 }
 
-class ProfilePic extends StatelessWidget {
-  final Map<String, dynamic>? userData;
-  const ProfilePic({Key? key, required this.userData}) : super(key: key);
+class ProfileHeader extends StatelessWidget {
+  final Map<String, dynamic> userData;
+
+  const ProfileHeader({
+    Key? key,
+    required this.userData,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SizedBox(
-        height: 115,
-        width: 115,
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
+    final name = userData['nombre'] ?? 'Usuario';
+    final email = userData['email'] ?? 'No disponible';
+    final profileImage = userData['profile_image'];
+
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomRight,
           children: [
-            CircleAvatar(
-              backgroundColor: LumorahColors.primaryLight,
-              backgroundImage: const AssetImage('assets/icons/jugadore.png'),
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: profileImage != null
+                    ? Image.network(
+                        profileImage,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildDefaultAvatar();
+                        },
+                      )
+                    : _buildDefaultAvatar(),
+              ),
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        Text(
+          name,
+          style: GoogleFonts.inter(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          email,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: Colors.white.withOpacity(0.9),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      color: LumorahColors.primaryLight,
+      child: const Icon(
+        Icons.person,
+        size: 60,
+        color: Colors.white,
       ),
     );
   }

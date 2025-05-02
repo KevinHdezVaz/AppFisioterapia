@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
+import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
+import 'package:user_auth_crudd10/pages/bottom_nav.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
@@ -49,7 +51,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
+            builder: (context) => const BottomNavBar(),
           ),
         );
       } else {

@@ -95,7 +95,10 @@ class _BottomNavBarState extends State<BottomNavBar> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 10),
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.black,
+              ),
             ),
           ],
         ),
