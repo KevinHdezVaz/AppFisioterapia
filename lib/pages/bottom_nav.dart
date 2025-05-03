@@ -23,9 +23,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     _pages = [
-      const HomeScreen(),
+      //  HomeScreen(),
       const ChatHistoryScreen(),
-      const ChatScreen(), // Pantalla de chat con voz/teclado
+      
       const ProfilePage(),
     ];
   }

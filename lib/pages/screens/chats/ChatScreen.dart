@@ -1,533 +1,481 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:lottie/lottie.dart';
-import 'package:particles_flutter/particles_engine.dart';
-import 'package:speech_to_text/speech_to_text.dart';
-import 'package:user_auth_crudd10/model/ChatMessage.dart';
-import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:user_auth_crudd10/auth/auth_service.dart';
+import 'package:user_auth_crudd10/auth/login_page.dart';
+import 'package:user_auth_crudd10/auth/register_page.dart'; 
 import 'package:user_auth_crudd10/services/storage_service.dart';
-import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
-import 'package:user_auth_crudd10/utils/TypingIndicator.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
 
 class ChatScreen extends StatefulWidget {
-  final int? sessionId;
-  const ChatScreen({Key? key, this.sessionId}) : super(key: key);
+  final List<Map<String, dynamic>> messages;
+  final String inputMode;
+
+  const ChatScreen({
+    Key? key,
+    required this.messages,
+    required this.inputMode,
+  }) : super(key: key);
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final SpeechToText _speech = SpeechToText();
-  final ChatServiceApi _chatService = ChatServiceApi();
-  final StorageService _storageService = StorageService();
-  final ImagePicker _picker = ImagePicker();
-  bool _isRecording = false;
-  bool _isKeyboardVisible = false;
-  bool _isLoading = false;
-  bool _isSending = false;
-  List<ChatMessage> _messages = [];
-  File? _selectedImage;
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
+  final TextEditingController _controller = TextEditingController();
+  late List<Map<String, dynamic>> _messages;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _isLocked = false;
+  String _transcribedText = '';
+  double _dragPosition = 0.0;
+  final double _lockThreshold = -100.0;
+  final _authService = AuthService();
+  final _storageService = StorageService();
 
   @override
   void initState() {
     super.initState();
-    _initSpeech();
-    if (widget.sessionId != null) {
-      _fetchMessages();
-    }
+    _messages = List.from(widget.messages);
+    _speech = stt.SpeechToText();
   }
 
-  Future<void> _initSpeech() async {
-    await _speech.initialize();
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchMessages() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  Future<bool> isLoggedIn() async {
     try {
-      final messagesJson =
-          await _chatService.getSessionMessages(widget.sessionId!);
-      setState(() {
-        _messages =
-            messagesJson.map((json) => ChatMessage.fromJson(json)).toList();
-      });
-      _scrollToBottom();
+      final token = await _storageService.getToken();
+      return token != null && token.isNotEmpty;
     } catch (e) {
-      _showError('Error al cargar los mensajes: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      print('Error verificando sesión: $e');
+      return false;
     }
   }
 
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-      }
-    } catch (e) {
-      _showError('Error al seleccionar la imagen: $e');
-    }
-  }
-
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty && _selectedImage == null)
-      return;
-
-    final message = _messageController.text.isNotEmpty
-        ? _messageController.text
-        : 'Imagen enviada';
-    setState(() {
-      _messages.add(ChatMessage(
-        id: 0,
-        chatSessionId: widget.sessionId ?? 0,
-        userId: 0,
-        text: message,
-        isUser: true,
-        imageUrl: _selectedImage?.path,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
-      _messageController.clear();
-      _selectedImage = null;
-      _isSending = true;
-    });
-
-    try {
-      final response =
-          await _chatService.sendMessage(message, sessionId: widget.sessionId);
-      setState(() {
-        _messages.add(ChatMessage(
-          id: response['ai_message']['id'] as int,
-          chatSessionId: response['ai_message']['chat_session_id'] as int,
-          userId: response['ai_message']['user_id'] as int,
-          text: response['ai_message']['text'] as String,
-          isUser: false,
-          imageUrl: 'https://via.placeholder.com/150',
-          createdAt:
-              DateTime.parse(response['ai_message']['created_at'] as String),
-          updatedAt:
-              DateTime.parse(response['ai_message']['updated_at'] as String),
-        ));
-      });
-      _scrollToBottom();
-    } catch (e) {
-      _showError('Error al enviar el mensaje: $e');
-    } finally {
-      setState(() {
-        _isSending = false;
-      });
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  String _formatTime(DateTime time) {
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      _speech.stop();
-      setState(() => _isRecording = false);
+  Future<void> _handleSendMessage(String message) async {
+    bool loggedIn = await isLoggedIn();
+    if (loggedIn) {
+      _sendMessage(message);
     } else {
-      bool available = await _speech.initialize();
-      if (available) {
-        setState(() => _isRecording = true);
-        _speech.listen(onResult: (result) {
-          setState(() {
-            _messageController.text = result.recognizedWords;
-          });
-        });
-      } else {
-        _showError('No se puede acceder al micrófono');
-      }
+      showDialog(
+        context: context,
+        builder: (context) => LoginModal(
+          showRegisterPage: () {
+            showDialog(
+              context: context,
+              builder: (context) => RegisterModal(
+                showLoginPage: () {
+                  Navigator.pop(context); // Close RegisterModal
+                  showDialog(
+                    context: context,
+                    builder: (context) => LoginModal(
+                      showRegisterPage: () {
+                        Navigator.pop(context); // Close LoginModal
+                        showDialog(
+                          context: context,
+                          builder: (context) => RegisterModal(
+                            showLoginPage: () {}, // Recursive loop prevention
+                            inputMode: widget.inputMode,
+                          ),
+                        );
+                      },
+                      inputMode: widget.inputMode,
+                    ),
+                  );
+                },
+                inputMode: widget.inputMode,
+              ),
+            );
+          },
+          inputMode: widget.inputMode,
+        ),
+      );
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+  Future<void> _handleStartListening() async {
+    bool loggedIn = await isLoggedIn();
+    if (loggedIn) {
+      _startListening();
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => LoginModal(
+          showRegisterPage: () {
+            showDialog(
+              context: context,
+              builder: (context) => RegisterModal(
+                showLoginPage: () {
+                  Navigator.pop(context); // Close RegisterModal
+                  showDialog(
+                    context: context,
+                    builder: (context) => LoginModal(
+                      showRegisterPage: () {
+                        Navigator.pop(context); // Close LoginModal
+                        showDialog(
+                          context: context,
+                          builder: (context) => RegisterModal(
+                            showLoginPage: () {}, // Recursive loop prevention
+                            inputMode: widget.inputMode,
+                          ),
+                        );
+                      },
+                      inputMode: widget.inputMode,
+                    ),
+                  );
+                },
+                inputMode: widget.inputMode,
+              ),
+            );
+          },
+          inputMode: widget.inputMode,
+        ),
+      );
+    }
+  }
+
+  void _sendMessage(String message, {bool isSent = true}) {
+    if (message.trim().isNotEmpty) {
+      setState(() {
+        _messages.insert(0, {'text': message, 'isSent': isSent});
+      });
+      _controller.clear();
+    }
+  }
+
+  void _startListening() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() {
+            _isListening = false;
+            _isLocked = false;
+            _dragPosition = 0.0;
+          });
+          if (_transcribedText.trim().isNotEmpty) {
+            _sendMessage(_transcribedText);
+            _transcribedText = '';
+          }
+        }
+      },
+      onError: (error) {
+        print('Speech recognition error: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error en el reconocimiento de voz: $error')),
+        );
+      },
     );
+
+    if (available) {
+      setState(() => _isListening = true);
+      _speech.listen(
+        onResult: (result) {
+          setState(() {
+            _transcribedText = result.recognizedWords;
+          });
+        },
+        localeId: 'es_ES',
+      );
+    }
+  }
+
+  void _stopListening() {
+    _speech.stop();
+    setState(() {
+      _isListening = false;
+      _isLocked = false;
+      _dragPosition = 0.0;
+    });
+    if (_transcribedText.trim().isNotEmpty) {
+      _sendMessage(_transcribedText);
+      _transcribedText = '';
+    }
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      if (details.delta.dx < 0) {
+        _dragPosition += details.delta.dx;
+        if (_dragPosition < _lockThreshold) {
+          _dragPosition = _lockThreshold;
+          if (!_isLocked) {
+            _isLocked = true;
+          }
+        }
+      }
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (!_isLocked) {
+      _stopListening();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final size = MediaQuery.of(context).size;
 
-    double screenHeight = size.height;
-    double screenWidth = size.width;
-
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-          ),
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  SizedBox(
-                    width: size.width,
-                    height: size.height,
-                    child: Particles(
-                      awayRadius: 150,
-                      particles: ParticleUtils.createParticles(
-                        numberOfParticles: 70,
-                        color: LumorahColors.primary,
-                        maxSize: 4.0,
-                        maxVelocity: 20.0,
-                      ),
-                      height: size.height,
-                      width: size.width,
-                      onTapAnimation: true,
-                      awayAnimationDuration: const Duration(milliseconds: 600),
-                      awayAnimationCurve: Curves.easeIn,
-                      enableHover: true,
-                      hoverRadius: 50,
-                      connectDots: false,
-                    ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFC7ECEB),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 40,
+            right: 40,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.amber.withOpacity(0.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withOpacity(0.4),
+                    blurRadius: 40,
+                    spreadRadius: 4,
                   ),
-                  ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length +
-                        (_isSending ? 1 : 0), // +1 si está enviando
-                    itemBuilder: (context, index) {
-                      if (_isSending && index == _messages.length) {
-                        // Mostrar el indicador de "escribiendo" como último mensaje
-                        return _buildTypingIndicator();
-                      }
-                      return _buildMessageBubble(_messages[index]);
-                    },
-                  ),
-                  if (_isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            LumorahColors.primary),
-                      ),
-                    ),
-                  if (_isSending)
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            color: LumorahColors.primary.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                LumorahColors.primary),
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
-            _buildInputArea(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(ChatMessage message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment:
-            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!message.isUser) // Animación para la IA (lado izquierdo)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: Lottie.asset(
-                  'assets/images/circuloIA.json',
-                  repeat: true,
-                  animate: true,
-                ),
-              ),
-            ),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.7,
-            ),
-            child: Column(
-              crossAxisAlignment: message.isUser
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: message.isUser
-                        ? LumorahColors.primary
-                        : Colors.grey[200],
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(message.isUser ? 16 : 4),
-                      topRight: Radius.circular(message.isUser ? 4 : 16),
-                      bottomLeft: const Radius.circular(16),
-                      bottomRight: const Radius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
-                if (message.imageUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: message.imageUrl!.startsWith('http')
-                          ? Image.network(
-                              message.imageUrl!,
-                              width: 150,
-                              height: 150,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.error,
-                                    color: Colors.red);
-                              },
-                            )
-                          : Image.file(
-                              File(message.imageUrl!),
-                              width: 150,
-                              height: 150,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.error,
-                                    color: Colors.red);
-                              },
-                            ),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    _formatTime(message.createdAt),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
-          if (message.isUser) // Animación para el usuario (lado derecho)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: Lottie.asset(
-                  'assets/images/user.json',
-                  repeat: true,
-                  animate: true,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Lottie.asset(
-                'assets/images/circuloIA.json',
-                repeat: true,
-                animate: true,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
-            child:
-                const TypingIndicator(), // Usamos nuestro widget personalizado
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          if (_selectedImage != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Stack(
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+              child: Column(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _selectedImage!,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
+                  const Text(
+                    'Estoy contigo... puedes hablar cuando quieras',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.black54,
+                      fontFamily: 'Inter',
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  Positioned(
-                    right: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _selectedImage = null;
-                        });
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: ListView.builder(
+                      reverse: true,
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _messages[index];
+                        final isSent = msg['isSent'] as bool;
+                        final text = msg['text'] as String;
+                        return TweenAnimationBuilder(
+                          duration: const Duration(milliseconds: 700),
+                          tween: Tween<double>(begin: 0, end: 1),
+                          curve: Curves.easeOut,
+                          builder: (context, double opacity, child) {
+                            return Opacity(
+                              opacity: opacity,
+                              child: Transform.translate(
+                                offset: Offset(0, (1 - opacity) * 20),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Align(
+                            alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              constraints: BoxConstraints(maxWidth: size.width * 0.7),
+                              decoration: BoxDecoration(
+                                color: isSent
+                                    ? Colors.amber.withOpacity(0.7)
+                                    : Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(16),
+                                  topRight: const Radius.circular(16),
+                                  bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(0),
+                                  bottomRight: isSent ? const Radius.circular(0) : const Radius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                text,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  widget.inputMode == 'keyboard'
+                      ? _buildKeyboardInput()
+                      : _buildMicrophoneInput(),
                 ],
               ),
             ),
-          Row(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.image,
-                  color: LumorahColors.primary,
-                ),
-                onPressed: _pickImage,
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  style: const TextStyle(color: Colors.black),
-                  decoration: InputDecoration(
-                    hintStyle: const TextStyle(
-                        color:
-                            Colors.black), // Negro con un poco de transparencia
+          ),
+        ],
+      ),
+    );
+  }
 
-                    hintText: 'Escribe un mensaje...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+  Widget _buildKeyboardInput() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                hintText: 'Escribe aquí...',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              ),
+              style: const TextStyle(color: Colors.black87),
+              onSubmitted: (value) => _handleSendMessage(value),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.send, color: Colors.black54),
+            onPressed: () => _handleSendMessage(_controller.text),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMicrophoneInput() {
+    return SizedBox(
+      height: 80,
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          if (_isListening && !_isLocked)
+            Positioned(
+              left: _lockThreshold + 30,
+              child: AnimatedOpacity(
+                opacity: _isListening ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Row(
+                  children: [
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 600),
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      curve: Curves.easeInOut,
+                      builder: (context, double value, child) {
+                        return Transform.translate(
+                          offset: Offset(-10 * value, 0),
+                          child: Opacity(
+                            opacity: 1.0 - value,
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black54,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                    const SizedBox(width: 5),
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 600),
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      curve: Curves.easeInOut,
+                      builder: (context, double value, child) {
+                        return Transform.translate(
+                          offset: Offset(-10 * value, 0),
+                          child: Opacity(
+                            opacity: 1.0 - value,
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black54,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                      },
                     ),
+                  ],
+                ),
+              ),
+            ),
+          if (_isLocked)
+            Center(
+              child: GestureDetector(
+                onTap: _stopListening,
+                child: TweenAnimationBuilder(
+                  duration: const Duration(milliseconds: 600),
+                  tween: Tween<double>(begin: 1.0, end: 1.2),
+                  curve: Curves.easeInOut,
+                  builder: (context, double scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red.withOpacity(0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.stop, size: 30, color: Colors.white),
                   ),
-                  onTap: () => setState(() => _isKeyboardVisible = true),
                 ),
               ),
-              const SizedBox(width: 4),
-              // Botón de enviar
-              IconButton(
-                icon: Icon(
-                  Icons.send,
-                  color: LumorahColors.primary,
-                ),
-                onPressed: _sendMessage,
-              ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onLongPress: _toggleRecording,
-                onLongPressUp: _toggleRecording,
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 100),
+            left: _isListening && !_isLocked
+                ? (MediaQuery.of(context).size.width / 2 - 30) + _dragPosition
+                : MediaQuery.of(context).size.width / 2 - 30,
+            child: GestureDetector(
+              onPanUpdate: _isLocked ? null : _handleDragUpdate,
+              onPanEnd: _isLocked ? null : _handleDragEnd,
+              onTapDown: _isLocked ? null : (_) => _handleStartListening(),
+              child: TweenAnimationBuilder(
+                duration: const Duration(seconds: 2),
+                tween: Tween<double>(begin: 1.0, end: _isListening ? 1.2 : 1.15),
+                curve: Curves.easeInOut,
+                builder: (context, double scale, child) {
+                  return Transform.scale(
+                    scale: scale,
+                    child: child,
+                  );
+                },
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _isRecording ? Colors.red : LumorahColors.primary,
+                    color: Colors.white.withOpacity(0.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
                   child: Icon(
-                    _isRecording ? Icons.mic : Icons.mic_none,
-                    color: Colors.white,
+                    _isLocked ? Icons.lock : (_isListening ? Icons.mic : Icons.mic_none),
+                    size: 30,
+                    color: _isListening ? Colors.red : Colors.black54,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),

@@ -9,6 +9,7 @@
       <string>tel</string>
       <string>mailto</string>
   </array>
+  
   <key>NSMicrophoneUsageDescription</key>
 <string>Se necesita acceso al micrófono para grabar voz</string>
   <key>CFBundleDevelopmentRegion</key>

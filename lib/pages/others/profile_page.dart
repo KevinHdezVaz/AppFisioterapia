@@ -62,13 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       Navigator.pop(context);
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AuthCheckMain(),
-        ),
-        (route) => false,
-      );
+      
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);

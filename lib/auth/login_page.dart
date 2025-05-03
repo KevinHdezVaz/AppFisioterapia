@@ -1,29 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
-import 'package:particles_flutter/particles_engine.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/auth/forget_pass_page.dart';
-import 'package:user_auth_crudd10/pages/bottom_nav.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
+import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
-class LoginPage extends StatefulWidget {
-  final VoidCallback showLoginPage;
-  const LoginPage({super.key, required this.showLoginPage});
+class LoginModal extends StatefulWidget {
+  final VoidCallback? showRegisterPage;
+  final String? inputMode;
+
+  const LoginModal({
+    super.key,
+    this.showRegisterPage,
+    this.inputMode,
+  });
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<LoginModal> createState() => _LoginModalState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginModalState extends State<LoginModal> with SingleTickerProviderStateMixin {
   bool isRember = false;
   bool isObscure = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+    
+    _animation = Tween<double>(begin: 80, end: 120).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> signIn() async {
     if (!validateLogin()) return;
@@ -31,11 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       showDialog(
         context: context,
-        builder: (context) => Center(
-          child: CircularProgressIndicator(
-            color: LumorahColors.primary,
-          ),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       final success = await _authService.login(
@@ -43,31 +62,28 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text.trim(),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
 
       if (success) {
+        Navigator.pop(context); // Close LoginModal
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const BottomNavBar(),
+            builder: (context) => ChatScreen(
+              messages: [],
+              inputMode: widget.inputMode ?? 'keyboard',
+            ),
           ),
         );
       } else {
         showErrorSnackBar('Credenciales inválidas');
       }
     } catch (e) {
-      Navigator.pop(context);
+      Navigator.pop(context); // Close loading dialog
       showErrorSnackBar(e.toString());
     }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   bool validateLogin() {
@@ -95,284 +111,167 @@ class _LoginPageState extends State<LoginPage> {
         content: Text(message),
         backgroundColor: LumorahColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: LumorahColors.lightBackground,
-      body: Stack(
-        children: [
-          // Fondo con partículas (opcional)
-          SizedBox(
-            width: size.width,
-            height: size.height,
-            child: Particles(
-              awayRadius: 150,
-              particles: ParticleUtils.createParticles(
-                numberOfParticles: 70,
-                color: LumorahColors.accent,
-                maxSize: 5.0,
-                maxVelocity: 50.0,
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      backgroundColor: Colors.transparent,
+      child: SingleChildScrollView(
+        child: Container(
+          width: size.width * 0.9,
+          decoration: BoxDecoration(
+            color: const Color(0xFFC7ECEB),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
-              height: size.height,
-              width: size.width,
-              onTapAnimation: true,
-              awayAnimationDuration: const Duration(milliseconds: 600),
-              awayAnimationCurve: Curves.easeIn,
-              enableHover: true,
-              hoverRadius: 90,
-              connectDots: false,
-            ),
+            ],
           ),
-
-          SingleChildScrollView(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 80),
-                width: size.width * 0.9,
-                decoration: BoxDecoration(
-                  color: LumorahColors.primary,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Por esto:
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 30, 0, 0),
-                      child: SizedBox(
-                        // Añade este SizedBox
-                        width: 150,
-                        height: 150,
-                        child: Lottie.asset(
-                          'assets/images/circuloIA.json',
-                          fit: BoxFit.contain,
-                          repeat: true,
-                          animate: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "Bienvenido a Lumorah",
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        color: LumorahColors.textOnPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        "Estoy aquí para acompañarte",
-                        style: GoogleFonts.lato(
-                          fontSize: 16,
-                          color: LumorahColors.textOnPrimary.withOpacity(0.9),
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        cursorColor: LumorahColors.primary,
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: LumorahColors.primary.withOpacity(0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: LumorahColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                          labelText: "Correo",
-                          labelStyle:
-                              TextStyle(color: LumorahColors.primaryDark),
-                          floatingLabelStyle: TextStyle(
-                            color: LumorahColors.primaryDark,
-                            fontSize: 14,
-                          ),
-                          floatingLabelBehavior: FloatingLabelBehavior.auto,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 20, horizontal: 16),
-                          prefixIcon:
-                              Icon(Icons.email, color: LumorahColors.primary),
-                        ),
-                        style: TextStyle(color: LumorahColors.textLight),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        cursorColor: LumorahColors.primary,
-                        controller: _passwordController,
-                        obscureText: isObscure,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: LumorahColors.primary.withOpacity(0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: LumorahColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                          labelText: "Contraseña",
-                          labelStyle:
-                              TextStyle(color: LumorahColors.primaryDark),
-                          floatingLabelStyle: TextStyle(
-                            color: LumorahColors.primaryDark,
-                            fontSize: 14,
-                          ),
-                          floatingLabelBehavior: FloatingLabelBehavior.auto,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 20, horizontal: 16),
-                          prefixIcon:
-                              Icon(Icons.lock, color: LumorahColors.primary),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              isObscure
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: LumorahColors.primary,
-                            ),
-                            onPressed: () =>
-                                setState(() => isObscure = !isObscure),
-                          ),
-                        ),
-                        style: TextStyle(color: LumorahColors.textLight),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: isRember,
-                                onChanged: (value) =>
-                                    setState(() => isRember = value ?? false),
-                                activeColor: LumorahColors.primary,
-                              ),
-                              Text(
-                                "Recordarme",
-                                style: TextStyle(
-                                  color: LumorahColors.textOnPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ForgetPassPage(),
-                              ),
-                            ),
-                            child: Text(
-                              "¿Olvidaste tu contraseña?",
-                              style: TextStyle(
-                                color: LumorahColors.textOnPrimary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 20),
+              Center(
+                child: AnimatedBuilder(
+                  animation: _animation,
+                  builder: (_, __) {
+                    return Container(
+                      width: _animation.value,
+                      height: _animation.value,
+                      decoration: BoxDecoration(
+                       shape: BoxShape.circle,
+                            color:  Colors.amber.withOpacity(0.3),
+                            boxShadow: [
+                              BoxShadow(
+                        color: Colors.amber.withOpacity(0.5),
+                            blurRadius: 50,
+                            spreadRadius: 4,
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 30),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: signIn,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: LumorahColors.primaryDarker,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            "Entrar",
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: widget.showLoginPage,
-                      child: RichText(
-                        text: TextSpan(
-                          text: "¿No tienes una cuenta? ",
-                          style: TextStyle(
-                            color: LumorahColors.textOnPrimary,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: "Regístrate",
-                              style: TextStyle(
-                                color: LumorahColors.textOnPrimary,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Bienvenido a Lumorah",
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: LumorahColors.textOnPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  "Estoy aquí para acompañarte",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: LumorahColors.textOnPrimary.withOpacity(0.9),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                TextField(
+  controller: _emailController,
+  style: const TextStyle(color: Colors.black),
+  decoration: InputDecoration(
+    labelText: "Correo",
+    labelStyle: const TextStyle(color: LumorahColors.primaryDarker),
+    filled: true,
+    fillColor: Colors.white.withOpacity(0.8),
+    prefixIcon: const Icon(Icons.email, color: LumorahColors.primary),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: LumorahColors.primary),
+    ),
+  ),
+),
+
+
+                    const SizedBox(height: 16),
+              TextField(
+  controller: _passwordController,
+  obscureText: isObscure,
+  style: const TextStyle(color: Colors.black),
+  decoration: InputDecoration(
+    labelText: "Contraseña",
+    labelStyle: const TextStyle(color: LumorahColors.primaryDarker),
+    filled: true,
+    fillColor: Colors.white.withOpacity(0.8),
+    prefixIcon: const Icon(Icons.lock, color: LumorahColors.primary),
+    suffixIcon: IconButton(
+      icon: Icon(
+        isObscure ? Icons.visibility_off : Icons.visibility,
+        color: Colors.black,
+      ),
+      onPressed: () => setState(() => isObscure = !isObscure),
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: LumorahColors.primary),
+    ),
+  ),
+),
+
+
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 20),
+          ElevatedButton(
+  onPressed: signIn,
+  style: ElevatedButton.styleFrom(
+    backgroundColor: LumorahColors.primaryDarker,
+            minimumSize: const Size(200, 50),
+
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+  ),
+  child: const Text("Entrar", style: TextStyle(color: Colors.white, )),
+),
+
+              if (widget.showRegisterPage != null)
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.showRegisterPage!();
+                  },
+                  child: Text(
+                    "¿No tienes una cuenta? Regístrate",
+                    style: TextStyle(color: LumorahColors.primaryDarker),
+                  ),
+                ),
+              const SizedBox(height: 20),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

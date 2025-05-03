@@ -1,5 +1,6 @@
- import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+ 
 
+/*
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
@@ -16,3 +17,4 @@ Future<void> createNotificationChannel() async {
 
   print('Canal de notificaciones creado: ${channel.id}'); // Mensaje de depuración
 }
+*/

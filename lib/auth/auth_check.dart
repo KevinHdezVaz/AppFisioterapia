@@ -3,6 +3,7 @@ import 'package:user_auth_crudd10/auth/auth_page_check.dart';
 import 'package:user_auth_crudd10/pages/bottom_nav.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 
+/*
 class AuthCheckMain extends StatelessWidget {
   const AuthCheckMain({super.key});
 
@@ -22,8 +23,9 @@ class AuthCheckMain extends StatelessWidget {
           return const BottomNavBar();
         }
 
-        return const AuthPageCheck();
+        //return const AuthPageCheck();
       },
     );
   }
 }
+*/

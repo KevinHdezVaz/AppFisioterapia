@@ -171,12 +171,7 @@ class OnBoardingCuatro extends StatelessWidget {
                       child: TextButton(
                         onPressed: () {
                           _storeOnboardInfo();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AuthCheckMain(),
-                            ),
-                          );
+                         
                         },
                         child: Text(
                           "OMITIR",
@@ -192,12 +187,7 @@ class OnBoardingCuatro extends StatelessWidget {
                       child: FloatingActionButton(
                         onPressed: () {
                           _storeOnboardInfo();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AuthCheckMain(),
-                            ),
-                          );
+                        
                         },
                         backgroundColor: Colors.white,
                         child: Icon(

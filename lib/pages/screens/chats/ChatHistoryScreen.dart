@@ -137,18 +137,8 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                     },
                   ),
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ChatScreen(sessionId: null),
-            ),
-          ).then((_) => _fetchSessions());
-        },
-        backgroundColor: LumorahColors.accent,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      
+       
     );
   }
 
@@ -162,12 +152,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(sessionId: session.id),
-            ),
-          ).then((_) => _fetchSessions());
+         
         },
         child: Padding(
           padding: const EdgeInsets.all(16),

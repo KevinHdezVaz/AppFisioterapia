@@ -176,12 +176,7 @@ class OnboardingScreenOne extends StatelessWidget {
                       child: TextButton(
                         onPressed: () {
                           _storeOnboardInfo();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AuthCheckMain(),
-                            ),
-                          );
+                         
                         },
                         child: Text(
                           "OMITIR",

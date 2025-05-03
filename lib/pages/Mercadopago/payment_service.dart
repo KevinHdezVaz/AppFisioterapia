@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_custom_tabs/flutter_custom_tabs.dart';
-import 'package:user_auth_crudd10/model/OrderItem.dart';
+ import 'package:user_auth_crudd10/model/OrderItem.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 import 'package:user_auth_crudd10/utils/constantes.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +11,7 @@ import '../../main.dart';
 class PaymentService {
   final storage = StorageService();
 
+/*
   Future<void> _launchUrl(BuildContext context, String url) async {
     final theme = Theme.of(context);
     try {
@@ -38,6 +38,7 @@ class PaymentService {
       throw Exception('No se pudo abrir el navegador: $e');
     }
   }
+  */
 
   Future<String> verifyPaymentStatus(String paymentId) async {
     try {
@@ -114,12 +115,12 @@ class PaymentService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      await _launchUrl(context, data['init_point']);
+    //  await _launchUrl(context, data['init_point']);
 
       final completer = Completer<Map<String, dynamic>>();
       StreamSubscription? subscription;
 
-      subscription = paymentStatusController.stream.listen((event) async {
+/*      subscription = paymentStatusController.stream.listen((event) async {
         subscription?.cancel();
         final paymentId = event['paymentId'] ?? await verifyPaymentStatus(data['order_id'].toString());
         completer.complete({
@@ -129,6 +130,7 @@ class PaymentService {
         });
       });
 
+  */
       return completer.future;
     } else {
       throw Exception('Error al crear la preferencia: ${response.body}');
