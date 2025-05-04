@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_auth_crudd10/model/ChatMessage.dart';
 import 'package:user_auth_crudd10/model/ChatSession.dart';
 import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
@@ -17,6 +18,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   List<ChatSession> _sessions = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  bool _showOnlySaved = true; // Variable para filtrar chats guardados
 
   @override
   void initState() {
@@ -29,242 +31,280 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       setState(() => _isLoading = true);
       final sessionsJson = await _chatService.getSessions();
       setState(() {
-        _sessions =
-            sessionsJson.map((json) => ChatSession.fromJson(json)).toList();
+        _sessions = sessionsJson
+            .map((json) => ChatSession.fromJson(json))
+            .where((session) => session.deletedAt == null)
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Error al cargar las sesiones: $e');
+      _showError('Error al cargar tus conversaciones: $e');
     }
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style:
-              GoogleFonts.inter(color: Colors.black), // Texto negro en SnackBar
-        ),
-        backgroundColor: Colors.white,
+        content: Text(message, style: GoogleFonts.lora(color: Colors.white)),
+        backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        elevation: 4,
       ),
     );
   }
 
   List<ChatSession> get _filteredSessions {
-    if (_searchQuery.isEmpty) return _sessions;
-    return _sessions
-        .where((session) =>
-            session.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            session.createdAt.toString().contains(_searchQuery))
+    var filtered = _sessions
+        .where((session) => !_showOnlySaved || session.isSaved)
         .toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered
+          .where((session) =>
+              session.title
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ||
+              _formatDate(session.createdAt).contains(_searchQuery))
+          .toList();
+    }
+
+    return filtered;
+  }
+
+  Future<void> _deleteSession(int id) async {
+    try {
+      await _chatService.deleteSession(id);
+      setState(() {
+        _sessions.removeWhere((session) => session.id == id);
+      });
+    } catch (e) {
+      _showError('Error al eliminar la conversación: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: LumorahColors.primary,
       appBar: AppBar(
         title: Text(
-          'Historial de Conversaciones',
-          style: GoogleFonts.inter(
+          'Tus Conversaciones',
+          style: GoogleFonts.lora(
+            color: Colors.white,
             fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.black, // Texto negro en AppBar
           ),
         ),
-        centerTitle: false,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black), // Iconos negros
+        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _fetchSessions,
-            tooltip: 'Actualizar',
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar conversaciones...',
-                hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[200],
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              style: GoogleFonts.inter(
-                  color: Colors.black), // Texto negro en búsqueda
-              onChanged: (value) => setState(() => _searchQuery = value),
-            ),
-          ),
-        ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                    Colors.black), // Spinner negro
-              ),
-            )
-          : _filteredSessions.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _fetchSessions,
-                  color: Colors.black, // Color del refresh indicator
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredSessions.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final session = _filteredSessions[index];
-                      return _buildChatSessionCard(session);
-                    },
-                  ),
-                ),
-      
-       
-    );
-  }
-
-  Widget _buildChatSessionCard(ChatSession session) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      color: Colors.white,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-         
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      LumorahColors.primaryLight,
-                      LumorahColors.primary,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.chat_bubble_outline,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.title,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Colors.black, // Texto negro en título
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Buscar conversaciones...',
+                    hintStyle: GoogleFonts.lora(),
+                    prefixIcon: Icon(Icons.search, color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDate(session.createdAt),
-                      style: GoogleFonts.inter(
-                        color: Colors.black
-                            .withOpacity(0.7), // Texto negro semi-transparente
-                        fontSize: 13,
-                      ),
+                  ),
+                  style: GoogleFonts.lora(color: Colors.white),
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text('Mostrar solo guardados',
+                        style: GoogleFonts.lora(color: Colors.white70)),
+                    Switch(
+                      value: _showOnlySaved,
+                      activeColor: LumorahColors.secondary,
+                      onChanged: (value) =>
+                          setState(() => _showOnlySaved = value),
                     ),
                   ],
                 ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: Colors.black
-                    .withOpacity(0.5), // Icono negro semi-transparente
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          Expanded(
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: LumorahColors.secondary,
+                    ),
+                  )
+                : _filteredSessions.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        color: LumorahColors.secondary,
+                        onRefresh: _fetchSessions,
+                        child: ListView.builder(
+                          padding: EdgeInsets.only(bottom: 16),
+                          itemCount: _filteredSessions.length,
+                          itemBuilder: (context, index) {
+                            final session = _filteredSessions[index];
+                            return _buildSessionCard(session);
+                          },
+                        ),
+                      ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildSessionCard(ChatSession session) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(
+          session.isSaved ? Icons.bookmark : Icons.chat_bubble_outline,
+          color: LumorahColors.secondary,
+        ),
+        title: Text(
+          session.title,
+          style: GoogleFonts.lora(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          _formatDate(session.createdAt),
+          style: GoogleFonts.lora(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+        trailing: IconButton(
+          icon: Icon(Icons.delete_outline, color: Colors.red[200]),
+          onPressed: () => _showDeleteDialog(session.id),
+        ),
+        onTap: () => _openChat(session),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(int sessionId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Eliminar conversación', style: GoogleFonts.lora()),
+        content: Text('¿Estás seguro de eliminar esta conversación?',
+            style: GoogleFonts.lora()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: GoogleFonts.lora()),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteSession(sessionId);
+            },
+            child: Text('Eliminar', style: GoogleFonts.lora(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openChat(ChatSession session) async {
+    try {
+      final messagesJson = await _chatService.getSessionMessages(session.id);
+      final messages = messagesJson
+          .map<ChatMessage>(
+              (json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            chatMessages: messages,
+            inputMode: 'keyboard',
+            sessionId: session.id,
+          ),
+        ),
+      );
+    } catch (e) {
+      _showError('Error al abrir la conversación: $e');
+    }
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/images/empty_chat.png',
-            width: 150,
-            height: 150,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'No hay conversaciones',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black, // Texto negro
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.forum_outlined,
+                size: 64, color: Colors.white.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              _showOnlySaved
+                  ? 'No hay conversaciones guardadas'
+                  : 'No hay conversaciones',
+              style: GoogleFonts.lora(
+                color: Colors.white,
+                fontSize: 18,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Presiona el botón + para iniciar una nueva conversación',
-            style: GoogleFonts.inter(
-              color: Colors.black
-                  .withOpacity(0.6), // Texto negro semi-transparente
+            const SizedBox(height: 8),
+            Text(
+              _showOnlySaved
+                  ? 'Intenta desactivar el filtro de guardados'
+                  : 'Comienza una nueva conversación',
+              style: GoogleFonts.lora(
+                color: Colors.white70,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  String _formatDate(DateTime dateTime) {
+  String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
 
-    String dateText;
-    if (date == today) {
-      dateText = 'Hoy';
-    } else if (date == yesterday) {
-      dateText = 'Ayer';
+    if (dateOnly == today) {
+      return 'Hoy a las ${_formatTime(date)}';
+    } else if (dateOnly == yesterday) {
+      return 'Ayer a las ${_formatTime(date)}';
     } else {
-      dateText = '${date.day}/${date.month}/${date.year}';
+      return '${date.day}/${date.month}/${date.year} ${_formatTime(date)}';
     }
+  }
 
-    return '$dateText, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  String _formatTime(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

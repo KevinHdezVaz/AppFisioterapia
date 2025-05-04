@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_chat_bubble/chat_bubble.dart';
+import 'package:flutter_chat_bubble/bubble_type.dart';
+import 'package:flutter_chat_bubble/clippers/chat_bubble_clipper_1.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/auth/register_page.dart'; 
+import 'package:user_auth_crudd10/auth/register_page.dart';
+import 'package:user_auth_crudd10/model/ChatMessage.dart';
+import 'package:user_auth_crudd10/pages/home_page.dart';
+import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'dart:math';
+import 'dart:async';
 
 class ChatScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> messages;
+  final List<ChatMessage> chatMessages;
   final String inputMode;
+  final int? sessionId;
 
   const ChatScreen({
     Key? key,
-    required this.messages,
+    required this.chatMessages,
     required this.inputMode,
+    this.sessionId,
   }) : super(key: key);
 
   @override
@@ -20,465 +30,735 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
   final TextEditingController _controller = TextEditingController();
-  late List<Map<String, dynamic>> _messages;
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  bool _isLocked = false;
   String _transcribedText = '';
-  double _dragPosition = 0.0;
-  final double _lockThreshold = -100.0;
-  final _authService = AuthService();
-  final _storageService = StorageService();
+  bool _isTyping = false;
+  int _typingIndex = 0;
+  late Timer _typingTimer;
+  bool _isSpeechInitialized = false;
+
+  final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
+  final ChatServiceApi _chatService = ChatServiceApi();
+
+  late List<ChatMessage> _messages;
 
   @override
   void initState() {
     super.initState();
-    _messages = List.from(widget.messages);
-    _speech = stt.SpeechToText();
-  }
+    _messages = widget.chatMessages;
 
-  Future<bool> isLoggedIn() async {
-    try {
-      final token = await _storageService.getToken();
-      return token != null && token.isNotEmpty;
-    } catch (e) {
-      print('Error verificando sesión: $e');
-      return false;
-    }
-  }
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 4),
+    )..repeat(reverse: true);
 
-  Future<void> _handleSendMessage(String message) async {
-    bool loggedIn = await isLoggedIn();
-    if (loggedIn) {
-      _sendMessage(message);
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => LoginModal(
-          showRegisterPage: () {
-            showDialog(
-              context: context,
-              builder: (context) => RegisterModal(
-                showLoginPage: () {
-                  Navigator.pop(context); // Close RegisterModal
-                  showDialog(
-                    context: context,
-                    builder: (context) => LoginModal(
-                      showRegisterPage: () {
-                        Navigator.pop(context); // Close LoginModal
-                        showDialog(
-                          context: context,
-                          builder: (context) => RegisterModal(
-                            showLoginPage: () {}, // Recursive loop prevention
-                            inputMode: widget.inputMode,
-                          ),
-                        );
-                      },
-                      inputMode: widget.inputMode,
-                    ),
-                  );
-                },
-                inputMode: widget.inputMode,
-              ),
-            );
-          },
-          inputMode: widget.inputMode,
-        ),
-      );
-    }
-  }
-
-  Future<void> _handleStartListening() async {
-    bool loggedIn = await isLoggedIn();
-    if (loggedIn) {
-      _startListening();
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => LoginModal(
-          showRegisterPage: () {
-            showDialog(
-              context: context,
-              builder: (context) => RegisterModal(
-                showLoginPage: () {
-                  Navigator.pop(context); // Close RegisterModal
-                  showDialog(
-                    context: context,
-                    builder: (context) => LoginModal(
-                      showRegisterPage: () {
-                        Navigator.pop(context); // Close LoginModal
-                        showDialog(
-                          context: context,
-                          builder: (context) => RegisterModal(
-                            showLoginPage: () {}, // Recursive loop prevention
-                            inputMode: widget.inputMode,
-                          ),
-                        );
-                      },
-                      inputMode: widget.inputMode,
-                    ),
-                  );
-                },
-                inputMode: widget.inputMode,
-              ),
-            );
-          },
-          inputMode: widget.inputMode,
-        ),
-      );
-    }
-  }
-
-  void _sendMessage(String message, {bool isSent = true}) {
-    if (message.trim().isNotEmpty) {
-      setState(() {
-        _messages.insert(0, {'text': message, 'isSent': isSent});
-      });
-      _controller.clear();
-    }
-  }
-
-  void _startListening() async {
-    bool available = await _speech.initialize(
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          setState(() {
-            _isListening = false;
-            _isLocked = false;
-            _dragPosition = 0.0;
-          });
-          if (_transcribedText.trim().isNotEmpty) {
-            _sendMessage(_transcribedText);
-            _transcribedText = '';
-          }
-        }
-      },
-      onError: (error) {
-        print('Speech recognition error: $error');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en el reconocimiento de voz: $error')),
-        );
-      },
+    _pulseAnimation = Tween<double>(begin: 90, end: 110).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
+
+    _speech = stt.SpeechToText();
+    _typingTimer = Timer(Duration.zero, () {});
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _speech.stop();
+    _speech.cancel();
+    _controller.dispose();
+    if (_typingTimer.isActive) {
+      _typingTimer.cancel();
+    }
+    super.dispose();
+  }
+
+  Future<bool> _isUserAuthenticated() async {
+    final token = await _storageService.getToken();
+    return token != null && token.isNotEmpty;
+  }
+
+  void _showAuthModal() {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => LoginModal(
+        showRegisterPage: () {
+          Navigator.pop(context);
+          showDialog(
+            context: context,
+            builder: (context) => RegisterModal(
+              showLoginPage: () {
+                Navigator.pop(context);
+                _showAuthModal();
+              },
+              inputMode: widget.inputMode,
+            ),
+          );
+        },
+        inputMode: widget.inputMode,
+      ),
+    );
+  }
+
+  Future<void> _sendMessage(String message) async {
+    if (!await _isUserAuthenticated()) {
+      if (!mounted) return;
+      _showAuthModal();
+      return;
+    }
+
+    if (message.trim().isEmpty) return;
+
+    final currentUser = await _storageService.getUser();
+    final newMessage = ChatMessage(
+      id: -1,
+      chatSessionId: widget.sessionId ?? -1,
+      userId: currentUser?.id ?? -1,
+      text: message,
+      isUser: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    setState(() {
+      _messages.insert(0, newMessage);
+      _isTyping = true;
+      _typingIndex = 0;
+      _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+        if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
+      });
+    });
+    _controller.clear();
+
+    try {
+      final response = await _chatService.sendMessage(
+        message,
+        sessionId: widget.sessionId,
+      );
+
+      if (!mounted) return;
+
+      final aiMessage = ChatMessage(
+        id: -1,
+        chatSessionId: widget.sessionId ?? -1,
+        userId: 0,
+        text: response['ai_message']?['text'] ?? "No se recibió respuesta",
+        isUser: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      setState(() {
+        _messages.insert(0, aiMessage);
+        _isTyping = false;
+        _typingTimer.cancel();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isTyping = false;
+        _typingTimer.cancel();
+      });
+      _showErrorSnackBar('Error al enviar mensaje: $e');
+    }
+  }
+
+  // Método para guardar el chat (mejorado)
+// En tu _ChatScreenState:
+
+  Future<void> _saveChat() async {
+    if (!await _isUserAuthenticated()) {
+      if (!mounted) return;
+      _showAuthModal();
+      return;
+    }
+
+    // Si no hay sesión, primero creamos una temporal
+    int? sessionId = widget.sessionId;
+    if (sessionId == null) {
+      try {
+        final response = await _chatService.sendMessage(
+          "Inicio de conversación", // Mensaje inicial
+          sessionId: null,
+        );
+        sessionId = response['session']['id'];
+      } catch (e) {
+        if (!mounted) return;
+        _showErrorSnackBar('Error al crear sesión: $e');
+        return;
+      }
+    }
+
+    // Mostrar diálogo para obtener título
+    final titleController = TextEditingController();
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Guardar conversación',
+          style: TextStyle(color: Colors.black),
+        ),
+        content: TextField(
+          controller: titleController,
+          autofocus: true,
+          style: TextStyle(color: Colors.black), // Texto escrito en negro
+          decoration: InputDecoration(
+            labelText: 'Título',
+            hintText: 'Ej: Conversación sobre ansiedad',
+            hintStyle: TextStyle(color: Colors.black), // Hint en negro
+            filled: true,
+            fillColor: Color(0xFFF6F6F6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: Color(0xFF4BB6A8), // Borde verde Lumorah al enfocar
+                width: 2,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.black),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF4BB6A8),
+            ),
+            onPressed: () {
+              if (titleController.text.trim().isNotEmpty) {
+                Navigator.pop(context, titleController.text.trim());
+              }
+            },
+            child: Text(
+              'Guardar',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (title == null || title.isEmpty) return;
+
+    try {
+      await _chatService.saveChatSession(sessionId!, title);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Conversación guardada exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar('Error al guardar: $e');
+    }
+  }
+
+  Future<void> _startListening() async {
+    if (!await _isUserAuthenticated()) {
+      if (!mounted) return;
+      _showAuthModal();
+      return;
+    }
+
+    if (_isListening) {
+      print('Reconocimiento de voz ya está activo, ignorando nueva solicitud.');
+      return;
+    }
+
+    bool available = _isSpeechInitialized;
+    if (!_isSpeechInitialized) {
+      available = await _speech.initialize(
+        onStatus: (status) => print('Status: $status'),
+        onError: (error) => print('Error: $error'),
+      );
+      if (available) {
+        _isSpeechInitialized = true;
+      }
+    }
+
+    if (!mounted) return;
 
     if (available) {
       setState(() => _isListening = true);
       _speech.listen(
         onResult: (result) {
-          setState(() {
-            _transcribedText = result.recognizedWords;
-          });
+          if (mounted) {
+            setState(() => _transcribedText = result.recognizedWords);
+          }
         },
         localeId: 'es_ES',
       );
+    } else {
+      _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz.');
     }
   }
 
   void _stopListening() {
-    _speech.stop();
+    if (_isListening) {
+      _speech.stop();
+      _speech.cancel();
+    }
+
+    if (!mounted) return;
+
     setState(() {
       _isListening = false;
-      _isLocked = false;
-      _dragPosition = 0.0;
-    });
-    if (_transcribedText.trim().isNotEmpty) {
-      _sendMessage(_transcribedText);
-      _transcribedText = '';
-    }
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      if (details.delta.dx < 0) {
-        _dragPosition += details.delta.dx;
-        if (_dragPosition < _lockThreshold) {
-          _dragPosition = _lockThreshold;
-          if (!_isLocked) {
-            _isLocked = true;
-          }
-        }
+      if (_transcribedText.isNotEmpty) {
+        _sendMessage(_transcribedText);
+        _transcribedText = '';
       }
     });
   }
 
-  void _handleDragEnd(DragEndDetails details) {
-    if (!_isLocked) {
-      _stopListening();
-    }
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+  Widget _buildMessageBubble(ChatMessage message) {
+    final time =
+        "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFC7ECEB),
-      body: Stack(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: Column(
+        crossAxisAlignment:
+            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: 40,
-            right: 40,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.amber.withOpacity(0.2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.amber.withOpacity(0.4),
-                    blurRadius: 40,
-                    spreadRadius: 4,
-                  ),
-                ],
-              ),
+          ChatBubble(
+            clipper: ChatBubbleClipper1(
+              type: message.isUser
+                  ? BubbleType.sendBubble
+                  : BubbleType.receiverBubble,
             ),
-          ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+            alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
+            margin: EdgeInsets.only(top: 5),
+            backGroundColor: message.isUser
+                ? Color(0xFFFFE0B2).withOpacity(0.9)
+                : Colors.white.withOpacity(0.8),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+              ),
               child: Column(
+                crossAxisAlignment: message.isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Estoy contigo... puedes hablar cuando quieras',
+                  Text(
+                    message.text,
                     style: TextStyle(
-                      fontSize: 18,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.black54,
-                      fontFamily: 'Inter',
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final msg = _messages[index];
-                        final isSent = msg['isSent'] as bool;
-                        final text = msg['text'] as String;
-                        return TweenAnimationBuilder(
-                          duration: const Duration(milliseconds: 700),
-                          tween: Tween<double>(begin: 0, end: 1),
-                          curve: Curves.easeOut,
-                          builder: (context, double opacity, child) {
-                            return Opacity(
-                              opacity: opacity,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - opacity) * 20),
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: Align(
-                            alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              constraints: BoxConstraints(maxWidth: size.width * 0.7),
-                              decoration: BoxDecoration(
-                                color: isSent
-                                    ? Colors.amber.withOpacity(0.7)
-                                    : Colors.white.withOpacity(0.7),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(16),
-                                  topRight: const Radius.circular(16),
-                                  bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(0),
-                                  bottomRight: isSent ? const Radius.circular(0) : const Radius.circular(16),
-                                ),
-                              ),
-                              child: Text(
-                                text,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      color: Colors.black87,
+                      fontFamily: 'Lora',
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  widget.inputMode == 'keyboard'
-                      ? _buildKeyboardInput()
-                      : _buildMicrophoneInput(),
+                  if (message.imageUrl != null)
+                    Image.network(message.imageUrl!),
+                  SizedBox(height: 5),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: ChatBubble(
+        clipper: ChatBubbleClipper1(type: BubbleType.receiverBubble),
+        alignment: Alignment.topLeft,
+        margin: EdgeInsets.only(top: 5),
+        backGroundColor: Colors.white.withOpacity(0.8),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.7,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (index) {
+              return AnimatedContainer(
+                duration: Duration(milliseconds: 500),
+                width: 8,
+                height: 8,
+                margin: EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: index == _typingIndex ? Colors.blue : Colors.grey,
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Color(0xFF4BB6A8),
+        // En el AppBar del ChatScreen:
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
+            },
+          ),
+          actions: [
+            // Mostrar siempre el botón de guardar
+            Padding(
+              padding: EdgeInsets.only(right: 10),
+              child: TextButton.icon(
+                icon: Icon(Icons.save, color: Colors.white, size: 22),
+                label: Text('Guardar',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                onPressed: _saveChat,
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(child: _FloatingParticles()),
+            Positioned(
+              top: 50,
+              right: 50,
+              child: AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: _pulseAnimation.value,
+                    height: _pulseAnimation.value,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0xFFFFE5B4).withOpacity(0.7),
+                          Color(0xFFFFE5B4).withOpacity(0.5),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFFFFF3E0).withOpacity(0.3),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 100, bottom: 20),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      'Estoy contigo...',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withOpacity(0.95),
+                        fontFamily: 'Lora',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'puedes hablar cuando quieras',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white.withOpacity(0.85),
+                      fontStyle: FontStyle.italic,
+                      fontFamily: 'Lora',
+                    ),
+                  ),
+                  SizedBox(height: 30),
+                  Expanded(
+                    child: ListView.builder(
+                      reverse: true,
+                      itemCount:
+                          _isTyping ? _messages.length + 1 : _messages.length,
+                      itemBuilder: (context, index) {
+                        if (_isTyping && index == 0) {
+                          return _buildTypingIndicator();
+                        }
+                        final messageIndex = _isTyping ? index - 1 : index;
+                        return _buildMessageBubble(_messages[messageIndex]);
+                      },
+                    ),
+                  ),
+                  if (widget.inputMode == 'keyboard')
+                    _buildKeyboardInput()
+                  else
+                    _buildVoiceInput(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildKeyboardInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: 'Escribe aquí...',
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              ),
-              style: const TextStyle(color: Colors.black87),
-              onSubmitted: (value) => _handleSendMessage(value),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 2),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.send, color: Colors.black54),
-            onPressed: () => _handleSendMessage(_controller.text),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'Escribe tu mensaje...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.black54),
+                  ),
+                  style: TextStyle(color: Colors.black87),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                color: _isListening ? Colors.red : Color(0xFF4BB6A8),
+              ),
+              onPressed: () async {
+                if (_isListening) {
+                  _stopListening();
+                } else {
+                  if (await _isUserAuthenticated()) {
+                    _startListening();
+                  } else {
+                    if (!mounted) return;
+                    _showAuthModal();
+                  }
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.send, color: Color(0xFF4BB6A8)),
+              onPressed: () async {
+                if (await _isUserAuthenticated()) {
+                  _sendMessage(_controller.text);
+                } else {
+                  if (!mounted) return;
+                  _showAuthModal();
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMicrophoneInput() {
-    return SizedBox(
-      height: 80,
-      width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          if (_isListening && !_isLocked)
-            Positioned(
-              left: _lockThreshold + 30,
-              child: AnimatedOpacity(
-                opacity: _isListening ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: Row(
-                  children: [
-                    TweenAnimationBuilder(
-                      duration: const Duration(milliseconds: 600),
-                      tween: Tween<double>(begin: 0.0, end: 1.0),
-                      curve: Curves.easeInOut,
-                      builder: (context, double value, child) {
-                        return Transform.translate(
-                          offset: Offset(-10 * value, 0),
-                          child: Opacity(
-                            opacity: 1.0 - value,
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.black54,
-                              size: 20,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 5),
-                    TweenAnimationBuilder(
-                      duration: const Duration(milliseconds: 600),
-                      tween: Tween<double>(begin: 0.0, end: 1.0),
-                      curve: Curves.easeInOut,
-                      builder: (context, double value, child) {
-                        return Transform.translate(
-                          offset: Offset(-10 * value, 0),
-                          child: Opacity(
-                            opacity: 1.0 - value,
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.black54,
-                              size: 20,
-                            ),
-                          ),
-                        );
-                      },
+  Widget _buildVoiceInput() {
+    return Center(
+      child: GestureDetector(
+        onTap: () async {
+          if (_isListening) {
+            _stopListening();
+          } else {
+            if (await _isUserAuthenticated()) {
+              _startListening();
+            } else {
+              if (!mounted) return;
+              _showAuthModal();
+            }
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _isListening
+                  ? 1.1 + (_pulseAnimation.value - 90) * 0.005
+                  : 1.0,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isListening
+                      ? Colors.red.withOpacity(0.7)
+                      : Colors.white.withOpacity(0.7),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _isListening
+                          ? Colors.red.withOpacity(0.4)
+                          : Colors.white.withOpacity(0.4),
+                      blurRadius: 15,
+                      spreadRadius: 2,
                     ),
                   ],
                 ),
-              ),
-            ),
-          if (_isLocked)
-            Center(
-              child: GestureDetector(
-                onTap: _stopListening,
-                child: TweenAnimationBuilder(
-                  duration: const Duration(milliseconds: 600),
-                  tween: Tween<double>(begin: 1.0, end: 1.2),
-                  curve: Curves.easeInOut,
-                  builder: (context, double scale, child) {
-                    return Transform.scale(
-                      scale: scale,
-                      child: child,
-                    );
-                  },
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.red.withOpacity(0.8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.3),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.stop, size: 30, color: Colors.white),
-                  ),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  size: 30,
+                  color: _isListening ? Colors.white : Colors.black54,
                 ),
               ),
-            ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 100),
-            left: _isListening && !_isLocked
-                ? (MediaQuery.of(context).size.width / 2 - 30) + _dragPosition
-                : MediaQuery.of(context).size.width / 2 - 30,
-            child: GestureDetector(
-              onPanUpdate: _isLocked ? null : _handleDragUpdate,
-              onPanEnd: _isLocked ? null : _handleDragEnd,
-              onTapDown: _isLocked ? null : (_) => _handleStartListening(),
-              child: TweenAnimationBuilder(
-                duration: const Duration(seconds: 2),
-                tween: Tween<double>(begin: 1.0, end: _isListening ? 1.2 : 1.15),
-                curve: Curves.easeInOut,
-                builder: (context, double scale, child) {
-                  return Transform.scale(
-                    scale: scale,
-                    child: child,
-                  );
-                },
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    _isLocked ? Icons.lock : (_isListening ? Icons.mic : Icons.mic_none),
-                    size: 30,
-                    color: _isListening ? Colors.red : Colors.black54,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
+}
+
+class _FloatingParticles extends StatefulWidget {
+  @override
+  __FloatingParticlesState createState() => __FloatingParticlesState();
+}
+
+class __FloatingParticlesState extends State<_FloatingParticles>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final Random _random = Random();
+  final List<Particle> _particles = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 30),
+    )..repeat();
+
+    for (int i = 0; i < 20; i++) {
+      _particles.add(Particle(
+        x: _random.nextDouble(),
+        y: _random.nextDouble(),
+        size: _random.nextDouble() * 3 + 1,
+        speed: _random.nextDouble() * 0.2 + 0.1,
+      ));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _ParticlesPainter(_particles, _controller.value),
+        );
+      },
+    );
+  }
+}
+
+class Particle {
+  double x, y, size, speed;
+  Particle({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.speed,
+  });
+}
+
+class _ParticlesPainter extends CustomPainter {
+  final List<Particle> particles;
+  final double time;
+
+  _ParticlesPainter(this.particles, this.time);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+
+    for (var particle in particles) {
+      final x = (particle.x + time * particle.speed) % 1.0 * size.width;
+      final y = (particle.y + time * particle.speed * 0.5) % 1.0 * size.height;
+      canvas.drawCircle(Offset(x, y), particle.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) => true;
 }

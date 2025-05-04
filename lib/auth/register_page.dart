@@ -20,7 +20,8 @@ class RegisterModal extends StatefulWidget {
   State<RegisterModal> createState() => _RegisterModalState();
 }
 
-class _RegisterModalState extends State<RegisterModal> with SingleTickerProviderStateMixin {
+class _RegisterModalState extends State<RegisterModal>
+    with SingleTickerProviderStateMixin {
   bool isObscure = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -37,7 +38,7 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
-    
+
     _animation = Tween<double>(begin: 80, end: 120).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -71,9 +72,10 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
         password: _passwordController.text.trim(),
       );
 
-      Navigator.pop(context); // Close loading dialog
-
+      // Check if the widget is still mounted before proceeding
       if (!mounted) return;
+
+      Navigator.pop(context); // Close loading dialog
 
       if (success) {
         Navigator.pop(context); // Close RegisterModal
@@ -81,7 +83,7 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
-              messages: [],
+              chatMessages: [],
               inputMode: widget.inputMode ?? 'keyboard',
             ),
           ),
@@ -90,6 +92,9 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
         showErrorSnackBar("No se pudo completar el registro.");
       }
     } catch (e) {
+      // Check if the widget is still mounted before proceeding
+      if (!mounted) return;
+
       Navigator.pop(context); // Close loading dialog
       showErrorSnackBar(e.toString());
     }
@@ -145,14 +150,15 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
     final size = MediaQuery.of(context).size;
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      insetPadding:
+          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
       backgroundColor: Colors.transparent,
       child: Stack(
         children: [
           // Particle background
           SizedBox(
             width: size.width * 0.9,
-            height: 650, // Ajustado para el formulario más largo
+            height: 650,
             child: Particles(
               awayRadius: 150,
               particles: ParticleUtils.createParticles(
@@ -171,187 +177,243 @@ class _RegisterModalState extends State<RegisterModal> with SingleTickerProvider
               connectDots: false,
             ),
           ),
-          SingleChildScrollView(
-            child: Container(
-              width: size.width * 0.9,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC7ECEB),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 20),
-                  Center(
-                    child: AnimatedBuilder(
-                      animation: _animation,
-                      builder: (_, __) {
-                        return Container(
-                          width: _animation.value,
-                          height: _animation.value,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:  Colors.amber.withOpacity(0.3),
-                            boxShadow: [
-                              BoxShadow(
-                        color: Colors.amber.withOpacity(0.5),
-                                blurRadius: 50,
-                                spreadRadius: 4,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Comienza tu viaje con Lumorah",
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: LumorahColors.textOnPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      "Estoy aquí para acompañarte en cada paso",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.lato(
-                        fontSize: 16,
-                        color: LumorahColors.textOnPrimary.withOpacity(0.9),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                 TextField(
-  controller: _nameController,
-  decoration: InputDecoration(
-    labelText: "Nombre",
-    labelStyle: TextStyle(color: LumorahColors.primaryDarker),
-    filled: true,
-    fillColor: Colors.white.withOpacity(0.8),
-    prefixIcon: Icon(Icons.person, color: LumorahColors.primary),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide.none,
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: LumorahColors.primary),
-    ),
-  ),
-),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: "Correo",
-                            labelStyle: TextStyle(color: LumorahColors.primaryDarker),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
-                            prefixIcon: Icon(Icons.email, color: LumorahColors.primary),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: LumorahColors.primary),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: isObscure,
-                          decoration: InputDecoration(
-                            labelText: "Contraseña",
-                            labelStyle: TextStyle(color: LumorahColors.primaryDarker),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
-                            prefixIcon: Icon(Icons.lock, color: LumorahColors.primary),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                isObscure ? Icons.visibility_off : Icons.visibility,
-                                color: LumorahColors.primary,
-                              ),
-                              onPressed: () => setState(() => isObscure = !isObscure),
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: LumorahColors.primary),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _confirmPasswordController,
-                          obscureText: isObscure,
-                          decoration: InputDecoration(
-                            labelText: "Confirmar contraseña",
-                            labelStyle: TextStyle(color: LumorahColors.primaryDarker),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
-                            prefixIcon: Icon(Icons.lock, color: LumorahColors.primary),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: LumorahColors.primary),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-               ElevatedButton(
-  onPressed: signUp,
-  style: ElevatedButton.styleFrom(
-    backgroundColor: LumorahColors.primaryDarker,
-        minimumSize: const Size(200, 50),
 
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-  ),
-  child: const Text("Crear cuenta", style: TextStyle(color: Colors.white)),
-),
-
-                  if (widget.showLoginPage != null)
-                    TextButton(
-                      onPressed: widget.showLoginPage,
-                      child: Text(
-                        "¿Ya tienes una cuenta? Inicia sesión",
-                        style: TextStyle(color: LumorahColors.primaryDarker),
+          // Main content with AppBar
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Custom AppBar
+              Container(
+                width: size.width * 0.9,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4BB6A8),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Registro',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  const SizedBox(height: 20),
-                ],
+                      // Close button
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+
+              // Rest of the form
+              SingleChildScrollView(
+                child: Container(
+                  width: size.width * 0.9,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4BB6A8),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 16),
+                      Center(
+                        child: AnimatedBuilder(
+                          animation: _animation,
+                          builder: (_, __) {
+                            return Container(
+                              width: _animation.value,
+                              height: _animation.value,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.amber.withOpacity(0.3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.amber.withOpacity(0.5),
+                                    blurRadius: 50,
+                                    spreadRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Comienza tu viaje con Lumorah",
+                        style: GoogleFonts.inter(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: LumorahColors.textOnPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          "Estoy aquí para acompañarte en cada paso",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.lato(
+                            fontSize: 16,
+                            color: LumorahColors.textOnPrimary.withOpacity(0.9),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _nameController,
+                              decoration: InputDecoration(
+                                labelText: "Nombre",
+                                labelStyle: TextStyle(
+                                    color: LumorahColors.primaryDarker),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.8),
+                                prefixIcon: Icon(Icons.person,
+                                    color: LumorahColors.primary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: LumorahColors.primary),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: InputDecoration(
+                                labelText: "Correo",
+                                labelStyle: TextStyle(
+                                    color: LumorahColors.primaryDarker),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.8),
+                                prefixIcon: Icon(Icons.email,
+                                    color: LumorahColors.primary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: LumorahColors.primary),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: isObscure,
+                              decoration: InputDecoration(
+                                labelText: "Contraseña",
+                                labelStyle: TextStyle(
+                                    color: LumorahColors.primaryDarker),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.8),
+                                prefixIcon: Icon(Icons.lock,
+                                    color: LumorahColors.primary),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    isObscure
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: LumorahColors.primary,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => isObscure = !isObscure),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: LumorahColors.primary),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: isObscure,
+                              decoration: InputDecoration(
+                                labelText: "Confirmar contraseña",
+                                labelStyle: TextStyle(
+                                    color: LumorahColors.primaryDarker),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.8),
+                                prefixIcon: Icon(Icons.lock,
+                                    color: LumorahColors.primary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: LumorahColors.primary),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: signUp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: LumorahColors.primaryDarker,
+                          minimumSize: const Size(200, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text("Crear cuenta",
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      if (widget.showLoginPage != null)
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.showLoginPage!();
+                          },
+                          child: Text(
+                            "¿Ya tienes una cuenta? Inicia sesión",
+                            style:
+                                TextStyle(color: LumorahColors.primaryDarker),
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

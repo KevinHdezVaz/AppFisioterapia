@@ -9,38 +9,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.54"
-  app_links:
-    dependency: "direct main"
-    description:
-      name: app_links
-      sha256: "85ed8fc1d25a76475914fff28cc994653bd900bc2c26e4b57a49e097febb54ba"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.4.0"
-  app_links_linux:
-    dependency: transitive
-    description:
-      name: app_links_linux
-      sha256: f5f7173a78609f3dfd4c2ff2c95bd559ab43c80a87dc6a095921d96c05688c81
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.3"
-  app_links_platform_interface:
-    dependency: transitive
-    description:
-      name: app_links_platform_interface
-      sha256: "05f5379577c513b534a29ddea68176a4d4802c46180ee8e2e966257158772a3f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.2"
-  app_links_web:
-    dependency: transitive
-    description:
-      name: app_links_web
-      sha256: af060ed76183f9e2b87510a9480e56a5352b6c249778d07bd2c95fc35632a555
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.4"
   archive:
     dependency: transitive
     description:
@@ -121,14 +89,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  chat_bubbles:
-    dependency: "direct main"
-    description:
-      name: chat_bubbles
-      sha256: "9ee1493b31a7f847363c5d69725ec55db94f720c7c116d403b4d322a4da0f08c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   checked_yaml:
     dependency: transitive
     description:
@@ -209,14 +169,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
-  csslib:
-    dependency: transitive
-    description:
-      name: csslib
-      sha256: "09bad715f418841f976c77db72d5398dc1253c21fb9c0c7f0b0b985860b2d58e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.2"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -225,22 +177,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
-  dio:
-    dependency: "direct main"
-    description:
-      name: dio
-      sha256: "253a18bbd4851fecba42f7343a1df3a9a4c1d31a2c1b37e221086b4fa8c8dbc9"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.8.0+1"
-  dio_web_adapter:
-    dependency: transitive
-    description:
-      name: dio_web_adapter
-      sha256: "7586e476d70caecaf1686d21eee7247ea43ef5c345eab9e0cc3583ff13378d78"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   equatable:
     dependency: transitive
     description:
@@ -273,14 +209,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
-  file_picker:
-    dependency: "direct main"
-    description:
-      name: file_picker
-      sha256: "8986dec4581b4bcd4b6df5d75a2ea0bede3db802f500635d05fa8be298f9467f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "10.1.2"
   file_selector_linux:
     dependency: transitive
     description:
@@ -438,6 +366,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
+  flutter_chat_bubble:
+    dependency: "direct main"
+    description:
+      name: flutter_chat_bubble
+      sha256: ede33df7237fea3d89464c8493bfa0bee2f94f50fd097ebd30c517c3c0d4fcf9
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   flutter_dotenv:
     dependency: "direct main"
     description:
@@ -470,14 +406,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.27"
-  flutter_slidable:
-    dependency: "direct main"
-    description:
-      name: flutter_slidable
-      sha256: ab7dbb16f783307c9d7762ede2593ce32c220ba2ba0fd540a3db8e9a3acba71a
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.0"
   flutter_sound:
     dependency: "direct main"
     description:
@@ -576,22 +504,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.12.4+4"
-  gtk:
-    dependency: transitive
-    description:
-      name: gtk
-      sha256: e8ce9ca4b1df106e4d72dad201d345ea1a036cc12c360f1a7d5a758f78ffa42c
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
-  html:
-    dependency: transitive
-    description:
-      name: html
-      sha256: "9475be233c437f0e3637af55e7702cbbe5c23a68bd56e8a5fa2d426297b7c6c8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.15.5+1"
   http:
     dependency: "direct main"
     description:
@@ -809,7 +721,7 @@ packages:
     source: hosted
     version: "1.0.1"
   path:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: path
       sha256: "087ce49c3f0dc39180befefc60fdb4acd8f8620e5682fe2476afd0b3688bb4af"
@@ -1141,14 +1053,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.12.0"
-  story_view:
-    dependency: "direct main"
-    description:
-      name: story_view
-      sha256: ab64063569178e405b643ab11bdc28d6e85333191e3c8b5556e864fe6c5b2a5a
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.16.5"
   stream_channel:
     dependency: transitive
     description:
@@ -1285,46 +1189,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.4"
-  video_player:
-    dependency: transitive
-    description:
-      name: video_player
-      sha256: "7d78f0cfaddc8c19d4cb2d3bebe1bfef11f2103b0a03e5398b303a1bf65eeb14"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.9.5"
-  video_player_android:
-    dependency: transitive
-    description:
-      name: video_player_android
-      sha256: ae7d4f1b41e3ac6d24dd9b9d5d6831b52d74a61bdd90a7a6262a33d8bb97c29a
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.8.2"
-  video_player_avfoundation:
-    dependency: transitive
-    description:
-      name: video_player_avfoundation
-      sha256: "84b4752745eeccb6e75865c9aab39b3d28eb27ba5726d352d45db8297fbd75bc"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.7.0"
-  video_player_platform_interface:
-    dependency: transitive
-    description:
-      name: video_player_platform_interface
-      sha256: df534476c341ab2c6a835078066fc681b8265048addd853a1e3c78740316a844
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.3.0"
-  video_player_web:
-    dependency: transitive
-    description:
-      name: video_player_web
-      sha256: "3ef40ea6d72434edbfdba4624b90fd3a80a0740d260667d91e7ecd2d79e13476"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.4"
   vm_service:
     dependency: transitive
     description:

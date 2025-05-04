@@ -19,19 +19,16 @@ class AuthService {
     try {
       final uri = Uri.parse('$baseUrl/profile');
 
-      // Crear el mapa de datos
       Map<String, String> fields = {};
       if (name != null) fields['name'] = name;
       if (phone != null) fields['phone'] = phone;
       if (postalCode != null) fields['codigo_postal'] = postalCode;
       if (posicion != null) fields['posicion'] = posicion;
 
-      // Obtener headers
       final headers = await getHeaders();
 
-      // Si hay imagen, usar MultipartRequest
       if (profileImage != null) {
-        final request = http.MultipartRequest('POST', uri) // Cambiar a POST
+        final request = http.MultipartRequest('POST', uri)
           ..headers.addAll(headers)
           ..fields.addAll(fields);
 
@@ -45,7 +42,6 @@ class AuthService {
         );
         request.files.add(multipartFile);
 
-        // Agregar _method field para simular PUT
         request.fields['_method'] = 'PUT';
 
         final streamedResponse = await request.send();
@@ -53,9 +49,7 @@ class AuthService {
 
         print('Respuesta: ${response.body}');
         return response.statusCode == 200;
-      }
-      // Si no hay imagen, usar PUT normal
-      else {
+      } else {
         final response = await http.put(
           uri,
           headers: headers,
@@ -85,6 +79,9 @@ class AuthService {
         }),
       );
 
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
+
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Error: ${response.statusCode}');
       }
@@ -92,11 +89,22 @@ class AuthService {
       final data = json.decode(response.body);
       if (data['token'] != null) {
         await storage.saveToken(data['token']);
-        if (data['user'] != null && data['user']['id'] != null) {
-          await saveUserId(data['user']['id']);
+        print('Token saved: ${data['token']}');
+        if (data['user'] != null) {
+          final user = User.fromJson(data['user']);
+          print('User parsed: ${user.toJson()}');
+          await storage.saveUser(user);
+          print('User saved to storage');
+          if (data['user']['id'] != null) {
+            await saveUserId(data['user']['id']);
+            print('User ID saved: ${data['user']['id']}');
+          }
+        } else {
+          print('No user data in response');
         }
         return true;
       }
+      print('No token in response');
       return false;
     } catch (e) {
       print('Error login: $e');
@@ -128,14 +136,16 @@ class AuthService {
         headers: await getHeaders(),
       );
 
+      print('Profile response: ${response.body}');
       if (response.statusCode != 200) {
         throw Exception('Error obteniendo perfil');
       }
 
       final data = json.decode(response.body);
-      print('Profile Data: $data'); // Agrega esto para depurar
+      print('Profile data: $data');
       return data;
     } catch (e) {
+      print('Error getting profile: $e');
       throw Exception('Error: $e');
     }
   }
@@ -208,6 +218,11 @@ class AuthService {
       final data = json.decode(response.body);
       if (data['token'] != null) {
         await storage.saveToken(data['token']);
+        if (data['user'] != null) {
+          final user = User.fromJson(data['user']);
+          await storage.saveUser(user);
+          print('Google login user saved: ${user.toJson()}');
+        }
         return true;
       }
       return false;
@@ -220,8 +235,7 @@ class AuthService {
   Future<int?> getCurrentUserId() async {
     try {
       final profileData = await getProfile();
-      return profileData[
-          'id']; // Asumiendo que el perfil incluye el 'id' del usuario
+      return profileData['id'];
     } catch (e) {
       print('Error obteniendo ID del usuario: $e');
       return null;
@@ -229,13 +243,15 @@ class AuthService {
   }
 
   Future<void> saveUserId(int id) async {
-    //   await storage.saveString('user_id', id.toString());
+    // await storage.saveString('user_id', id.toString());
   }
 
   Future<int?> getUserIdFromStorage() async {
-    //  final idStr = await storage.getString('user_id');
-    //  return idStr != null ? int.parse(idStr) : null;
+    // final idStr = await storage.getString('user_id');
+    // return idStr != null ? int.parse(idStr) : null;
+    return null;
   }
+
   Future<bool> register({
     required String name,
     required String email,
@@ -255,35 +271,27 @@ class AuthService {
         }),
       );
 
-      debugPrint('Register Response status: ${response.statusCode}');
-      debugPrint('Register Response body: ${response.body}');
+      debugPrint('Register response status: ${response.statusCode}');
+      debugPrint('Register response body: ${response.body}');
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
-        // Verificación más robusta
         if (data['token'] == null || data['user'] == null) {
           throw Exception('El servidor no devolvió todos los datos necesarios');
         }
 
-        // Extrae el token correctamente
-        final token = data['token'] is Map
-            ? data['token']['plainTextToken'] ?? data['token']['accessToken']
-            : data['token'].toString();
-
+        final token = data['token'].toString();
         if (token.isEmpty) {
           throw Exception('Token vacío recibido del servidor');
         }
 
         await storage.saveToken(token);
-
-        // Verifica que user es un Map
-        if (data['user'] is! Map<String, dynamic>) {
-          throw Exception('Formato de usuario inválido');
-        }
+        print('Register token saved: $token');
 
         final user = User.fromJson(data['user'] as Map<String, dynamic>);
         await storage.saveUser(user);
+        print('Register user saved: ${user.toJson()}');
 
         return true;
       } else {
