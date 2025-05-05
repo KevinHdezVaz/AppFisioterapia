@@ -230,7 +230,10 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
   Future<void> _openChat(ChatSession session) async {
     try {
+      // 1. Obtener mensajes guardados de la sesión
       final messagesJson = await _chatService.getSessionMessages(session.id);
+
+      // 2. Convertir a objetos ChatMessage
       final messages = messagesJson
           .map<ChatMessage>(
               (json) => ChatMessage.fromJson(json as Map<String, dynamic>))
@@ -238,17 +241,19 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
       if (!mounted) return;
 
+      // 3. Navegar al ChatScreen con los mensajes recuperados
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ChatScreen(
-            chatMessages: messages,
+            initialMessages: messages,
             inputMode: 'keyboard',
-            sessionId: session.id,
+            sessionId: session.id, // Opcional: Puedes eliminarlo si no lo usas
           ),
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       _showError('Error al abrir la conversación: $e');
     }
   }

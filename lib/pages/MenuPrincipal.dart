@@ -1,33 +1,34 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/auth/register_page.dart';
-import 'package:user_auth_crudd10/pages/IntroPage.dart';
-import 'package:user_auth_crudd10/pages/IntroPage2.dart';
 import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
 import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 
-class HomeScreen extends StatefulWidget {
+class Menuprincipal extends StatefulWidget {
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  _MenuprincipalState createState() => _MenuprincipalState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _MenuprincipalState extends State<Menuprincipal>
+    with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   late Animation<double> _sunAnimation;
   late AnimationController _sunController;
+  late AnimationController _micAnimationController;
+  late Animation<double> _micAnimation;
+  final TextEditingController _textController = TextEditingController();
 
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
   final Color lightTextColor = Colors.white;
+  final Color micButtonColor = Color(0xFF4ECDC4);
 
   @override
   void initState() {
@@ -36,17 +37,29 @@ class _HomeScreenState extends State<HomeScreen>
     // Animación para el sol (pulsación)
     _sunController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
+    );
+
+    // Animación para el micrófono (pulsación sutil)
+    _micAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _micAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _micAnimationController, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
     _sunController.dispose();
+    _micAnimationController.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
@@ -88,21 +101,42 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (context) => LoginModal(
         showRegisterPage: () {
-          Navigator.pop(context);
-          showDialog(
-            context: context,
-            builder: (context) => RegisterModal(
-              showLoginPage: () {
-                Navigator.pop(context);
-                _showLoginModal(context);
-              },
-              inputMode: 'keyboard',
-            ),
-          );
+          _showRegisterModal(context);
         },
         inputMode: 'keyboard',
       ),
     );
+  }
+
+  void _showRegisterModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => RegisterModal(
+        showLoginPage: () {
+          Navigator.pop(context);
+          _showLoginModal(context);
+        },
+        inputMode: 'keyboard',
+      ),
+    );
+  }
+
+  Future<void> _handleAction(BuildContext context) async {
+    final isAuthenticated = await _isUserAuthenticated();
+    if (isAuthenticated) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            initialMessages: [],
+            inputMode: 'keyboard',
+            sessionId: null,
+          ),
+        ),
+      );
+    } else {
+      _showLoginModal(context);
+    }
   }
 
   @override
@@ -286,9 +320,9 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 SizedBox(height: 180), // Espacio para el sol animado
                 Text(
-                  'Hola, soy\nLumorah.ai',
+                  'Escribe o habla lo que quieras.',
                   style: TextStyle(
-                    fontSize: 35,
+                    fontSize: 30,
                     color: Colors.black,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
@@ -298,9 +332,9 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Estoy aquí para acompañarte.',
+                  'Estoy aquí para escucharte.',
                   style: TextStyle(
-                    fontSize: 25,
+                    fontSize: 20,
                     color: Colors.black.withOpacity(0.9),
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
@@ -308,30 +342,41 @@ class _HomeScreenState extends State<HomeScreen>
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => IntroPage(
-                                pageIndex: 1,
-                              )),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Color(0xFFFDF8F2), // Color hexadecimal #FDF8F2
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
-                  ),
-                  child: Text(
-                    'Siguiente',
-                    style: TextStyle(
-                      color: darkTextColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: _textController,
+                    style: TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      hintText: 'Escribe lo que quieras...',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: ivoryColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _micAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _micAnimation.value,
+                                child: IconButton(
+                                  icon: Icon(Icons.mic, color: micButtonColor),
+                                  onPressed: () => _handleAction(context),
+                                ),
+                              );
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.send, color: micButtonColor),
+                            onPressed: () => _handleAction(context),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -390,8 +435,8 @@ class _ParticulasPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1) // Cambié , por ;
-      ..style = PaintingStyle.fill; // Cambié , por ;
+      ..color = Colors.white.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
 
     for (int i = 0; i < 25; i++) {
       final dx = (size.width * ((i * 17 + progress * 120) % 100) / 100);

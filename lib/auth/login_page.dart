@@ -73,7 +73,7 @@ class _LoginModalState extends State<LoginModal>
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
-              chatMessages: [],
+              initialMessages: [],
               inputMode: widget.inputMode ?? 'keyboard',
             ),
           ),

@@ -14,14 +14,14 @@ import 'dart:math';
 import 'dart:async';
 
 class ChatScreen extends StatefulWidget {
-  final List<ChatMessage> chatMessages;
   final String inputMode;
-  final int? sessionId;
+  final List<ChatMessage>? initialMessages; // Solo para chats guardados
+  final int? sessionId; // Opcional, solo para chats guardados
 
   const ChatScreen({
     Key? key,
-    required this.chatMessages,
     required this.inputMode,
+    this.initialMessages,
     this.sessionId,
   }) : super(key: key);
 
@@ -45,16 +45,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
 
-  late List<ChatMessage> _messages;
+  List<ChatMessage> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    _messages = widget.chatMessages;
+
+    // Inicializar mensajes si viene de un chat guardado
+    _messages = widget.initialMessages?.reversed.toList() ?? [];
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 4),
+      duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
     _pulseAnimation = Tween<double>(begin: 90, end: 110).animate(
@@ -62,7 +64,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
 
     _speech = stt.SpeechToText();
-    _typingTimer = Timer(Duration.zero, () {});
+    _typingTimer = Timer.periodic(Duration.zero, (_) {});
   }
 
   @override
@@ -118,7 +120,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final currentUser = await _storageService.getUser();
     final newMessage = ChatMessage(
       id: -1,
-      chatSessionId: widget.sessionId ?? -1,
+      chatSessionId: -1,
       userId: currentUser?.id ?? -1,
       text: message,
       isUser: true,
@@ -137,16 +139,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _controller.clear();
 
     try {
-      final response = await _chatService.sendMessage(
-        message,
-        sessionId: widget.sessionId,
-      );
+      final response = await _chatService.sendMessage(message);
 
       if (!mounted) return;
 
       final aiMessage = ChatMessage(
         id: -1,
-        chatSessionId: widget.sessionId ?? -1,
+        chatSessionId: -1,
         userId: 0,
         text: response['ai_message']?['text'] ?? "No se recibió respuesta",
         isUser: false,
@@ -169,9 +168,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  // Método para guardar el chat (mejorado)
-// En tu _ChatScreenState:
-
   Future<void> _saveChat() async {
     if (!await _isUserAuthenticated()) {
       if (!mounted) return;
@@ -179,39 +175,25 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       return;
     }
 
-    // Si no hay sesión, primero creamos una temporal
-    int? sessionId = widget.sessionId;
-    if (sessionId == null) {
-      try {
-        final response = await _chatService.sendMessage(
-          "Inicio de conversación", // Mensaje inicial
-          sessionId: null,
-        );
-        sessionId = response['session']['id'];
-      } catch (e) {
-        if (!mounted) return;
-        _showErrorSnackBar('Error al crear sesión: $e');
-        return;
-      }
+    if (_messages.isEmpty) {
+      _showErrorSnackBar('No hay mensajes para guardar');
+      return;
     }
 
-    // Mostrar diálogo para obtener título
     final titleController = TextEditingController();
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Guardar conversación',
-          style: TextStyle(color: Colors.black),
-        ),
+        title:
+            Text('Guardar conversación', style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
-          style: TextStyle(color: Colors.black), // Texto escrito en negro
+          style: TextStyle(color: Colors.black),
           decoration: InputDecoration(
             labelText: 'Título',
             hintText: 'Ej: Conversación sobre ansiedad',
-            hintStyle: TextStyle(color: Colors.black), // Hint en negro
+            hintStyle: TextStyle(color: Colors.black),
             filled: true,
             fillColor: Color(0xFFF6F6F6),
             border: OutlineInputBorder(
@@ -221,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Color(0xFF4BB6A8), // Borde verde Lumorah al enfocar
+                color: Color(0xFF4BB6A8),
                 width: 2,
               ),
             ),
@@ -230,24 +212,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.black),
-            ),
+            child: Text('Cancelar', style: TextStyle(color: Colors.black)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF4BB6A8),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4BB6A8)),
             onPressed: () {
               if (titleController.text.trim().isNotEmpty) {
                 Navigator.pop(context, titleController.text.trim());
               }
             },
-            child: Text(
-              'Guardar',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: Text('Guardar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -256,7 +230,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (title == null || title.isEmpty) return;
 
     try {
-      await _chatService.saveChatSession(sessionId!, title);
+      await _chatService.saveChatSession(
+        title: title,
+        messages: _messages.reversed
+            .map((m) => {
+                  'text': m.text,
+                  'is_user': m.isUser,
+                  'created_at': m.createdAt.toIso8601String(),
+                })
+            .toList(),
+      );
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

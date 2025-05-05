@@ -113,10 +113,21 @@ flutter:
 
 
   fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/font/Inter-VariableFont_opsz,wght.ttf
+          weight: 400
+        - asset: assets/font/Inter-Italic-VariableFont_opsz,wght.ttf
+          weight: 400
+          style: italic
+
     - family: Lora
       fonts:
         - asset: assets/font/Lora-VariableFont_wght.ttf
+          weight: 400
         - asset: assets/font/Lora-Italic-VariableFont_wght.ttf
+          weight: 400
+          style: italic
           
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

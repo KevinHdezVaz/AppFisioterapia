@@ -83,7 +83,7 @@ class _RegisterModalState extends State<RegisterModal>
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
-              chatMessages: [],
+              initialMessages: [],
               inputMode: widget.inputMode ?? 'keyboard',
             ),
           ),
