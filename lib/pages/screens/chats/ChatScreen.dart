@@ -50,7 +50,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final ChatServiceApi _chatService = ChatServiceApi();
 
   // Color palette (alineada con Menuprincipal.dart)
-  final Color tiffanyColor = Color(0xFF4BB6A8);
+  final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color micButtonColor = Color(0xFF4ECDC4);
 
@@ -238,7 +238,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Guardar conversación', style: TextStyle(color: Colors.black)),
+        title:
+            Text('Guardar conversación', style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -478,7 +479,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.black.withOpacity(0.95),
               fontFamily: 'Lora',
             ),
             textAlign: TextAlign.center,
@@ -489,7 +490,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           'puedes hablar cuando quieras',
           style: TextStyle(
             fontSize: 18,
-            color: Colors.white.withOpacity(0.85),
+            color: Colors.black.withOpacity(0.85),
             fontStyle: FontStyle.italic,
             fontFamily: 'Lora',
           ),
@@ -499,38 +500,37 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   // Widget que construye el círculo animado
-Widget _buildAnimatedCircle() {
-  return Positioned(
-    top: 50,
-    right: 50,
-    child: AnimatedBuilder(
-      animation: _sunAnimation,
-      builder: (context, child) {
-        return Container(
-          width: _sunAnimation.value,
-          height: _sunAnimation.value,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                Color(0xFFFFE5B4).withOpacity(0.7),
-                Color(0xFFFFE5B4).withOpacity(0.5),
+  Widget _buildAnimatedCircle() {
+    return Positioned(
+      top: 50,
+      right: 50,
+      child: AnimatedBuilder(
+        animation: _sunAnimation,
+        builder: (context, child) {
+          return Container(
+            width: _sunAnimation.value,
+            height: _sunAnimation.value,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Color(0xFFFFE5B4).withOpacity(0.7),
+                  Color(0xFFFFE5B4).withOpacity(0.5),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFFFFF3E0).withOpacity(0.3),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
               ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xFFFFF3E0).withOpacity(0.3),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-        );
-      },
-    ),
-  );
-}
-
+          );
+        },
+      ),
+    );
+  }
 
   // Método para renderizar el input según el modo
   Widget _buildInput() {
@@ -549,13 +549,15 @@ Widget _buildAnimatedCircle() {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => Menuprincipal(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            Menuprincipal(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(-1.0, 0.0); // Deslizar desde la izquierda
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
 
           return SlideTransition(
@@ -584,17 +586,17 @@ Widget _buildAnimatedCircle() {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () => _navigateBack(context), // Usar navegación animada
           ),
           actions: [
             Padding(
               padding: EdgeInsets.only(right: 10),
               child: TextButton.icon(
-                icon: Icon(Icons.save, color: Colors.white, size: 22),
+                icon: Icon(Icons.save, color: Colors.blue, size: 22),
                 label: Text(
                   'Guardar',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: Colors.blue, fontSize: 14),
                 ),
                 onPressed: _saveChat,
                 style: TextButton.styleFrom(

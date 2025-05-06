@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_auth_crudd10/model/ChatMessage.dart';
 import 'package:user_auth_crudd10/model/ChatSession.dart';
+import 'package:user_auth_crudd10/pages/home_page.dart';
 import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
@@ -18,6 +19,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   List<ChatSession> _sessions = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  final Color tiffanyColor = Color(0xFF88D5C2);
 
   @override
   void initState() {
@@ -30,7 +32,6 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       setState(() => _isLoading = true);
       final sessions = await _chatService.getSessions();
       setState(() {
-        // Validar y asignar las sesiones
         if (sessions is List<ChatSession>) {
           _sessions =
               sessions.where((session) => session.deletedAt == null).toList();
@@ -50,14 +51,16 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: GoogleFonts.lora(color: Colors.white)),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
       ),
     );
   }
 
   List<ChatSession> get _filteredSessions {
-    var filtered = _sessions.toList(); // Mostrar todas las sesiones sin filtro
+    var filtered = _sessions.toList();
 
     if (_searchQuery.isNotEmpty) {
       filtered = filtered
@@ -83,76 +86,113 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
     }
   }
 
+  void _startNewConversation() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          initialMessages: [],
+          inputMode: 'keyboard',
+          sessionId: null,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LumorahColors.primary,
+      backgroundColor: tiffanyColor,
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [tiffanyColor, tiffanyColor.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           'Tus Conversaciones',
           style: GoogleFonts.lora(
             color: Colors.white,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.black),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Colors.black, size: 28),
             onPressed: _fetchSessions,
           ),
+          SizedBox(width: 16),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Buscar conversaciones...',
-                    hintStyle: GoogleFonts.lora(),
-                    prefixIcon: Icon(Icons.search, color: Colors.white70),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.1),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  style: GoogleFonts.lora(color: Colors.white),
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-                const SizedBox(
-                    height:
-                        8), // Mantenemos el espacio para consistencia visual
-              ],
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: LumorahColors.secondary,
-                    ),
-                  )
-                : _filteredSessions.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        color: LumorahColors.secondary,
-                        onRefresh: _fetchSessions,
-                        child: ListView.builder(
-                          padding: EdgeInsets.only(bottom: 16),
-                          itemCount: _filteredSessions.length,
-                          itemBuilder: (context, index) {
-                            final session = _filteredSessions[index];
-                            return _buildSessionCard(session);
-                          },
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Card(
+                      color: Colors.white.withOpacity(0.12),
+                      elevation: 3,
+                      shadowColor: Colors.white.withOpacity(0.1),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24)),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar conversaciones...',
+                          hintStyle: GoogleFonts.lora(color: Colors.black),
+                          prefixIcon: Icon(Icons.search,
+                              color: LumorahColors.secondary),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
                         ),
+                        style:
+                            GoogleFonts.lora(color: Colors.black, fontSize: 16),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: LumorahColors.secondary,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : _filteredSessions.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            color: LumorahColors.secondary,
+                            onRefresh: _fetchSessions,
+                            child: ListView.builder(
+                              padding: EdgeInsets.only(
+                                  bottom: 24, left: 16, right: 16),
+                              itemCount: _filteredSessions.length,
+                              itemBuilder: (context, index) {
+                                final session = _filteredSessions[index];
+                                return _buildSessionCard(session);
+                              },
+                            ),
+                          ),
+              ),
+            ],
           ),
         ],
       ),
@@ -161,35 +201,55 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
   Widget _buildSessionCard(ChatSession session) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white.withOpacity(0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Icon(
-          session.isSaved ? Icons.bookmark : Icons.chat_bubble_outline,
-          color: LumorahColors.secondary,
-        ),
-        title: Text(
-          session.title,
-          style: GoogleFonts.lora(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
+      color: Colors.white.withOpacity(0.12),
+      elevation: 3,
+      shadowColor: Colors.white.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.05),
+              Colors.white.withOpacity(0.15)
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(16),
         ),
-        subtitle: Text(
-          _formatDate(session.createdAt),
-          style: GoogleFonts.lora(
-            color: Colors.white70,
-            fontSize: 12,
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: CircleAvatar(
+            backgroundColor: LumorahColors.secondary.withOpacity(0.2),
+            child: Icon(
+              session.isSaved ? Icons.bookmark : Icons.chat_bubble_outline,
+              color: LumorahColors.secondary,
+              size: 24,
+            ),
           ),
+          title: Text(
+            session.title,
+            style: GoogleFonts.lora(
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            _formatDate(session.createdAt),
+            style: GoogleFonts.lora(
+              color: Colors.black38,
+              fontSize: 14,
+            ),
+          ),
+          trailing: IconButton(
+            icon: Icon(Icons.delete_outline, color: Colors.red[300], size: 24),
+            onPressed: () => _showDeleteDialog(session.id),
+          ),
+          onTap: () => _openChat(session),
         ),
-        trailing: IconButton(
-          icon: Icon(Icons.delete_outline, color: Colors.red[200]),
-          onPressed: () => _showDeleteDialog(session.id),
-        ),
-        onTap: () => _openChat(session),
       ),
     );
   }
@@ -197,9 +257,10 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   void _showDeleteDialog(int sessionId) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Color(0xFFFDF8F2), // marfil suave
+        backgroundColor: Color(0xFFFDF8F2),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -222,7 +283,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 'Este espacio ha sido parte de tu proceso.\n¿Deseas dejarlo ir?',
                 style: GoogleFonts.lora(
                   fontSize: 16,
-                  color: Colors.black,
+                  color: Colors.black54,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -230,10 +291,14 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  TextButton(
+                  ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Color(0xFF88D5C2),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF88D5C2),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: Text(
                       'Cancelar',
@@ -244,13 +309,17 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                       ),
                     ),
                   ),
-                  TextButton(
+                  ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
                       _deleteSession(sessionId);
                     },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[400],
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: Text(
                       'Eliminar',
@@ -271,10 +340,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
   Future<void> _openChat(ChatSession session) async {
     try {
-      // 1. Obtener mensajes guardados de la sesión
       final messagesJson = await _chatService.getSessionMessages(session.id);
-
-      // 2. Convertir a objetos ChatMessage
       final messages = messagesJson
           .map<ChatMessage>(
               (json) => ChatMessage.fromJson(json as Map<String, dynamic>))
@@ -282,7 +348,6 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
       if (!mounted) return;
 
-      // 3. Navegar al ChatScreen con los mensajes recuperados
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -306,24 +371,47 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.forum_outlined,
-                size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.forum_outlined,
+              size: 80,
+              color: LumorahColors.secondary.withOpacity(0.7),
+            ),
+            const SizedBox(height: 24),
             Text(
               'No hay conversaciones',
               style: GoogleFonts.lora(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
-              'Comienza una nueva conversación',
+              '¡Comienza una nueva conversación hoy!',
               style: GoogleFonts.lora(
                 color: Colors.white70,
+                fontSize: 16,
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _startNewConversation,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: LumorahColors.secondary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text(
+                'Nueva Conversación',
+                style: GoogleFonts.lora(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),

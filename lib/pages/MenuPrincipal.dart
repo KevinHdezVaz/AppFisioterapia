@@ -271,6 +271,24 @@ class _MenuprincipalState extends State<Menuprincipal>
                       },
                     ),
                   ListTile(
+                    leading: Icon(Icons.language, color: lightTextColor),
+                    title: Text(
+                      'Cambiar Idioma',
+                      style: TextStyle(
+                        color: lightTextColor,
+                        fontSize: 16,
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Configuración en desarrollo')),
+                      );
+                    },
+                  ),
+                  ListTile(
                     leading: Icon(Icons.settings, color: lightTextColor),
                     title: Text(
                       'Configuración',
