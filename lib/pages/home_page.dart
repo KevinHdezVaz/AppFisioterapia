@@ -1,27 +1,24 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/auth/register_page.dart';
 import 'package:user_auth_crudd10/pages/IntroPage.dart';
-import 'package:user_auth_crudd10/pages/IntroPage2.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
-  late Animation<double> _sunAnimation;
+  final AudioPlayer _audioPlayer = AudioPlayer();
   late AnimationController _sunController;
+  late Animation<double> _sunAnimation;
 
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
@@ -36,17 +33,35 @@ class _HomeScreenState extends State<HomeScreen>
     // Animación para el sol (pulsación)
     _sunController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
+
+    _playWelcomeSound();
+  }
+
+  Future<void> _playWelcomeSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/sonido_inicial.mp3'));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al reproducir el sonido: $e'),
+            backgroundColor: LumorahColors.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _sunController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -112,139 +127,6 @@ class _HomeScreenState extends State<HomeScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: lightTextColor.withOpacity(0.9)),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-      ),
-      drawer: Drawer(
-        child: Container(
-          color: tiffanyColor.withOpacity(0.95),
-          child: FutureBuilder<bool>(
-            future: _isUserAuthenticated(),
-            builder: (context, authSnapshot) {
-              bool isAuthenticated = authSnapshot.data ?? false;
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  FutureBuilder<String?>(
-                    future: _getUserName(),
-                    builder: (context, userSnapshot) {
-                      String headerText =
-                          isAuthenticated && userSnapshot.data != null
-                              ? 'Hola, ${userSnapshot.data}'
-                              : 'Lumorah';
-                      return DrawerHeader(
-                        decoration: BoxDecoration(
-                          color: ivoryColor.withOpacity(0.7),
-                        ),
-                        child: Text(
-                          headerText,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: darkTextColor,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.chat, color: lightTextColor),
-                    title: Text(
-                      'Chat',
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                            initialMessages: [],
-                            inputMode: 'keyboard',
-                            sessionId: null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (isAuthenticated)
-                    ListTile(
-                      leading: Icon(Icons.history, color: lightTextColor),
-                      title: Text(
-                        'Historial de Chats',
-                        style: TextStyle(
-                          color: lightTextColor,
-                          fontSize: 16,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatHistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ListTile(
-                    leading: Icon(Icons.settings, color: lightTextColor),
-                    title: Text(
-                      'Configuración',
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Configuración en desarrollo')),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      isAuthenticated ? Icons.logout : Icons.login,
-                      color: lightTextColor,
-                    ),
-                    title: Text(
-                      isAuthenticated ? 'Cerrar Sesión' : 'Iniciar Sesión',
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (isAuthenticated) {
-                        _signOut(context);
-                      } else {
-                        _showLoginModal(context);
-                      }
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
       ),
       body: Stack(
         children: [
@@ -319,8 +201,7 @@ class _HomeScreenState extends State<HomeScreen>
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Color(0xFFFDF8F2), // Color hexadecimal #FDF8F2
+                    backgroundColor: Color(0xFFFDF8F2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -390,12 +271,12 @@ class _ParticulasPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1) // Cambié , por ;
-      ..style = PaintingStyle.fill; // Cambié , por ;
+      ..color = Colors.white.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
 
     for (int i = 0; i < 25; i++) {
       final dx = (size.width * ((i * 17 + progress * 120) % 100) / 100);
-      final dy = size.height * ((i * 13 + progress * 90) % 100) / 100;
+      final dy = (size.height * ((i * 13 + progress * 90) % 100) / 100);
       final radius = 1.8 + (i % 4);
       canvas.drawCircle(Offset(dx, dy), radius, paint);
     }

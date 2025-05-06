@@ -19,15 +19,13 @@ class _MenuprincipalState extends State<Menuprincipal>
   final StorageService _storageService = StorageService();
   late Animation<double> _sunAnimation;
   late AnimationController _sunController;
-  late AnimationController _micAnimationController;
-  late Animation<double> _micAnimation;
   final TextEditingController _textController = TextEditingController();
 
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
-  final Color lightTextColor = Colors.white;
+  final Color lightTextColor = Colors.black;
   final Color micButtonColor = Color(0xFF4ECDC4);
 
   @override
@@ -43,22 +41,11 @@ class _MenuprincipalState extends State<Menuprincipal>
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
-
-    // Animación para el micrófono (pulsación sutil)
-    _micAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _micAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _micAnimationController, curve: Curves.easeInOut),
-    );
   }
 
   @override
   void dispose() {
     _sunController.dispose();
-    _micAnimationController.dispose();
     _textController.dispose();
     super.dispose();
   }
@@ -121,21 +108,47 @@ class _MenuprincipalState extends State<Menuprincipal>
     );
   }
 
-  Future<void> _handleAction(BuildContext context) async {
+  Future<void> _handleAction(BuildContext context, {bool isVoice = false}) async {
     final isAuthenticated = await _isUserAuthenticated();
-    if (isAuthenticated) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(
-            initialMessages: [],
-            inputMode: 'keyboard',
-            sessionId: null,
-          ),
-        ),
-      );
-    } else {
+    if (!isAuthenticated) {
       _showLoginModal(context);
+      return;
+    }
+
+    final inputMode = isVoice ? 'voice' : 'keyboard';
+    final message = _textController.text.trim();
+
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
+          initialMessages: [],
+          inputMode: inputMode,
+          sessionId: null,
+          initialMessage: message.isNotEmpty ? message : null,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0); // Deslizar desde la derecha
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var slideAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: slideAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: Duration(milliseconds: 300),
+      ),
+    );
+
+    if (message.isNotEmpty) {
+      _textController.clear();
     }
   }
 
@@ -201,12 +214,32 @@ class _MenuprincipalState extends State<Menuprincipal>
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) =>
+                              ChatScreen(
                             initialMessages: [],
                             inputMode: 'keyboard',
                             sessionId: null,
                           ),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0); // Deslizar desde la derecha
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+
+                            var tween = Tween(begin: begin, end: end)
+                                .chain(CurveTween(curve: curve));
+                            var slideAnimation = animation.drive(tween);
+
+                            return SlideTransition(
+                              position: slideAnimation,
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              ),
+                            );
+                          },
+                          transitionDuration: Duration(milliseconds: 300),
                         ),
                       );
                     },
@@ -359,17 +392,9 @@ class _MenuprincipalState extends State<Menuprincipal>
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          AnimatedBuilder(
-                            animation: _micAnimation,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _micAnimation.value,
-                                child: IconButton(
-                                  icon: Icon(Icons.mic, color: micButtonColor),
-                                  onPressed: () => _handleAction(context),
-                                ),
-                              );
-                            },
+                          IconButton(
+                            icon: Icon(Icons.mic, color: micButtonColor),
+                            onPressed: () => _handleAction(context, isVoice: true),
                           ),
                           IconButton(
                             icon: Icon(Icons.send, color: micButtonColor),
@@ -435,11 +460,11 @@ class _ParticulasPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withOpacity(0.3)
       ..style = PaintingStyle.fill;
 
     for (int i = 0; i < 25; i++) {
-      final dx = (size.width * ((i * 17 + progress * 120) % 100) / 100);
+      final dx = (size.width * ((i * 17 + progress * 120) % 100) / 50);
       final dy = size.height * ((i * 13 + progress * 90) % 100) / 100;
       final radius = 1.8 + (i % 4);
       canvas.drawCircle(Offset(dx, dy), radius, paint);

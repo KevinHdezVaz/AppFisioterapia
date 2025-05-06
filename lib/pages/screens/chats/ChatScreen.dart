@@ -7,22 +7,25 @@ import 'package:user_auth_crudd10/auth/auth_service.dart';
 import 'package:user_auth_crudd10/auth/login_page.dart';
 import 'package:user_auth_crudd10/auth/register_page.dart';
 import 'package:user_auth_crudd10/model/ChatMessage.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
+import 'package:user_auth_crudd10/pages/MenuPrincipal.dart';
 import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
 
 class ChatScreen extends StatefulWidget {
   final String inputMode;
-  final List<ChatMessage>? initialMessages; // Solo para chats guardados
-  final int? sessionId; // Opcional, solo para chats guardados
+  final List<ChatMessage>? initialMessages;
+  final int? sessionId;
+  final String? initialMessage;
 
   const ChatScreen({
     Key? key,
     required this.inputMode,
     this.initialMessages,
     this.sessionId,
+    this.initialMessage,
   }) : super(key: key);
 
   @override
@@ -30,8 +33,6 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
   final TextEditingController _controller = TextEditingController();
   late stt.SpeechToText _speech;
   bool _isListening = false;
@@ -40,10 +41,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   int _typingIndex = 0;
   late Timer _typingTimer;
   bool _isSpeechInitialized = false;
+  late AnimationController _sunController;
+  late Animation<double> _sunAnimation;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
+
+  // Color palette (alineada con Menuprincipal.dart)
+  final Color tiffanyColor = Color(0xFF4BB6A8);
+  final Color ivoryColor = Color(0xFFFDF8F2);
+  final Color micButtonColor = Color(0xFF4ECDC4);
 
   List<ChatMessage> _messages = [];
 
@@ -54,28 +63,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     // Inicializar mensajes si viene de un chat guardado
     _messages = widget.initialMessages?.reversed.toList() ?? [];
 
-    _pulseController = AnimationController(
+    // Animación para el círculo superior
+    _sunController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 90, end: 110).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
+    _sunAnimation = Tween<double>(begin: 90.0, end: 110.0).animate(
+      CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
     _speech = stt.SpeechToText();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
+
+    // Enviar el mensaje inicial si existe
+    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _sendMessage(widget.initialMessage!);
+      });
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _speech.stop();
     _speech.cancel();
     _controller.dispose();
     if (_typingTimer.isActive) {
       _typingTimer.cancel();
     }
+    _sunController.dispose();
+    _audioPlayer.stop();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -108,6 +127,28 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _playThinkingSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/pensandoIA.mp3'));
+      // Configurar el sonido en bucle mientras _isTyping es true
+      _audioPlayer.setReleaseMode(ReleaseMode.loop);
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error al reproducir el sonido: $e');
+      }
+    }
+  }
+
+  Future<void> _stopThinkingSound() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error al detener el sonido: $e');
+      }
+    }
+  }
+
   Future<void> _sendMessage(String message) async {
     if (!await _isUserAuthenticated()) {
       if (!mounted) return;
@@ -138,10 +179,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
     _controller.clear();
 
+    // Reproducir sonido de "pensando"
+    await _playThinkingSound();
+
     try {
       final response = await _chatService.sendMessage(message);
 
-      if (!mounted) return;
+      if (!mounted) {
+        await _stopThinkingSound();
+        return;
+      }
 
       final aiMessage = ChatMessage(
         id: -1,
@@ -158,12 +205,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isTyping = false;
         _typingTimer.cancel();
       });
+      // Detener sonido después de recibir la respuesta
+      await _stopThinkingSound();
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        await _stopThinkingSound();
+        return;
+      }
       setState(() {
         _isTyping = false;
         _typingTimer.cancel();
       });
+      // Detener sonido en caso de error
+      await _stopThinkingSound();
       _showErrorSnackBar('Error al enviar mensaje: $e');
     }
   }
@@ -184,8 +238,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            Text('Guardar conversación', style: TextStyle(color: Colors.black)),
+        title: Text('Guardar conversación', style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -414,39 +467,135 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
+  // Widget para el encabezado con los textos
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            'Estoy contigo...',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withOpacity(0.95),
+              fontFamily: 'Lora',
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        SizedBox(height: 10),
+        Text(
+          'puedes hablar cuando quieras',
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.white.withOpacity(0.85),
+            fontStyle: FontStyle.italic,
+            fontFamily: 'Lora',
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget que construye el círculo animado
+Widget _buildAnimatedCircle() {
+  return Positioned(
+    top: 50,
+    right: 50,
+    child: AnimatedBuilder(
+      animation: _sunAnimation,
+      builder: (context, child) {
+        return Container(
+          width: _sunAnimation.value,
+          height: _sunAnimation.value,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Color(0xFFFFE5B4).withOpacity(0.7),
+                Color(0xFFFFE5B4).withOpacity(0.5),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFFFFF3E0).withOpacity(0.3),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+
+  // Método para renderizar el input según el modo
+  Widget _buildInput() {
+    switch (widget.inputMode) {
+      case 'keyboard':
+        return _buildKeyboardInput();
+      case 'voice':
+        return _buildVoiceInput();
+      default:
+        return _buildKeyboardInput(); // Por defecto, usar teclado
+    }
+  }
+
+  // Método para navegar de vuelta a Menuprincipal con animación
+  void _navigateBack(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => Menuprincipal(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(-1.0, 0.0); // Deslizar desde la izquierda
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var slideAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: slideAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: Duration(milliseconds: 300),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-        );
+        _navigateBack(context); // Usar navegación animada
         return false;
       },
       child: Scaffold(
-        backgroundColor: Color(0xFF4BB6A8),
-        // En el AppBar del ChatScreen:
+        backgroundColor: tiffanyColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
             icon: Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HomeScreen()),
-              );
-            },
+            onPressed: () => _navigateBack(context), // Usar navegación animada
           ),
           actions: [
-            // Mostrar siempre el botón de guardar
             Padding(
               padding: EdgeInsets.only(right: 10),
               child: TextButton.icon(
                 icon: Icon(Icons.save, color: Colors.white, size: 22),
-                label: Text('Guardar',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                label: Text(
+                  'Guardar',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
                 onPressed: _saveChat,
                 style: TextButton.styleFrom(
                   backgroundColor: Colors.white.withOpacity(0.2),
@@ -461,69 +610,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         body: Stack(
           children: [
+            // Fondo de partículas flotantes
             Positioned.fill(child: _FloatingParticles()),
-            Positioned(
-              top: 50,
-              right: 50,
-              child: AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Container(
-                    width: _pulseAnimation.value,
-                    height: _pulseAnimation.value,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Color(0xFFFFE5B4).withOpacity(0.7),
-                          Color(0xFFFFE5B4).withOpacity(0.5),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFFFFF3E0).withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+            // Círculo animado en la parte superior
+            _buildAnimatedCircle(),
+            // Contenido principal
             Padding(
               padding: const EdgeInsets.only(top: 100, bottom: 20),
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Text(
-                      'Estoy contigo...',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white.withOpacity(0.95),
-                        fontFamily: 'Lora',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'puedes hablar cuando quieras',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white.withOpacity(0.85),
-                      fontStyle: FontStyle.italic,
-                      fontFamily: 'Lora',
-                    ),
-                  ),
+                  // Encabezado con textos
+                  _buildHeader(),
                   SizedBox(height: 30),
+                  // Lista de mensajes
                   Expanded(
                     child: ListView.builder(
                       reverse: true,
-                      itemCount:
-                          _isTyping ? _messages.length + 1 : _messages.length,
+                      itemCount: _messages.length + (_isTyping ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (_isTyping && index == 0) {
                           return _buildTypingIndicator();
@@ -533,10 +636,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       },
                     ),
                   ),
-                  if (widget.inputMode == 'keyboard')
-                    _buildKeyboardInput()
-                  else
-                    _buildVoiceInput(),
+                  // Input (teclado o voz)
+                  _buildInput(),
                 ],
               ),
             ),
@@ -549,64 +650,52 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildKeyboardInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText: 'Escribe tu mensaje...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.black54),
-                  ),
-                  style: TextStyle(color: Colors.black87),
+      child: TextField(
+        controller: _controller,
+        style: TextStyle(color: Colors.black87),
+        decoration: InputDecoration(
+          hintText: 'Escribe lo que quieras...',
+          hintStyle: TextStyle(color: Colors.grey),
+          filled: true,
+          fillColor: ivoryColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: micButtonColor,
                 ),
+                onPressed: () async {
+                  if (_isListening) {
+                    _stopListening();
+                  } else {
+                    if (await _isUserAuthenticated()) {
+                      _startListening();
+                    } else {
+                      if (!mounted) return;
+                      _showAuthModal();
+                    }
+                  }
+                },
               ),
-            ),
-            IconButton(
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_none,
-                color: _isListening ? Colors.red : Color(0xFF4BB6A8),
-              ),
-              onPressed: () async {
-                if (_isListening) {
-                  _stopListening();
-                } else {
+              IconButton(
+                icon: Icon(Icons.send, color: micButtonColor),
+                onPressed: () async {
                   if (await _isUserAuthenticated()) {
-                    _startListening();
+                    _sendMessage(_controller.text);
                   } else {
                     if (!mounted) return;
                     _showAuthModal();
                   }
-                }
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.send, color: Color(0xFF4BB6A8)),
-              onPressed: () async {
-                if (await _isUserAuthenticated()) {
-                  _sendMessage(_controller.text);
-                } else {
-                  if (!mounted) return;
-                  _showAuthModal();
-                }
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -627,39 +716,29 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             }
           }
         },
-        child: AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: _isListening
-                  ? 1.1 + (_pulseAnimation.value - 90) * 0.005
-                  : 1.0,
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isListening
-                      ? Colors.red.withOpacity(0.7)
-                      : Colors.white.withOpacity(0.7),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _isListening
-                          ? Colors.red.withOpacity(0.4)
-                          : Colors.white.withOpacity(0.4),
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  size: 30,
-                  color: _isListening ? Colors.white : Colors.black54,
-                ),
+        child: Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _isListening
+                ? Colors.red.withOpacity(0.7)
+                : Colors.white.withOpacity(0.7),
+            boxShadow: [
+              BoxShadow(
+                color: _isListening
+                    ? Colors.red.withOpacity(0.4)
+                    : Colors.white.withOpacity(0.4),
+                blurRadius: 15,
+                spreadRadius: 2,
               ),
-            );
-          },
+            ],
+          ),
+          child: Icon(
+            _isListening ? Icons.mic : Icons.mic_none,
+            size: 30,
+            color: _isListening ? Colors.white : Colors.black54,
+          ),
         ),
       ),
     );
@@ -706,8 +785,10 @@ class __FloatingParticlesState extends State<_FloatingParticles>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return CustomPaint(
-          painter: _ParticlesPainter(_particles, _controller.value),
+        return SizedBox.expand(
+          child: CustomPaint(
+            painter: _ParticlesPainter(_particles, _controller.value),
+          ),
         );
       },
     );

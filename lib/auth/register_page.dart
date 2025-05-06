@@ -20,33 +20,16 @@ class RegisterModal extends StatefulWidget {
   State<RegisterModal> createState() => _RegisterModalState();
 }
 
-class _RegisterModalState extends State<RegisterModal>
-    with SingleTickerProviderStateMixin {
+class _RegisterModalState extends State<RegisterModal> {
   bool isObscure = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(begin: 80, end: 120).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
 
   @override
   void dispose() {
-    _controller.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
@@ -232,25 +215,20 @@ class _RegisterModalState extends State<RegisterModal>
                     children: [
                       const SizedBox(height: 16),
                       Center(
-                        child: AnimatedBuilder(
-                          animation: _animation,
-                          builder: (_, __) {
-                            return Container(
-                              width: _animation.value,
-                              height: _animation.value,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.amber.withOpacity(0.3),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.amber.withOpacity(0.5),
-                                    blurRadius: 50,
-                                    spreadRadius: 4,
-                                  ),
-                                ],
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.amber.withOpacity(0.3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.5),
+                                blurRadius: 50,
+                                spreadRadius: 4,
                               ),
-                            );
-                          },
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

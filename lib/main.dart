@@ -11,8 +11,7 @@ import 'package:user_auth_crudd10/onscreen/onboardingWrapper.dart';
 import 'package:user_auth_crudd10/pages/Mercadopago/payment_service.dart';
 import 'package:user_auth_crudd10/pages/bottom_nav.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/services/BonoService.dart';
-import 'package:user_auth_crudd10/services/functions/firebase_notification.dart';
+ import 'package:user_auth_crudd10/services/functions/firebase_notification.dart';
 import 'package:user_auth_crudd10/services/notifcationService.dart';
 import 'package:user_auth_crudd10/services/providers/storage_ans_provider.dart';
 import 'package:user_auth_crudd10/services/providers/storage_provider.dart';
@@ -53,8 +52,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => StorageProvider()),
         ChangeNotifierProvider(create: (context) => StorageAnsProvider()),
         Provider<AuthService>(create: (_) => AuthService()),
-        Provider<BonoService>(create: (_) => BonoService(baseUrl: baseUrl)),
-        Provider<PaymentService>(create: (_) => PaymentService()),
+         Provider<PaymentService>(create: (_) => PaymentService()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

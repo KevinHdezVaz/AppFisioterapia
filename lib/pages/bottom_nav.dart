@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/pages/others/profile_page.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
+ import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
 import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
 import 'package:user_auth_crudd10/utils/colors.dart';
 
@@ -26,7 +25,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       //  HomeScreen(),
       const ChatHistoryScreen(),
       
-      const ProfilePage(),
+   //   const ProfilePage(),
     ];
   }
 

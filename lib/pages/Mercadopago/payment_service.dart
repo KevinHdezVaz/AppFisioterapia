@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
- import 'package:user_auth_crudd10/model/OrderItem.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 import 'package:user_auth_crudd10/utils/constantes.dart';
 import 'package:http/http.dart' as http;
@@ -75,6 +74,9 @@ class PaymentService {
     }
   }
 
+
+  /*
+
  Future<Map<String, dynamic>> procesarPago(
   BuildContext context,
   List<OrderItem> items, {
@@ -139,4 +141,5 @@ class PaymentService {
     throw Exception('Error de conexión o procesamiento: $e');
   }
 }
+*/
 }
