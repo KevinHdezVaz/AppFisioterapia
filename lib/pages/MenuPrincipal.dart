@@ -108,7 +108,8 @@ class _MenuprincipalState extends State<Menuprincipal>
     );
   }
 
-  Future<void> _handleAction(BuildContext context, {bool isVoice = false}) async {
+  Future<void> _handleAction(BuildContext context,
+      {bool isVoice = false}) async {
     final isAuthenticated = await _isUserAuthenticated();
     if (!isAuthenticated) {
       _showLoginModal(context);
@@ -132,7 +133,8 @@ class _MenuprincipalState extends State<Menuprincipal>
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
 
           return SlideTransition(
@@ -182,7 +184,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                       String headerText =
                           isAuthenticated && userSnapshot.data != null
                               ? 'Hola, ${userSnapshot.data}'
-                              : 'Lumorah';
+                              : 'Lumorah.ai';
                       return DrawerHeader(
                         decoration: BoxDecoration(
                           color: ivoryColor.withOpacity(0.7),
@@ -215,15 +217,17 @@ class _MenuprincipalState extends State<Menuprincipal>
                       Navigator.push(
                         context,
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              ChatScreen(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ChatScreen(
                             initialMessages: [],
                             inputMode: 'keyboard',
                             sessionId: null,
                           ),
                           transitionsBuilder:
                               (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(1.0, 0.0); // Deslizar desde la derecha
+                            const begin =
+                                Offset(1.0, 0.0); // Deslizar desde la derecha
                             const end = Offset.zero;
                             const curve = Curves.easeInOut;
 
@@ -394,7 +398,8 @@ class _MenuprincipalState extends State<Menuprincipal>
                         children: [
                           IconButton(
                             icon: Icon(Icons.mic, color: micButtonColor),
-                            onPressed: () => _handleAction(context, isVoice: true),
+                            onPressed: () =>
+                                _handleAction(context, isVoice: true),
                           ),
                           IconButton(
                             icon: Icon(Icons.send, color: micButtonColor),

@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:user_auth_crudd10/model/ChatSession.dart';
 import 'package:user_auth_crudd10/services/storage_service.dart';
 import 'package:user_auth_crudd10/utils/constantes.dart';
 
 class ChatServiceApi {
   final StorageService storage = StorageService();
 
-  Future<Map<String, dynamic>> _authenticatedRequest({
+  Future<dynamic> _authenticatedRequest({
     required String method,
     required String endpoint,
     Map<String, dynamic>? body,
@@ -44,7 +45,7 @@ class ChatServiceApi {
         throw Exception(errorData['message'] ?? 'Error en la solicitud');
       }
 
-      return jsonDecode(responseBody.body);
+      return jsonDecode(responseBody.body); // Devuelve dynamic
     } on TimeoutException {
       throw Exception('Tiempo de espera agotado');
     } catch (e) {
@@ -52,13 +53,44 @@ class ChatServiceApi {
     }
   }
 
-  // Obtener todas las sesiones guardadas
-  Future<List<dynamic>> getSessions() async {
-    final response = await _authenticatedRequest(
-      method: 'GET',
-      endpoint: 'chat/sessions',
-    );
-    return response['data'] ?? [];
+  Future<List<ChatSession>> getSessions() async {
+    try {
+      final response = await _authenticatedRequest(
+        method: 'GET',
+        endpoint: 'chat/sessions',
+      );
+
+      debugPrint('Response from getSessions: $response'); // Para depuración
+
+      // Validar que la respuesta sea un Map y tenga el campo 'data'
+      if (response is! Map<String, dynamic>) {
+        throw FormatException(
+            'Se esperaba un Map<String, dynamic>, se obtuvo ${response.runtimeType}');
+      }
+
+      if (response['success'] != true) {
+        throw Exception(
+            'La solicitud falló: ${response['message'] ?? 'Error desconocido'}');
+      }
+
+      final sessionsData = response['data'];
+      if (sessionsData is! List) {
+        throw FormatException(
+            'Se esperaba una lista en response["data"], se obtuvo ${sessionsData.runtimeType}');
+      }
+
+      return sessionsData.map((json) {
+        if (json is Map<String, dynamic>) {
+          return ChatSession.fromJson(json);
+        } else {
+          throw FormatException(
+              'Elemento inválido en la lista: se esperaba Map<String, dynamic>, se obtuvo ${json.runtimeType}');
+        }
+      }).toList();
+    } catch (e) {
+      debugPrint('Error en getSessions: $e');
+      rethrow;
+    }
   }
 
   // Eliminar una sesión
@@ -70,20 +102,26 @@ class ChatServiceApi {
   }
 
   // Obtener mensajes de una sesión
-  Future<List<dynamic>> getSessionMessages(int sessionId) async {
+  Future<List<Map<String, dynamic>>> getSessionMessages(int sessionId) async {
     final response = await _authenticatedRequest(
       method: 'GET',
       endpoint: 'chat/sessions/$sessionId/messages',
     );
-    return response['data'] ?? [];
+
+    if (response is List) {
+      return List<Map<String, dynamic>>.from(response);
+    } else {
+      throw FormatException(
+          'Se esperaba una lista de mensajes, se obtuvo ${response.runtimeType}');
+    }
   }
 
-  // Guardar una nueva sesión (solo se llama cuando el usuario hace clic en guardar)
-  Future<Map<String, dynamic>> saveChatSession({
+  // Para guardar explícitamente
+  Future<void> saveChatSession({
     required String title,
     required List<Map<String, dynamic>> messages,
   }) async {
-    return await _authenticatedRequest(
+    await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/sessions',
       body: {
@@ -93,12 +131,12 @@ class ChatServiceApi {
     );
   }
 
-  // Enviar mensaje sin crear sesión persistente
   Future<Map<String, dynamic>> sendMessage(String message) async {
-    return await _authenticatedRequest(
+    final response = await _authenticatedRequest(
       method: 'POST',
-      endpoint: 'chat/send-message',
+      endpoint: 'chat/send-message', // Endpoint que NO persiste
       body: {'message': message},
     );
+    return response;
   }
 }

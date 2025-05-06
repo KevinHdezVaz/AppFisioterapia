@@ -18,7 +18,6 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   List<ChatSession> _sessions = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  bool _showOnlySaved = true; // Variable para filtrar chats guardados
 
   @override
   void initState() {
@@ -29,12 +28,16 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   Future<void> _fetchSessions() async {
     try {
       setState(() => _isLoading = true);
-      final sessionsJson = await _chatService.getSessions();
+      final sessions = await _chatService.getSessions();
       setState(() {
-        _sessions = sessionsJson
-            .map((json) => ChatSession.fromJson(json))
-            .where((session) => session.deletedAt == null)
-            .toList();
+        // Validar y asignar las sesiones
+        if (sessions is List<ChatSession>) {
+          _sessions =
+              sessions.where((session) => session.deletedAt == null).toList();
+        } else {
+          throw FormatException(
+              'Se esperaba List<ChatSession>, se obtuvo ${sessions.runtimeType}');
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -54,9 +57,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   }
 
   List<ChatSession> get _filteredSessions {
-    var filtered = _sessions
-        .where((session) => !_showOnlySaved || session.isSaved)
-        .toList();
+    var filtered = _sessions.toList(); // Mostrar todas las sesiones sin filtro
 
     if (_searchQuery.isNotEmpty) {
       filtered = filtered
@@ -125,20 +126,9 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                   style: GoogleFonts.lora(color: Colors.white),
                   onChanged: (value) => setState(() => _searchQuery = value),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text('Mostrar solo guardados',
-                        style: GoogleFonts.lora(color: Colors.white70)),
-                    Switch(
-                      value: _showOnlySaved,
-                      activeColor: LumorahColors.secondary,
-                      onChanged: (value) =>
-                          setState(() => _showOnlySaved = value),
-                    ),
-                  ],
-                ),
+                const SizedBox(
+                    height:
+                        8), // Mantenemos el espacio para consistencia visual
               ],
             ),
           ),
@@ -207,23 +197,74 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   void _showDeleteDialog(int sessionId) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Eliminar conversación', style: GoogleFonts.lora()),
-        content: Text('¿Estás seguro de eliminar esta conversación?',
-            style: GoogleFonts.lora()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.lora()),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Color(0xFFFDF8F2), // marfil suave
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: Color.fromARGB(255, 214, 126, 18), size: 48),
+              SizedBox(height: 16),
+              Text(
+                '¿Eliminar esta conversación?',
+                style: GoogleFonts.lora(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Este espacio ha sido parte de tu proceso.\n¿Deseas dejarlo ir?',
+                style: GoogleFonts.lora(
+                  fontSize: 16,
+                  color: Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Color(0xFF88D5C2),
+                    ),
+                    child: Text(
+                      'Cancelar',
+                      style: GoogleFonts.lora(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteSession(sessionId);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    child: Text(
+                      'Eliminar',
+                      style: GoogleFonts.lora(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteSession(sessionId);
-            },
-            child: Text('Eliminar', style: GoogleFonts.lora(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -248,7 +289,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
           builder: (context) => ChatScreen(
             initialMessages: messages,
             inputMode: 'keyboard',
-            sessionId: session.id, // Opcional: Puedes eliminarlo si no lo usas
+            sessionId: session.id,
           ),
         ),
       );
@@ -269,9 +310,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 size: 64, color: Colors.white.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(
-              _showOnlySaved
-                  ? 'No hay conversaciones guardadas'
-                  : 'No hay conversaciones',
+              'No hay conversaciones',
               style: GoogleFonts.lora(
                 color: Colors.white,
                 fontSize: 18,
@@ -280,9 +319,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              _showOnlySaved
-                  ? 'Intenta desactivar el filtro de guardados'
-                  : 'Comienza una nueva conversación',
+              'Comienza una nueva conversación',
               style: GoogleFonts.lora(
                 color: Colors.white70,
               ),
