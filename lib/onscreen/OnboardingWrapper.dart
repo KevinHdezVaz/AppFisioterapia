@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/onscreen/screen_cuatro.dart';
-import 'package:user_auth_crudd10/onscreen/screen_one.dart';
-import 'package:user_auth_crudd10/onscreen/screen_two.dart';
+import 'package:LumorahAI/onscreen/screen_cuatro.dart';
+import 'package:LumorahAI/onscreen/screen_one.dart';
+import 'package:LumorahAI/onscreen/screen_two.dart';
 
 class OnboardingWrapper extends StatelessWidget {
   final PageController _pageController = PageController();

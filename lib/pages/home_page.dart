@@ -1,11 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/auth/register_page.dart';
-import 'package:user_auth_crudd10/pages/IntroPage.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:flutter/services.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/auth/login_page.dart';
+import 'package:LumorahAI/auth/register_page.dart';
+import 'package:LumorahAI/pages/IntroPage.dart';
+import 'package:LumorahAI/utils/colors.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -191,7 +192,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 40),
                 ElevatedButton(
+                  
                   onPressed: () {
+                 HapticFeedback.lightImpact(); // Trigger vibration
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -201,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                   style: ElevatedButton.styleFrom(
+                    
                     backgroundColor: Color(0xFFFDF8F2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),

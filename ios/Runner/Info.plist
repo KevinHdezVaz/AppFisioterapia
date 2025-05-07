@@ -9,7 +9,24 @@
       <string>tel</string>
       <string>mailto</string>
   </array>
-  
+  <key>NSSpeechRecognitionUsageDescription</key>
+<string>Se necesita el reconocimiento de voz para convertir tu habla en texto.</string>
+
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Se necesita acceder a tu ubicación para mejorar la experiencia del usuario basada en tu localización.</string>
+
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.googleusercontent.apps.709069828022-dl6ee03rv72hbshc7d99jdfrpk993j8b</string>
+    </array>
+  </dict>
+</array>
+
   <key>NSMicrophoneUsageDescription</key>
 <string>Se necesita acceso al micrófono para grabar voz</string>
   <key>CFBundleDevelopmentRegion</key>

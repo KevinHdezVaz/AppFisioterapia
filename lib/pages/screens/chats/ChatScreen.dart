@@ -3,13 +3,13 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_chat_bubble/chat_bubble.dart';
 import 'package:flutter_chat_bubble/bubble_type.dart';
 import 'package:flutter_chat_bubble/clippers/chat_bubble_clipper_1.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/auth/register_page.dart';
-import 'package:user_auth_crudd10/model/ChatMessage.dart';
-import 'package:user_auth_crudd10/pages/MenuPrincipal.dart';
-import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/auth/login_page.dart';
+import 'package:LumorahAI/auth/register_page.dart';
+import 'package:LumorahAI/model/ChatMessage.dart';
+import 'package:LumorahAI/pages/MenuPrincipal.dart';
+import 'package:LumorahAI/services/ChatServiceApi.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
@@ -593,10 +593,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             Padding(
               padding: EdgeInsets.only(right: 10),
               child: TextButton.icon(
-                icon: Icon(Icons.save, color: Colors.blue, size: 22),
+                icon: Icon(Icons.save, color: Colors.black, size: 22),
                 label: Text(
                   'Guardar',
-                  style: TextStyle(color: Colors.blue, fontSize: 14),
+                  style: TextStyle(color: Colors.black, fontSize: 14),
                 ),
                 onPressed: _saveChat,
                 style: TextButton.styleFrom(

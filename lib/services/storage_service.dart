@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:user_auth_crudd10/model/User.dart';
+import 'package:LumorahAI/model/User.dart';
 
 class StorageService {
   static const String tokenKey = 'auth_token';

@@ -5,19 +5,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/onscreen/onboardingWrapper.dart';
-import 'package:user_auth_crudd10/pages/Mercadopago/payment_service.dart';
-import 'package:user_auth_crudd10/pages/bottom_nav.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
- import 'package:user_auth_crudd10/services/functions/firebase_notification.dart';
-import 'package:user_auth_crudd10/services/notifcationService.dart';
-import 'package:user_auth_crudd10/services/providers/storage_ans_provider.dart';
-import 'package:user_auth_crudd10/services/providers/storage_provider.dart';
-import 'package:user_auth_crudd10/services/settings/theme_data.dart';
-import 'package:user_auth_crudd10/services/settings/theme_provider.dart';
-import 'package:user_auth_crudd10/utils/constantes.dart';
+import 'package:LumorahAI/auth/auth_check.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/onscreen/onboardingWrapper.dart';
+import 'package:LumorahAI/pages/Mercadopago/payment_service.dart';
+import 'package:LumorahAI/pages/bottom_nav.dart';
+import 'package:LumorahAI/pages/home_page.dart';
+ import 'package:LumorahAI/services/functions/firebase_notification.dart';
+import 'package:LumorahAI/services/notifcationService.dart';
+import 'package:LumorahAI/services/providers/storage_ans_provider.dart';
+import 'package:LumorahAI/services/providers/storage_provider.dart';
+import 'package:LumorahAI/services/settings/theme_data.dart';
+import 'package:LumorahAI/services/settings/theme_provider.dart';
+import 'package:LumorahAI/utils/constantes.dart';
 import 'firebase_options.dart';
 import 'package:http/http.dart' as http;
 
@@ -30,7 +30,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FirbaseApi().initNotifications();
+  await FirebaseApi().initNotifications();
 
   runApp(
     ChangeNotifierProvider(

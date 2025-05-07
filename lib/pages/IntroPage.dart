@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/pages/MenuPrincipal.dart';
+import 'package:flutter/services.dart';
+import 'package:LumorahAI/pages/MenuPrincipal.dart';
 
 class IntroPage extends StatefulWidget {
   final int pageIndex;
@@ -199,6 +200,8 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
                       scale: _buttonScaleAnimation,
                       child: ElevatedButton(
                         onPressed: () {
+                                              HapticFeedback.lightImpact(); // Trigger vibration
+
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(builder: config['nextPage']),

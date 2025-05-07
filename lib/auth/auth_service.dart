@@ -1,14 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
-import 'package:user_auth_crudd10/model/User.dart';
+import 'package:LumorahAI/model/User.dart';
 import 'dart:convert';
-import 'package:user_auth_crudd10/services/storage_service.dart';
-import 'package:user_auth_crudd10/utils/constantes.dart';
+import 'package:LumorahAI/services/storage_service.dart';
+import 'package:LumorahAI/utils/constantes.dart';
 
 class AuthService {
   final storage = StorageService();
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
   Future<bool> updateProfile({
     String? name,
     String? phone,
@@ -111,6 +115,62 @@ class AuthService {
       return false;
     }
   }
+ // Tu método existente loginWithGoogle ya está bien:
+  Future<bool> loginWithGoogle(String? idToken) async {
+    if (idToken == null) return false;
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id_token': idToken}),
+      );
+
+      if (response.statusCode != 200) return false;
+
+      final data = json.decode(response.body);
+      if (data['token'] != null) {
+        await storage.saveToken(data['token']);
+        if (data['user'] != null) {
+          final user = User.fromJson(data['user']);
+          await storage.saveUser(user);
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error en loginWithGoogle: $e');
+      return false;
+    }
+  }
+  
+
+    Future<bool> signInWithGoogle() async {
+    try {
+      // 1. Iniciar el flujo de autenticación con Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return false;
+
+      // 2. Obtener los tokens de autenticación
+      final GoogleSignInAuthentication googleAuth = 
+          await googleUser.authentication;
+
+      // 3. Verificar que tenemos el idToken
+      if (googleAuth.idToken == null) {
+        throw Exception('No se pudo obtener el ID token de Google');
+      }
+
+      // 4. Enviar el token a tu backend Laravel
+      return await loginWithGoogle(googleAuth.idToken!);
+    } catch (e) {
+      print('Error en Google Sign-In: $e');
+      return false;
+    }
+  }
+
+
+
+
 
   Future<void> updateDeviceToken(String token) async {
     try {
@@ -196,42 +256,7 @@ class AuthService {
     }
   }
 
-  Future<bool> loginWithGoogle(String? idToken) async {
-    if (idToken == null) {
-      return false;
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/login/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'id_token': idToken}),
-      );
-
-      print('Status code: ${response.statusCode}');
-      print('Respuesta: ${response.body}');
-
-      if (response.statusCode != 200) {
-        throw Exception('Error en el servidor: ${response.statusCode}');
-      }
-
-      final data = json.decode(response.body);
-      if (data['token'] != null) {
-        await storage.saveToken(data['token']);
-        if (data['user'] != null) {
-          final user = User.fromJson(data['user']);
-          await storage.saveUser(user);
-          print('Google login user saved: ${user.toJson()}');
-        }
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Error: $e');
-      return false;
-    }
-  }
-
+ 
   Future<int?> getCurrentUserId() async {
     try {
       final profileData = await getProfile();

@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:user_auth_crudd10/utils/constantes.dart';
+import 'package:LumorahAI/utils/constantes.dart';
 
 class ForgetPassPage extends StatefulWidget {
   const ForgetPassPage({super.key});

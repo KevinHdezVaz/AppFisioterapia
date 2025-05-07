@@ -2,9 +2,9 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
-import 'package:user_auth_crudd10/model/Notificacion.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
-import 'package:user_auth_crudd10/utils/constantes.dart';
+import 'package:LumorahAI/model/Notificacion.dart';
+import 'package:LumorahAI/services/storage_service.dart';
+import 'package:LumorahAI/utils/constantes.dart';
 
 class NotificationServiceExtension {
   final StorageService storage = StorageService();

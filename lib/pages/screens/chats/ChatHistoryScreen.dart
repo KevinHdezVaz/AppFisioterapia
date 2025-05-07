@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_auth_crudd10/model/ChatMessage.dart';
-import 'package:user_auth_crudd10/model/ChatSession.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
-import 'package:user_auth_crudd10/services/ChatServiceApi.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
+import 'package:LumorahAI/model/ChatMessage.dart';
+import 'package:LumorahAI/model/ChatSession.dart';
+import 'package:LumorahAI/pages/home_page.dart';
+import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
+import 'package:LumorahAI/services/ChatServiceApi.dart';
+import 'package:LumorahAI/utils/colors.dart';
 
 class ChatHistoryScreen extends StatefulWidget {
   const ChatHistoryScreen({Key? key}) : super(key: key);

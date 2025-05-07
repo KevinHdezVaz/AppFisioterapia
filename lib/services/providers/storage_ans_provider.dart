@@ -1,6 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/services/providers/storage_answer_item.dart';
+import 'package:LumorahAI/services/providers/storage_answer_item.dart';
 
 class StorageAnsProvider extends ChangeNotifier {
   final FirebaseStorage ansstorage = FirebaseStorage.instance;

@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/pages/IntroPaga3.dart';
+import 'package:LumorahAI/pages/IntroPaga3.dart';
 
 class IntroPage2 extends StatefulWidget {
   @override

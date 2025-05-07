@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
-import 'package:user_auth_crudd10/utils/constantes.dart';
+import 'package:LumorahAI/services/storage_service.dart';
+import 'package:LumorahAI/utils/constantes.dart';
 import 'package:http/http.dart' as http;
 
 import '../../main.dart';

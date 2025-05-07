@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/auth/auth_page_check.dart';
-import 'package:user_auth_crudd10/pages/bottom_nav.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:LumorahAI/auth/auth_page_check.dart';
+import 'package:LumorahAI/pages/bottom_nav.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 
 /*
 class AuthCheckMain extends StatelessWidget {

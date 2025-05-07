@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-import 'package:user_auth_crudd10/auth/auth_service.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
 // No necesitamos importar ProfilePage si solo vamos a regresar a la pantalla anterior
 
 class UpdateProfileScreen extends StatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/auth/register_page.dart';
+import 'package:LumorahAI/auth/login_page.dart';
+import 'package:LumorahAI/auth/register_page.dart';
 
 /*
 class AuthPageCheck extends StatefulWidget {

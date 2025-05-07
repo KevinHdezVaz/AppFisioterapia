@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/auth/login_page.dart';
-import 'package:user_auth_crudd10/auth/register_page.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/auth/login_page.dart';
+import 'package:LumorahAI/auth/register_page.dart';
+import 'package:LumorahAI/pages/screens/chats/ChatHistoryScreen.dart';
+import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
+import 'package:LumorahAI/utils/colors.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 
 class Menuprincipal extends StatefulWidget {
   @override

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:particles_flutter/particles_engine.dart';
-import 'package:user_auth_crudd10/auth/auth_service.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
-import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
+import 'package:LumorahAI/utils/ParticleUtils.dart';
+import 'package:LumorahAI/utils/colors.dart';
 
 class RegisterModal extends StatefulWidget {
   final VoidCallback? showLoginPage;
@@ -386,7 +386,74 @@ class _RegisterModalState extends State<RegisterModal> {
                                 TextStyle(color: LumorahColors.primaryDarker),
                           ),
                         ),
-                      const SizedBox(height: 20),
+             // Agrega este botón después de tu botón de "Crear cuenta"
+const SizedBox(height: 20),
+Text(
+  "O regístrate con",
+  style: TextStyle(
+    color: LumorahColors.textOnPrimary,
+    fontSize: 14,
+  ),
+),
+const SizedBox(height: 16),
+OutlinedButton(
+  onPressed: () async {
+    try {
+      showDialog(
+        context: context,
+        builder: (_) => Center(
+          child: CircularProgressIndicator(
+            color: LumorahColors.primary,
+          ),
+        ),
+      );
+      
+      final success = await _authService.signInWithGoogle();
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Cerrar loading
+      
+      if (success) {
+        Navigator.pop(context); // Cerrar RegisterModal
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              initialMessages: [],
+              inputMode: widget.inputMode ?? 'keyboard',
+            ),
+          ),
+        );
+      } else {
+        showErrorSnackBar("Error al registrar con Google");
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Cerrar loading
+      showErrorSnackBar("Error: ${e.toString()}");
+    }
+  },
+  style: OutlinedButton.styleFrom(
+    foregroundColor: LumorahColors.textOnPrimary,
+    side: BorderSide(color: LumorahColors.textOnPrimary),
+    minimumSize: const Size(200, 50),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+  ),
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Image.asset(
+        'assets/images/google_logo.png',
+        height: 24,
+        width: 24,
+      ),
+      const SizedBox(width: 8),
+      const Text("Continuar con Google"),
+    ],
+  ),
+),
                     ],
                   ),
                 ),

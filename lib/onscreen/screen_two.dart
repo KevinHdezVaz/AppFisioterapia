@@ -4,12 +4,12 @@ import 'package:flutter/painting.dart';
 import 'package:lottie/lottie.dart';
 import 'package:particles_flutter/particles_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:user_auth_crudd10/auth/auth_check.dart';
-import 'package:user_auth_crudd10/onscreen/screen_cuatro.dart';
-import 'package:user_auth_crudd10/onscreen/screen_two.dart';
-import 'package:user_auth_crudd10/onscreen/slanding_clipper.dart';
-import 'package:user_auth_crudd10/utils/ParticleUtils.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
+import 'package:LumorahAI/auth/auth_check.dart';
+import 'package:LumorahAI/onscreen/screen_cuatro.dart';
+import 'package:LumorahAI/onscreen/screen_two.dart';
+import 'package:LumorahAI/onscreen/slanding_clipper.dart';
+import 'package:LumorahAI/utils/ParticleUtils.dart';
+import 'package:LumorahAI/utils/colors.dart';
 import 'constants2.dart';
 
 class OnboardingScreenTwo extends StatelessWidget {

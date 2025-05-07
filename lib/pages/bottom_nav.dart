@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/pages/home_page.dart';
- import 'package:user_auth_crudd10/pages/screens/chats/ChatHistoryScreen.dart';
-import 'package:user_auth_crudd10/pages/screens/chats/ChatScreen.dart';
-import 'package:user_auth_crudd10/utils/colors.dart';
+import 'package:LumorahAI/pages/home_page.dart';
+ import 'package:LumorahAI/pages/screens/chats/ChatHistoryScreen.dart';
+import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
+import 'package:LumorahAI/utils/colors.dart';
 
 // Versión final del BottomNavBar con íconos y rutas optimizadas
 class BottomNavBar extends StatefulWidget {

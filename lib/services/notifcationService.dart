@@ -1,8 +1,8 @@
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:user_auth_crudd10/auth/auth_service.dart';
+import 'package:LumorahAI/auth/auth_service.dart';
 import 'dart:convert';
-import 'package:user_auth_crudd10/services/storage_service.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 
 class NotificationService {
   static Future<void> init() async {

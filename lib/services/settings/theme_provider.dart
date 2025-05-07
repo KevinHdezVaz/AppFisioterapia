@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:user_auth_crudd10/services/settings/theme_data.dart';
+import 'package:LumorahAI/services/settings/theme_data.dart';
 
 class ThemeProvider with ChangeNotifier {
   bool _isDarkMode = false;
