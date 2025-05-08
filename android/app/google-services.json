@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "709069828022-f0ho4lsrqiqcjsue3kicuvtamqpnp60k.apps.googleusercontent.com",
+          "client_id": "709069828022-8kvhc185ue5e20u88eofmv6cfcp0mua3.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.lumorah.app",
-            "certificate_hash": "4830c044e3db168d4c593379fe6f48c69919d3fb"
+            "certificate_hash": "2572a8ad1accb6888f5f8f26f9be92dafff43b0a"
           }
         },
         {

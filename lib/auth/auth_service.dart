@@ -12,7 +12,10 @@ class AuthService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
+    serverClientId:
+        '709069828022-8kvhc185ue5e20u88eofmv6cfcp0mua3.apps.googleusercontent.com',
   );
+
   Future<bool> updateProfile({
     String? name,
     String? phone,
@@ -115,18 +118,22 @@ class AuthService {
       return false;
     }
   }
- // Tu método existente loginWithGoogle ya está bien:
+
   Future<bool> loginWithGoogle(String? idToken) async {
     if (idToken == null) return false;
-    
+
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login/google'),
+        Uri.parse('$baseUrl/google-login'), // Ajustado al endpoint correcto
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'id_token': idToken}),
       );
 
-      if (response.statusCode != 200) return false;
+      print('Google login response: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception('Error ${response.statusCode}: ${response.body}');
+      }
 
       final data = json.decode(response.body);
       if (data['token'] != null) {
@@ -134,26 +141,30 @@ class AuthService {
         if (data['user'] != null) {
           final user = User.fromJson(data['user']);
           await storage.saveUser(user);
+          if (data['user']['id'] != null) {
+            await saveUserId(data['user']['id']);
+          }
         }
         return true;
       }
       return false;
     } catch (e) {
       print('Error en loginWithGoogle: $e');
-      return false;
+      throw Exception('Error en Google Sign-In: $e');
     }
   }
-  
 
-    Future<bool> signInWithGoogle() async {
+  Future<bool> signInWithGoogle() async {
     try {
       // 1. Iniciar el flujo de autenticación con Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return false;
 
       // 2. Obtener los tokens de autenticación
-      final GoogleSignInAuthentication googleAuth = 
+      final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      print('idToken generado: ${googleAuth.idToken}');
 
       // 3. Verificar que tenemos el idToken
       if (googleAuth.idToken == null) {
@@ -167,10 +178,6 @@ class AuthService {
       return false;
     }
   }
-
-
-
-
 
   Future<void> updateDeviceToken(String token) async {
     try {
@@ -256,7 +263,6 @@ class AuthService {
     }
   }
 
- 
   Future<int?> getCurrentUserId() async {
     try {
       final profileData = await getProfile();

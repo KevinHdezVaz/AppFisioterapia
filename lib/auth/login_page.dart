@@ -2,7 +2,7 @@ import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/utils/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; 
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginModal extends StatefulWidget {
   final VoidCallback? showRegisterPage;
@@ -292,72 +292,73 @@ class _LoginModalState extends State<LoginModal> {
                     ),
                   const SizedBox(height: 20),
                   // Agrega este botón después de tu botón de "Entrar"
- Text(
-  "O inicia con",
-  style: TextStyle(
-    color: LumorahColors.textOnPrimary,
-    fontSize: 14,
-  ),
-),
-const SizedBox(height: 16),
-OutlinedButton(
-  onPressed: () async {
-    try {
-      showDialog(
-        context: context,
-        builder: (_) => Center(
-          child: CircularProgressIndicator(
-            color: LumorahColors.primary,
-          ),
-        ),
-      );
-      
-      final success = await _authService.signInWithGoogle();
-      
-      if (!mounted) return;
-      Navigator.pop(context); // Cerrar loading
-      
-      if (success) {
-        Navigator.pop(context); // Cerrar LoginModal
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(
-              initialMessages: [],
-              inputMode: widget.inputMode ?? 'keyboard',
-            ),
-          ),
-        );
-      } else {
-        showErrorSnackBar("Error al iniciar con Google");
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Cerrar loading
-      showErrorSnackBar("Error: ${e.toString()}");
-    }
-  },
-  style: OutlinedButton.styleFrom(
-    foregroundColor: LumorahColors.textOnPrimary,
-    side: BorderSide(color: LumorahColors.textOnPrimary),
-    minimumSize: const Size(200, 50),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-  ),
-  child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Image.asset(
-        'assets/images/google_logo.png',
-        height: 24,
-        width: 24,
-      ),
-      const SizedBox(width: 8),
-      const Text("Continuar con Google"),
-    ],
-  ),
-),
+                  Text(
+                    "O inicia con",
+                    style: TextStyle(
+                      color: LumorahColors.textOnPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: () async {
+                      try {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Center(
+                            child: CircularProgressIndicator(
+                              color: LumorahColors.primary,
+                            ),
+                          ),
+                        );
+
+                        final success = await _authService.signInWithGoogle();
+
+                        if (!mounted) return;
+                        Navigator.pop(context); // Cerrar loading
+
+                        if (success) {
+                          Navigator.pop(context); // Cerrar LoginModal
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                initialMessages: [],
+                                inputMode: widget.inputMode ?? 'keyboard',
+                              ),
+                            ),
+                          );
+                        } else {
+                          showErrorSnackBar("Error al iniciar con Google");
+                        }
+                      } catch (e) {
+                        if (!mounted) return;
+                        Navigator.pop(context); // Cerrar loading
+                        showErrorSnackBar("Error: ${e.toString()}");
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: LumorahColors.textOnPrimary,
+                      side: BorderSide(color: LumorahColors.textOnPrimary),
+                      minimumSize: const Size(200, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/google.png',
+                          height: 24,
+                          width: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text("Continuar con Google"),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
