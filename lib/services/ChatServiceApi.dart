@@ -45,7 +45,7 @@ class ChatServiceApi {
         throw Exception(errorData['message'] ?? 'Error en la solicitud');
       }
 
-      return jsonDecode(responseBody.body); // Devuelve dynamic
+      return jsonDecode(responseBody.body);
     } on TimeoutException {
       throw Exception('Tiempo de espera agotado');
     } catch (e) {
@@ -60,9 +60,8 @@ class ChatServiceApi {
         endpoint: 'chat/sessions',
       );
 
-      debugPrint('Response from getSessions: $response'); // Para depuración
+      debugPrint('Response from getSessions: $response');
 
-      // Validar que la respuesta sea un Map y tenga el campo 'data'
       if (response is! Map<String, dynamic>) {
         throw FormatException(
             'Se esperaba un Map<String, dynamic>, se obtuvo ${response.runtimeType}');
@@ -93,7 +92,6 @@ class ChatServiceApi {
     }
   }
 
-  // Eliminar una sesión
   Future<void> deleteSession(int sessionId) async {
     await _authenticatedRequest(
       method: 'DELETE',
@@ -101,7 +99,6 @@ class ChatServiceApi {
     );
   }
 
-  // Obtener mensajes de una sesión
   Future<List<Map<String, dynamic>>> getSessionMessages(int sessionId) async {
     final response = await _authenticatedRequest(
       method: 'GET',
@@ -116,7 +113,6 @@ class ChatServiceApi {
     }
   }
 
-  // Para guardar explícitamente
   Future<void> saveChatSession({
     required String title,
     required List<Map<String, dynamic>> messages,
@@ -131,12 +127,56 @@ class ChatServiceApi {
     );
   }
 
-  Future<Map<String, dynamic>> sendMessage(String message) async {
+  // Métodos existentes actualizados
+  Future<Map<String, dynamic>> sendMessage({
+    required String message,
+    int? sessionId,
+    bool isTemporary = false,
+  }) async {
     final response = await _authenticatedRequest(
       method: 'POST',
-      endpoint: 'chat/send-message', // Endpoint que NO persiste
+      endpoint: 'chat/send-message',
+      body: {
+        'message': message,
+        'session_id': sessionId,
+        'is_temporary': isTemporary,
+      },
+    );
+    return response;
+  }
+
+  // Nuevos métodos para Lumorah.AI
+  Future<Map<String, dynamic>> sendTemporaryMessage(String message) async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/send-temporary-message',
       body: {'message': message},
     );
     return response;
+  }
+
+  Future<Map<String, dynamic>> startNewSession() async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/start-new-session',
+    );
+    return response;
+  }
+
+  Future<void> updateUserName(String name) async {
+    await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'update-name',
+      body: {'name': name},
+    );
+  }
+
+  // Método para guardar sesión existente
+  Future<void> saveSession(int sessionId, String title) async {
+    await _authenticatedRequest(
+      method: 'PUT',
+      endpoint: 'chat/sessions/$sessionId',
+      body: {'title': title},
+    );
   }
 }

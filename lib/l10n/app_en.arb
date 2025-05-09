@@ -1,7 +1,4 @@
 {
   "appTitle": "LumorahAI",
-  "welcome": "Welcome",
-  "@welcome": {
-    "description": "Welcome message"
-  }
+  "hello": "Hello"
 }

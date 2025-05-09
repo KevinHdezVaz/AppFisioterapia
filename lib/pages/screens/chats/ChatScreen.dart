@@ -49,21 +49,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
 
-  // Color palette (alineada con Menuprincipal.dart)
+  // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color micButtonColor = Color(0xFF4ECDC4);
 
   List<ChatMessage> _messages = [];
+  bool _isNewSession = false;
+  String? _emotionalState;
+  String? _conversationLevel;
 
   @override
   void initState() {
     super.initState();
 
-    // Inicializar mensajes si viene de un chat guardado
     _messages = widget.initialMessages?.reversed.toList() ?? [];
+    _isNewSession = widget.sessionId == null;
 
-    // Animación para el círculo superior
     _sunController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -76,11 +78,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _speech = stt.SpeechToText();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
 
-    // Enviar el mensaje inicial si existe
     if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _sendMessage(widget.initialMessage!);
       });
+    } else if (_isNewSession && _messages.isEmpty) {
+      _startNewSession();
     }
   }
 
@@ -130,7 +133,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Future<void> _playThinkingSound() async {
     try {
       await _audioPlayer.play(AssetSource('sounds/pensandoIA.mp3'));
-      // Configurar el sonido en bucle mientras _isTyping es true
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
     } catch (e) {
       if (mounted) {
@@ -149,6 +151,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _startNewSession() async {
+    try {
+      final response = await _chatService.startNewSession();
+      
+      if (!mounted) return;
+      
+      final welcomeMessage = ChatMessage(
+        id: -1,
+        chatSessionId: widget.sessionId ?? -1,
+        userId: 0,
+        text: response['ai_message']['text'],
+        isUser: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        emotionalState: response['ai_message']['emotional_state'],
+        conversationLevel: response['ai_message']['conversation_level'],
+      );
+
+      setState(() {
+        _messages.insert(0, welcomeMessage);
+        _emotionalState = response['ai_message']['emotional_state'];
+        _conversationLevel = response['ai_message']['conversation_level'];
+      });
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error al iniciar sesión: $e');
+      }
+    }
+  }
+
   Future<void> _sendMessage(String message) async {
     if (!await _isUserAuthenticated()) {
       if (!mounted) return;
@@ -161,7 +193,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final currentUser = await _storageService.getUser();
     final newMessage = ChatMessage(
       id: -1,
-      chatSessionId: -1,
+      chatSessionId: widget.sessionId ?? -1,
       userId: currentUser?.id ?? -1,
       text: message,
       isUser: true,
@@ -179,11 +211,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
     _controller.clear();
 
-    // Reproducir sonido de "pensando"
     await _playThinkingSound();
 
     try {
-      final response = await _chatService.sendMessage(message);
+      final response = await _chatService.sendMessage(
+        message: message,
+        sessionId: widget.sessionId,
+        isTemporary: false,
+      );
 
       if (!mounted) {
         await _stopThinkingSound();
@@ -192,20 +227,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       final aiMessage = ChatMessage(
         id: -1,
-        chatSessionId: -1,
+        chatSessionId: widget.sessionId ?? -1,
         userId: 0,
-        text: response['ai_message']?['text'] ?? "No se recibió respuesta",
+        text: response['ai_message']['text'],
         isUser: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        emotionalState: response['ai_message']['emotional_state'],
+        conversationLevel: response['ai_message']['conversation_level'],
       );
 
       setState(() {
         _messages.insert(0, aiMessage);
         _isTyping = false;
+        _emotionalState = response['ai_message']['emotional_state'];
+        _conversationLevel = response['ai_message']['conversation_level'];
         _typingTimer.cancel();
       });
-      // Detener sonido después de recibir la respuesta
+      
       await _stopThinkingSound();
     } catch (e) {
       if (!mounted) {
@@ -216,7 +255,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isTyping = false;
         _typingTimer.cancel();
       });
-      // Detener sonido en caso de error
       await _stopThinkingSound();
       _showErrorSnackBar('Error al enviar mensaje: $e');
     }
@@ -238,8 +276,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            Text('Guardar conversación', style: TextStyle(color: Colors.black)),
+        title: Text('Guardar conversación', style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -431,9 +468,41 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
+          if (!message.isUser && message.emotionalState != null)
+            Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                '${_getEmotionalStateText(message.emotionalState)} • ${_getConversationLevelText(message.conversationLevel)}',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  String _getEmotionalStateText(String? state) {
+    switch (state) {
+      case 'sensitive':
+        return '💙 Sensible';
+      case 'crisis':
+        return '⚠️ Necesita apoyo';
+      default:
+        return '😊 Neutral';
+    }
+  }
+
+  String _getConversationLevelText(String? level) {
+    switch (level) {
+      case 'advanced':
+        return 'Nivel: Avanzado';
+      default:
+        return 'Nivel: Básico';
+    }
   }
 
   Widget _buildTypingIndicator() {
@@ -468,7 +537,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Widget para el encabezado con los textos
   Widget _buildHeader() {
     return Column(
       children: [
@@ -499,7 +567,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Widget que construye el círculo animado
   Widget _buildAnimatedCircle() {
     return Positioned(
       top: 50,
@@ -532,7 +599,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Método para renderizar el input según el modo
   Widget _buildInput() {
     switch (widget.inputMode) {
       case 'keyboard':
@@ -540,11 +606,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       case 'voice':
         return _buildVoiceInput();
       default:
-        return _buildKeyboardInput(); // Por defecto, usar teclado
+        return _buildKeyboardInput();
     }
   }
 
-  // Método para navegar de vuelta a Menuprincipal con animación
   void _navigateBack(BuildContext context) {
     Navigator.pushReplacement(
       context,
@@ -552,7 +617,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         pageBuilder: (context, animation, secondaryAnimation) =>
             Menuprincipal(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(-1.0, 0.0); // Deslizar desde la izquierda
+          const begin = Offset(-1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
@@ -573,135 +638,62 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        _navigateBack(context); // Usar navegación animada
-        return false;
-      },
-      child: Scaffold(
-        backgroundColor: tiffanyColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => _navigateBack(context), // Usar navegación animada
-          ),
-          actions: [
-            Padding(
-              padding: EdgeInsets.only(right: 10),
-              child: TextButton.icon(
-                icon: Icon(Icons.save, color: Colors.black, size: 22),
-                label: Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.black, fontSize: 14),
-                ),
-                onPressed: _saveChat,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-              ),
-            ),
-          ],
+Widget _buildKeyboardInput() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: TextField(
+      controller: _controller,
+      style: TextStyle(color: Colors.black87),
+      minLines: 1,
+      maxLines: 6, // Esto permite que crezca verticalmente
+      decoration: InputDecoration(
+        hintText: 'Escribe lo que quieras...',
+        hintStyle: TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: ivoryColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
         ),
-        body: Stack(
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Fondo de partículas flotantes
-            Positioned.fill(child: _FloatingParticles()),
-            // Círculo animado en la parte superior
-            _buildAnimatedCircle(),
-            // Contenido principal
-            Padding(
-              padding: const EdgeInsets.only(top: 100, bottom: 20),
-              child: Column(
-                children: [
-                  // Encabezado con textos
-                  _buildHeader(),
-                  SizedBox(height: 30),
-                  // Lista de mensajes
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _messages.length + (_isTyping ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (_isTyping && index == 0) {
-                          return _buildTypingIndicator();
-                        }
-                        final messageIndex = _isTyping ? index - 1 : index;
-                        return _buildMessageBubble(_messages[messageIndex]);
-                      },
-                    ),
-                  ),
-                  // Input (teclado o voz)
-                  _buildInput(),
-                ],
+            IconButton(
+              icon: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                color: micButtonColor,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeyboardInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
-        controller: _controller,
-        style: TextStyle(color: Colors.black87),
-        decoration: InputDecoration(
-          hintText: 'Escribe lo que quieras...',
-          hintStyle: TextStyle(color: Colors.grey),
-          filled: true,
-          fillColor: ivoryColor,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: micButtonColor,
-                ),
-                onPressed: () async {
-                  if (_isListening) {
-                    _stopListening();
-                  } else {
-                    if (await _isUserAuthenticated()) {
-                      _startListening();
-                    } else {
-                      if (!mounted) return;
-                      _showAuthModal();
-                    }
-                  }
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.send, color: micButtonColor),
-                onPressed: () async {
+              onPressed: () async {
+                if (_isListening) {
+                  _stopListening();
+                } else {
                   if (await _isUserAuthenticated()) {
-                    _sendMessage(_controller.text);
+                    _startListening();
                   } else {
                     if (!mounted) return;
                     _showAuthModal();
                   }
-                },
-              ),
-            ],
-          ),
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.send, color: micButtonColor),
+              onPressed: () async {
+                if (await _isUserAuthenticated()) {
+                  _sendMessage(_controller.text);
+                } else {
+                  if (!mounted) return;
+                  _showAuthModal();
+                }
+              },
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildVoiceInput() {
     return Center(
@@ -741,6 +733,77 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             size: 30,
             color: _isListening ? Colors.white : Colors.black54,
           ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        _navigateBack(context);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: tiffanyColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => _navigateBack(context),
+          ),
+          actions: [
+            if (!_isNewSession)
+              Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: TextButton.icon(
+                  icon: Icon(Icons.save, color: Colors.black, size: 22),
+                  label: Text(
+                    'Guardar',
+                    style: TextStyle(color: Colors.black, fontSize: 14),
+                  ),
+                  onPressed: _saveChat,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(child: _FloatingParticles()),
+            _buildAnimatedCircle(),
+            Padding(
+              padding: const EdgeInsets.only(top: 100, bottom: 20),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  SizedBox(height: 30),
+                  Expanded(
+                    child: ListView.builder(
+                      reverse: true,
+                      itemCount: _messages.length + (_isTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (_isTyping && index == 0) {
+                          return _buildTypingIndicator();
+                        }
+                        final messageIndex = _isTyping ? index - 1 : index;
+                        return _buildMessageBubble(_messages[messageIndex]);
+                      },
+                    ),
+                  ),
+                  _buildInput(),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
