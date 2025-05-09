@@ -5,6 +5,7 @@ import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/utils/ParticleUtils.dart';
 import 'package:LumorahAI/utils/colors.dart';
+import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 
 class RegisterModal extends StatefulWidget {
   final VoidCallback? showLoginPage;
@@ -55,7 +56,6 @@ class _RegisterModalState extends State<RegisterModal> {
         password: _passwordController.text.trim(),
       );
 
-      // Check if the widget is still mounted before proceeding
       if (!mounted) return;
 
       Navigator.pop(context); // Close loading dialog
@@ -72,14 +72,13 @@ class _RegisterModalState extends State<RegisterModal> {
           ),
         );
       } else {
-        showErrorSnackBar("No se pudo completar el registro.");
+        showErrorSnackBar('registrationFailed'.tr());
       }
     } catch (e) {
-      // Check if the widget is still mounted before proceeding
       if (!mounted) return;
 
       Navigator.pop(context); // Close loading dialog
-      showErrorSnackBar(e.toString());
+      showErrorSnackBar('generalError'.tr(args: [e.toString()]));
     }
   }
 
@@ -88,27 +87,27 @@ class _RegisterModalState extends State<RegisterModal> {
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      showErrorSnackBar("Por favor complete todos los campos obligatorios");
+      showErrorSnackBar('fillAllFields'.tr());
       return false;
     }
 
     if (!_emailController.text.contains('@')) {
-      showErrorSnackBar("Correo electrónico inválido");
+      showErrorSnackBar('invalidEmail'.tr());
       return false;
     }
 
     if (_nameController.text.contains(RegExp(r'[^a-zA-Z\s]'))) {
-      showErrorSnackBar("El nombre solo debe contener letras");
+      showErrorSnackBar('onlyLetters'.tr());
       return false;
     }
 
     if (_passwordController.text.length < 6) {
-      showErrorSnackBar("La contraseña debe tener al menos 6 caracteres");
+      showErrorSnackBar('passwordTooShort'.tr());
       return false;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      showErrorSnackBar("Las contraseñas no coinciden");
+      showErrorSnackBar('passwordsMismatch'.tr());
       return false;
     }
 
@@ -181,15 +180,14 @@ class _RegisterModalState extends State<RegisterModal> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Registro',
-                        style: TextStyle(
+                      Text(
+                        'register'.tr(), // Traducción
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      // Close button
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
@@ -233,7 +231,7 @@ class _RegisterModalState extends State<RegisterModal> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        "Comienza tu viaje con Lumorah",
+                        'startYourJourney'.tr(), // Traducción
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -244,7 +242,7 @@ class _RegisterModalState extends State<RegisterModal> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Text(
-                          "Estoy aquí para acompañarte en cada paso",
+                          'iAmHereForEveryStep'.tr(), // Traducción
                           textAlign: TextAlign.center,
                           style: GoogleFonts.lato(
                             fontSize: 16,
@@ -261,7 +259,7 @@ class _RegisterModalState extends State<RegisterModal> {
                             TextField(
                               controller: _nameController,
                               decoration: InputDecoration(
-                                labelText: "Nombre",
+                                labelText: 'name'.tr(), // Traducción
                                 labelStyle: TextStyle(
                                     color: LumorahColors.primaryDarker),
                                 filled: true,
@@ -284,7 +282,7 @@ class _RegisterModalState extends State<RegisterModal> {
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
-                                labelText: "Correo",
+                                labelText: 'email'.tr(), // Traducción
                                 labelStyle: TextStyle(
                                     color: LumorahColors.primaryDarker),
                                 filled: true,
@@ -307,7 +305,7 @@ class _RegisterModalState extends State<RegisterModal> {
                               controller: _passwordController,
                               obscureText: isObscure,
                               decoration: InputDecoration(
-                                labelText: "Contraseña",
+                                labelText: 'password'.tr(), // Traducción
                                 labelStyle: TextStyle(
                                     color: LumorahColors.primaryDarker),
                                 filled: true,
@@ -340,7 +338,7 @@ class _RegisterModalState extends State<RegisterModal> {
                               controller: _confirmPasswordController,
                               obscureText: isObscure,
                               decoration: InputDecoration(
-                                labelText: "Confirmar contraseña",
+                                labelText: 'confirmPassword'.tr(), // Traducción
                                 labelStyle: TextStyle(
                                     color: LumorahColors.primaryDarker),
                                 filled: true,
@@ -371,8 +369,10 @@ class _RegisterModalState extends State<RegisterModal> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text("Crear cuenta",
-                            style: TextStyle(color: Colors.white)),
+                        child: Text(
+                          'createAccount'.tr(), // Traducción
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
                       if (widget.showLoginPage != null)
                         TextButton(
@@ -381,15 +381,14 @@ class _RegisterModalState extends State<RegisterModal> {
                             widget.showLoginPage!();
                           },
                           child: Text(
-                            "¿Ya tienes una cuenta? Inicia sesión",
+                            'alreadyHaveAccount'.tr(), // Traducción
                             style:
                                 TextStyle(color: LumorahColors.primaryDarker),
                           ),
                         ),
-                      // Agrega este botón después de tu botón de "Crear cuenta"
                       const SizedBox(height: 20),
                       Text(
-                        "O regístrate con",
+                        'orRegisterWith'.tr(), // Traducción
                         style: TextStyle(
                           color: LumorahColors.textOnPrimary,
                           fontSize: 14,
@@ -426,13 +425,13 @@ class _RegisterModalState extends State<RegisterModal> {
                                 ),
                               );
                             } else {
-                              showErrorSnackBar(
-                                  "Error al registrar con Google");
+                              showErrorSnackBar('googleSignInError'.tr());
                             }
                           } catch (e) {
                             if (!mounted) return;
                             Navigator.pop(context); // Cerrar loading
-                            showErrorSnackBar("Error: ${e.toString()}");
+                            showErrorSnackBar(
+                                'generalError'.tr(args: [e.toString()]));
                           }
                         },
                         style: OutlinedButton.styleFrom(
@@ -452,7 +451,9 @@ class _RegisterModalState extends State<RegisterModal> {
                               width: 24,
                             ),
                             const SizedBox(width: 8),
-                            const Text("Continuar con Google"),
+                            Text(
+                              'continueWithGoogle'.tr(), // Traducción
+                            ),
                           ],
                         ),
                       ),

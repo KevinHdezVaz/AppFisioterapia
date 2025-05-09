@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/auth/login_page.dart';
 import 'package:LumorahAI/auth/register_page.dart';
@@ -21,7 +23,6 @@ class _MenuprincipalState extends State<Menuprincipal>
   late AnimationController _sunController;
   final TextEditingController _textController = TextEditingController();
 
-  // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
@@ -32,7 +33,6 @@ class _MenuprincipalState extends State<Menuprincipal>
   void initState() {
     super.initState();
 
-    // Animación para el sol (pulsación)
     _sunController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -129,7 +129,7 @@ class _MenuprincipalState extends State<Menuprincipal>
           initialMessage: message.isNotEmpty ? message : null,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0); // Deslizar desde la derecha
+          const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
@@ -181,10 +181,11 @@ class _MenuprincipalState extends State<Menuprincipal>
                   FutureBuilder<String?>(
                     future: _getUserName(),
                     builder: (context, userSnapshot) {
-                      String headerText =
-                          isAuthenticated && userSnapshot.data != null
-                              ? 'Hola, ${userSnapshot.data}'
-                              : 'Lumorah.ai';
+                      String headerText = isAuthenticated &&
+                              userSnapshot.data != null
+                          ? 'helloUser'.tr(
+                              args: [userSnapshot.data!]) // Traducción dinámica
+                          : 'helloLumorah'.tr(); // Traducción
                       return DrawerHeader(
                         decoration: BoxDecoration(
                           color: ivoryColor.withOpacity(0.7),
@@ -204,7 +205,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   ListTile(
                     leading: Icon(Icons.chat, color: lightTextColor),
                     title: Text(
-                      'Chat',
+                      'chat'.tr(), // Traducción
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -226,8 +227,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                           ),
                           transitionsBuilder:
                               (context, animation, secondaryAnimation, child) {
-                            const begin =
-                                Offset(1.0, 0.0); // Deslizar desde la derecha
+                            const begin = Offset(1.0, 0.0);
                             const end = Offset.zero;
                             const curve = Curves.easeInOut;
 
@@ -252,7 +252,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                     ListTile(
                       leading: Icon(Icons.history, color: lightTextColor),
                       title: Text(
-                        'Historial de Chats',
+                        'chatHistory'.tr(), // Traducción
                         style: TextStyle(
                           color: lightTextColor,
                           fontSize: 16,
@@ -273,7 +273,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   ListTile(
                     leading: Icon(Icons.language, color: lightTextColor),
                     title: Text(
-                      'Cambiar Idioma',
+                      'changeLanguage'.tr(), // Traducción
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -291,7 +291,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   ListTile(
                     leading: Icon(Icons.settings, color: lightTextColor),
                     title: Text(
-                      'Configuración',
+                      'settings'.tr(), // Traducción
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -312,7 +312,9 @@ class _MenuprincipalState extends State<Menuprincipal>
                       color: lightTextColor,
                     ),
                     title: Text(
-                      isAuthenticated ? 'Cerrar Sesión' : 'Iniciar Sesión',
+                      isAuthenticated
+                          ? 'logOut'.tr()
+                          : 'logIn'.tr(), // Traducción
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -338,8 +340,6 @@ class _MenuprincipalState extends State<Menuprincipal>
       body: Stack(
         children: [
           Positioned.fill(child: ParticulasFlotantes()),
-
-          // Sol animado en la parte superior
           Positioned(
             top: 100,
             left: 0,
@@ -367,15 +367,13 @@ class _MenuprincipalState extends State<Menuprincipal>
               ),
             ),
           ),
-
-          // Contenido principal
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 180), // Espacio para el sol animado
+                SizedBox(height: 180),
                 Text(
-                  'Escribe o habla lo que quieras.',
+                  'writeOrSpeak'.tr(), // Traducción
                   style: TextStyle(
                     fontSize: 30,
                     color: Colors.black,
@@ -387,7 +385,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Estoy aquí para escucharte.',
+                  'iAmHere'.tr(), // Traducción
                   style: TextStyle(
                     fontSize: 20,
                     color: Colors.black.withOpacity(0.9),
@@ -403,7 +401,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                     controller: _textController,
                     style: TextStyle(color: Colors.black),
                     decoration: InputDecoration(
-                      hintText: 'Escribe lo que quieras...',
+                      hintText: 'writeHint'.tr(), // Traducción
                       hintStyle: TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: ivoryColor,

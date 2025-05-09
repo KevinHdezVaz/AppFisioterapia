@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_chat_bubble/chat_bubble.dart';
@@ -468,14 +469,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Widget para el encabezado con los textos
   Widget _buildHeader() {
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Text(
-            'Estoy contigo...',
+            'withYou'.tr(), // Traducción
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -487,7 +487,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         SizedBox(height: 10),
         Text(
-          'puedes hablar cuando quieras',
+          'speakWhenever'.tr(), // Traducción
           style: TextStyle(
             fontSize: 18,
             color: Colors.black.withOpacity(0.85),
@@ -595,7 +595,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: TextButton.icon(
                 icon: Icon(Icons.save, color: Colors.black, size: 22),
                 label: Text(
-                  'Guardar',
+                  'save'.tr(), // Traducción
                   style: TextStyle(color: Colors.black, fontSize: 14),
                 ),
                 onPressed: _saveChat,
@@ -656,7 +656,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         controller: _controller,
         style: TextStyle(color: Colors.black87),
         decoration: InputDecoration(
-          hintText: 'Escribe lo que quieras...',
+          hintText: 'writeHint'.tr(), // Traducción
           hintStyle: TextStyle(color: Colors.grey),
           filled: true,
           fillColor: ivoryColor,

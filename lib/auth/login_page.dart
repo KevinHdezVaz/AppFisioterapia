@@ -3,6 +3,7 @@ import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 
 class LoginModal extends StatefulWidget {
   final VoidCallback? showRegisterPage;
@@ -62,27 +63,27 @@ class _LoginModalState extends State<LoginModal> {
           ),
         );
       } else {
-        showErrorSnackBar('Credenciales inválidas');
+        showErrorSnackBar('invalidCredentials'.tr());
       }
     } catch (e) {
       Navigator.pop(context); // Close loading dialog
-      showErrorSnackBar(e.toString());
+      showErrorSnackBar('generalError'.tr(args: [e.toString()]));
     }
   }
 
   bool validateLogin() {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      showErrorSnackBar("Por favor complete todos los campos");
+      showErrorSnackBar('fillAllFields'.tr());
       return false;
     }
 
     if (!_emailController.text.contains('@')) {
-      showErrorSnackBar("Correo electrónico inválido");
+      showErrorSnackBar('invalidEmail'.tr());
       return false;
     }
 
     if (_passwordController.text.length < 6) {
-      showErrorSnackBar("La contraseña debe tener al menos 6 caracteres");
+      showErrorSnackBar('passwordTooShort'.tr());
       return false;
     }
 
@@ -129,11 +130,10 @@ class _LoginModalState extends State<LoginModal> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Close button aligned to the right
-                  const SizedBox(width: 48), // Empty space to balance the row
-                  const Text(
-                    'Iniciar sesión',
-                    style: TextStyle(
+                  const SizedBox(width: 48),
+                  Text(
+                    'login'.tr(), // Traducción
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -182,7 +182,7 @@ class _LoginModalState extends State<LoginModal> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Bienvenido a Lumorah",
+                    'welcomeToLumorah'.tr(), // Traducción
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -193,7 +193,7 @@ class _LoginModalState extends State<LoginModal> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      "Estoy aquí para acompañarte",
+                      'iAmHereToAccompany'.tr(), // Traducción
                       textAlign: TextAlign.center,
                       style: GoogleFonts.lato(
                         fontSize: 16,
@@ -211,7 +211,7 @@ class _LoginModalState extends State<LoginModal> {
                           controller: _emailController,
                           style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
-                            labelText: "Correo",
+                            labelText: 'email'.tr(), // Traducción
                             labelStyle: const TextStyle(
                                 color: LumorahColors.primaryDarker),
                             filled: true,
@@ -235,7 +235,7 @@ class _LoginModalState extends State<LoginModal> {
                           obscureText: isObscure,
                           style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
-                            labelText: "Contraseña",
+                            labelText: 'password'.tr(), // Traducción
                             labelStyle: const TextStyle(
                                 color: LumorahColors.primaryDarker),
                             filled: true,
@@ -276,8 +276,10 @@ class _LoginModalState extends State<LoginModal> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text("Entrar",
-                        style: TextStyle(color: Colors.white)),
+                    child: Text(
+                      'enter'.tr(), // Traducción
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                   if (widget.showRegisterPage != null)
                     TextButton(
@@ -286,14 +288,13 @@ class _LoginModalState extends State<LoginModal> {
                         widget.showRegisterPage!();
                       },
                       child: Text(
-                        "¿No tienes una cuenta? Regístrate",
+                        'noAccount'.tr(), // Traducción
                         style: TextStyle(color: LumorahColors.primaryDarker),
                       ),
                     ),
                   const SizedBox(height: 20),
-                  // Agrega este botón después de tu botón de "Entrar"
                   Text(
-                    "O inicia con",
+                    'orSignInWith'.tr(), // Traducción
                     style: TextStyle(
                       color: LumorahColors.textOnPrimary,
                       fontSize: 14,
@@ -329,12 +330,13 @@ class _LoginModalState extends State<LoginModal> {
                             ),
                           );
                         } else {
-                          showErrorSnackBar("Error al iniciar con Google");
+                          showErrorSnackBar('googleSignInError'.tr());
                         }
                       } catch (e) {
                         if (!mounted) return;
                         Navigator.pop(context); // Cerrar loading
-                        showErrorSnackBar("Error: ${e.toString()}");
+                        showErrorSnackBar(
+                            'generalError'.tr(args: [e.toString()]));
                       }
                     },
                     style: OutlinedButton.styleFrom(
@@ -354,7 +356,9 @@ class _LoginModalState extends State<LoginModal> {
                           width: 24,
                         ),
                         const SizedBox(width: 8),
-                        const Text("Continuar con Google"),
+                        Text(
+                          'continueWithGoogle'.tr(), // Traducción
+                        ),
                       ],
                     ),
                   ),
