@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_chat_bubble/chat_bubble.dart';
@@ -14,6 +13,7 @@ import 'package:LumorahAI/services/storage_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 
 class ChatScreen extends StatefulWidget {
   final String inputMode;
@@ -137,7 +137,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Error al reproducir el sonido: $e');
+        _showErrorSnackBar('errorPlayingSound'.tr(args: [e.toString()]));
       }
     }
   }
@@ -147,7 +147,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       await _audioPlayer.stop();
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Error al detener el sonido: $e');
+        _showErrorSnackBar('errorStoppingSound'.tr(args: [e.toString()]));
       }
     }
   }
@@ -177,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Error al iniciar sesión: $e');
+        _showErrorSnackBar('errorStartingSession'.tr(args: [e.toString()]));
       }
     }
   }
@@ -257,7 +257,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _typingTimer.cancel();
       });
       await _stopThinkingSound();
-      _showErrorSnackBar('Error al enviar mensaje: $e');
+      _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
     }
   }
 
@@ -269,7 +269,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
 
     if (_messages.isEmpty) {
-      _showErrorSnackBar('No hay mensajes para guardar');
+      _showErrorSnackBar('noMessagesToSave'.tr());
       return;
     }
 
@@ -277,14 +277,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Guardar conversación', style: TextStyle(color: Colors.black)),
+        title: Text('saveConversation'.tr(), style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
           style: TextStyle(color: Colors.black),
           decoration: InputDecoration(
-            labelText: 'Título',
-            hintText: 'Ej: Conversación sobre ansiedad',
+            labelText: 'title'.tr(),
+            hintText: 'exampleTitle'.tr(),
             hintStyle: TextStyle(color: Colors.black),
             filled: true,
             fillColor: Color(0xFFF6F6F6),
@@ -304,7 +304,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: Colors.black)),
+            child: Text('cancel'.tr(), style: TextStyle(color: Colors.black)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4BB6A8)),
@@ -313,7 +313,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 Navigator.pop(context, titleController.text.trim());
               }
             },
-            child: Text('Guardar', style: TextStyle(color: Colors.white)),
+            child: Text('save'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -337,13 +337,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Conversación guardada exitosamente'),
+          content: Text('chatSavedSuccessfully'.tr()),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      _showErrorSnackBar('Error al guardar: $e');
+      _showErrorSnackBar('errorSavingChat'.tr(args: [e.toString()]));
     }
   }
 
@@ -383,7 +383,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         localeId: 'es_ES',
       );
     } else {
-      _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz.');
+      _showErrorSnackBar('speechNotInitialized'.tr());
     }
   }
 
@@ -489,20 +489,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String _getEmotionalStateText(String? state) {
     switch (state) {
       case 'sensitive':
-        return '💙 Sensible';
+        return 'sensitiveState'.tr();
       case 'crisis':
-        return '⚠️ Necesita apoyo';
+        return 'crisisState'.tr();
       default:
-        return '😊 Neutral';
+        return 'neutralState'.tr();
     }
   }
 
   String _getConversationLevelText(String? level) {
     switch (level) {
       case 'advanced':
-        return 'Nivel: Avanzado';
+        return 'advancedLevel'.tr();
       default:
-        return 'Nivel: Básico';
+        return 'basicLevel'.tr();
     }
   }
 
@@ -639,82 +639,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        _navigateBack(context); // Usar navegación animada
-        return false;
-      },
-      child: Scaffold(
-        backgroundColor: tiffanyColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => _navigateBack(context), // Usar navegación animada
-          ),
-          actions: [
-            Padding(
-              padding: EdgeInsets.only(right: 10),
-              child: TextButton.icon(
-                icon: Icon(Icons.save, color: Colors.black, size: 22),
-                label: Text(
-                  'save'.tr(), // Traducción
-                  style: TextStyle(color: Colors.black, fontSize: 14),
-                ),
-                onPressed: _saveChat,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            // Fondo de partículas flotantes
-            Positioned.fill(child: _FloatingParticles()),
-            // Círculo animado en la parte superior
-            _buildAnimatedCircle(),
-            // Contenido principal
-            Padding(
-              padding: const EdgeInsets.only(top: 100, bottom: 20),
-              child: Column(
-                children: [
-                  // Encabezado con textos
-                  _buildHeader(),
-                  SizedBox(height: 30),
-                  // Lista de mensajes
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _messages.length + (_isTyping ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (_isTyping && index == 0) {
-                          return _buildTypingIndicator();
-                        }
-                        final messageIndex = _isTyping ? index - 1 : index;
-                        return _buildMessageBubble(_messages[messageIndex]);
-                      },
-                    ),
-                  ),
-                  // Input (teclado o voz)
-                  _buildInput(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildKeyboardInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -835,7 +759,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 child: TextButton.icon(
                   icon: Icon(Icons.save, color: Colors.black, size: 22),
                   label: Text(
-                    'Guardar',
+                    'save'.tr(), // Traducción
                     style: TextStyle(color: Colors.black, fontSize: 14),
                   ),
                   onPressed: _saveChat,
