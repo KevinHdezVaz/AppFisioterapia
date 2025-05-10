@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 import 'package:LumorahAI/pages/MenuPrincipal.dart';
 
 class IntroPage extends StatefulWidget {
@@ -22,29 +23,29 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _pageConfigs = [
     {
       'icon': Icons.message_rounded,
-      'mainText': 'Puedes escribir\nlibremente aquí.',
+      'mainText': 'writeFreely'.tr(), // Traducción
       'mainTextSize': 24.0,
       'subText': '',
       'subTextSize': 0.0,
-      'buttonLabel': 'Siguiente',
+      'buttonLabel': 'nextButton'.tr(), // Traducción
       'nextPage': (context) => IntroPage(pageIndex: 2),
     },
     {
       'icon': Icons.mic,
-      'mainText': 'O hablar con\nel micrófono.',
+      'mainText': 'speakWithMic'.tr(), // Traducción
       'mainTextSize': 30.0,
-      'subText': 'Te escucho.',
+      'subText': 'iListen'.tr(), // Traducción
       'subTextSize': 30.0,
-      'buttonLabel': 'Siguiente',
+      'buttonLabel': 'nextButton'.tr(), // Traducción
       'nextPage': (context) => IntroPage(pageIndex: 3),
     },
     {
       'icon': null,
-      'mainText': 'Puedes hablar con tu voz,\nen tu idioma y a tu ritmo.',
+      'mainText': 'speakYourWay'.tr(), // Traducción
       'mainTextSize': 30.0,
-      'subText': 'Lumorah te escucha con calma y sin juicios.',
+      'subText': 'lumorahListens'.tr(), // Traducción
       'subTextSize': 25.0,
-      'buttonLabel': 'Iniciar',
+      'buttonLabel': 'startButton'.tr(), // Traducción
       'nextPage': (context) => Menuprincipal(),
     },
   ];
@@ -200,8 +201,7 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
                       scale: _buttonScaleAnimation,
                       child: ElevatedButton(
                         onPressed: () {
-                                              HapticFeedback.lightImpact(); // Trigger vibration
-
+                          HapticFeedback.lightImpact(); // Trigger vibration
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(builder: config['nextPage']),

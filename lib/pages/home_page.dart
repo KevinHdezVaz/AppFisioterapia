@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Nuevo import
 import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/auth/login_page.dart';
 import 'package:LumorahAI/auth/register_page.dart';
@@ -10,6 +12,8 @@ import 'package:LumorahAI/services/storage_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -21,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _sunController;
   late Animation<double> _sunAnimation;
 
-  // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
@@ -31,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Animación para el sol (pulsación)
     _sunController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -121,6 +123,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _changeLanguage(Locale locale) async {
+    // Cambia el idioma
+    context.setLocale(locale);
+    // Guarda la preferencia del usuario
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('languageCode', locale.languageCode);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,12 +138,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          PopupMenuButton<Locale>(
+            icon: Icon(Icons.language, color: darkTextColor),
+            onSelected: (Locale locale) {
+              _changeLanguage(locale); // Llama a la función para cambiar idioma
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
+              const PopupMenuItem<Locale>(
+                value: Locale('en', ''),
+                child: Text('English'),
+              ),
+              const PopupMenuItem<Locale>(
+                value: Locale('es', ''),
+                child: Text('Español'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Stack(
         children: [
           Positioned.fill(child: ParticulasFlotantes()),
-
-          // Sol animado en la parte superior
           Positioned(
             top: 100,
             left: 0,
@@ -161,15 +187,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-
-          // Contenido principal
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 180), // Espacio para el sol animado
+                SizedBox(height: 180),
                 Text(
-                  'Hola, soy\nLumorah.ai',
+                  'helloLumorah'.tr(),
                   style: TextStyle(
                     fontSize: 35,
                     color: Colors.black,
@@ -181,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Estoy aquí para acompañarte.',
+                  'accompanyText'.tr(),
                   style: TextStyle(
                     fontSize: 25,
                     color: Colors.black.withOpacity(0.9),
@@ -192,20 +216,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 40),
                 ElevatedButton(
-                  
                   onPressed: () {
-                 HapticFeedback.lightImpact(); // Trigger vibration
-
+                    HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => IntroPage(
-                                pageIndex: 1,
-                              )),
+                        builder: (context) => IntroPage(pageIndex: 1),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    
                     backgroundColor: Color(0xFFFDF8F2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -213,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
                   ),
                   child: Text(
-                    'Siguiente',
+                    'nextButton'.tr(),
                     style: TextStyle(
                       color: darkTextColor,
                       fontSize: 18,

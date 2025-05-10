@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_chat_bubble/chat_bubble.dart';
@@ -543,7 +544,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Text(
-            'Estoy contigo...',
+            'withYou'.tr(), // Traducción
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -555,7 +556,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         SizedBox(height: 10),
         Text(
-          'puedes hablar cuando quieras',
+          'speakWhenever'.tr(), // Traducción
           style: TextStyle(
             fontSize: 18,
             color: Colors.black.withOpacity(0.85),
@@ -638,62 +639,135 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-Widget _buildKeyboardInput() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: TextField(
-      controller: _controller,
-      style: TextStyle(color: Colors.black87),
-      minLines: 1,
-      maxLines: 6, // Esto permite que crezca verticalmente
-      decoration: InputDecoration(
-        hintText: 'Escribe lo que quieras...',
-        hintStyle: TextStyle(color: Colors.grey),
-        filled: true,
-        fillColor: ivoryColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_none,
-                color: micButtonColor,
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        _navigateBack(context); // Usar navegación animada
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: tiffanyColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => _navigateBack(context), // Usar navegación animada
+          ),
+          actions: [
+            Padding(
+              padding: EdgeInsets.only(right: 10),
+              child: TextButton.icon(
+                icon: Icon(Icons.save, color: Colors.black, size: 22),
+                label: Text(
+                  'save'.tr(), // Traducción
+                  style: TextStyle(color: Colors.black, fontSize: 14),
+                ),
+                onPressed: _saveChat,
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
               ),
-              onPressed: () async {
-                if (_isListening) {
-                  _stopListening();
-                } else {
-                  if (await _isUserAuthenticated()) {
-                    _startListening();
-                  } else {
-                    if (!mounted) return;
-                    _showAuthModal();
-                  }
-                }
-              },
             ),
-            IconButton(
-              icon: Icon(Icons.send, color: micButtonColor),
-              onPressed: () async {
-                if (await _isUserAuthenticated()) {
-                  _sendMessage(_controller.text);
-                } else {
-                  if (!mounted) return;
-                  _showAuthModal();
-                }
-              },
+          ],
+        ),
+        body: Stack(
+          children: [
+            // Fondo de partículas flotantes
+            Positioned.fill(child: _FloatingParticles()),
+            // Círculo animado en la parte superior
+            _buildAnimatedCircle(),
+            // Contenido principal
+            Padding(
+              padding: const EdgeInsets.only(top: 100, bottom: 20),
+              child: Column(
+                children: [
+                  // Encabezado con textos
+                  _buildHeader(),
+                  SizedBox(height: 30),
+                  // Lista de mensajes
+                  Expanded(
+                    child: ListView.builder(
+                      reverse: true,
+                      itemCount: _messages.length + (_isTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (_isTyping && index == 0) {
+                          return _buildTypingIndicator();
+                        }
+                        final messageIndex = _isTyping ? index - 1 : index;
+                        return _buildMessageBubble(_messages[messageIndex]);
+                      },
+                    ),
+                  ),
+                  // Input (teclado o voz)
+                  _buildInput(),
+                ],
+              ),
             ),
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
+  Widget _buildKeyboardInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextField(
+        controller: _controller,
+        style: TextStyle(color: Colors.black87),
+        decoration: InputDecoration(
+          hintText: 'writeHint'.tr(), // Traducción
+          hintStyle: TextStyle(color: Colors.grey),
+          filled: true,
+          fillColor: ivoryColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: micButtonColor,
+                ),
+                onPressed: () async {
+                  if (_isListening) {
+                    _stopListening();
+                  } else {
+                    if (await _isUserAuthenticated()) {
+                      _startListening();
+                    } else {
+                      if (!mounted) return;
+                      _showAuthModal();
+                    }
+                  }
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.send, color: micButtonColor),
+                onPressed: () async {
+                  if (await _isUserAuthenticated()) {
+                    _sendMessage(_controller.text);
+                  } else {
+                    if (!mounted) return;
+                    _showAuthModal();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildVoiceInput() {
     return Center(
