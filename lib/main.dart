@@ -1,4 +1,4 @@
- import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -27,61 +27,49 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Inicializa easy_localization
   await EasyLocalization.ensureInitialized();
-
-  // 1. Carga variables de entorno
   await dotenv.load(fileName: '.env');
 
-  // 2. Manejo seguro de Firebase
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-    } else {
-      await Firebase.app();
     }
   } catch (e) {
     debugPrint("Error inicializando Firebase: $e");
-    rethrow;
   }
 
-  // 3. Inicializa notificaciones
   await FirebaseApi().initNotifications();
 
-  // 4. Obtén el idioma inicial
   final prefs = await SharedPreferences.getInstance();
+  const defaultLanguage = 'es'; // Español como idioma base
+
+  // 1. Verifica si ya hay un idioma guardado
   final savedLanguageCode = prefs.getString('languageCode');
+
+  // 2. Determina el locale inicial
   Locale startLocale;
 
-  // Lista de idiomas soportados
-  const supportedLocales = [Locale('en', ''), Locale('es', '')];
-
-  // Si hay un idioma guardado, úsalo
   if (savedLanguageCode != null) {
-    startLocale = Locale(savedLanguageCode, '');
+    startLocale = Locale(savedLanguageCode);
   } else {
-    // Si no hay idioma guardado, usa el idioma del dispositivo
     final deviceLocale = WidgetsBinding.instance.window.locale;
-    // Busca si el idioma del dispositivo está soportado
-    final matchingLocale = supportedLocales.firstWhere(
-      (locale) => locale.languageCode == deviceLocale.languageCode,
-      orElse: () => const Locale('en', ''), // Fallback si no está soportado
-    );
-    startLocale = matchingLocale;
-    // Guarda el idioma del dispositivo como preferencia inicial
+
+    // Usa español si el dispositivo está en español, de lo contrario usa español como predeterminado
+    startLocale =
+        deviceLocale.languageCode == 'es' ? deviceLocale : const Locale('es');
+
+    // Guarda la preferencia
     await prefs.setString('languageCode', startLocale.languageCode);
   }
 
-  // 5. Ejecuta la app con easy_localization
   runApp(
     EasyLocalization(
-      supportedLocales: supportedLocales,
+      supportedLocales: const [Locale('en'), Locale('es')],
       path: 'assets/translations',
-      fallbackLocale: const Locale('en', ''),
-      startLocale: startLocale, // Usa el idioma inicial detectado
+      fallbackLocale: const Locale('es'), // Fallback en español
+      startLocale: startLocale,
       child: ChangeNotifierProvider(
         create: (context) => ThemeProvider(),
         child: const MyApp(),
@@ -102,8 +90,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-
- return MultiProvider(
+    return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => StorageProvider()),
         ChangeNotifierProvider(create: (context) => StorageAnsProvider()),

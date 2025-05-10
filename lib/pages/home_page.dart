@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Nuevo import
 import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/auth/login_page.dart';
 import 'package:LumorahAI/auth/register_page.dart';
@@ -123,40 +122,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _changeLanguage(Locale locale) async {
-    // Cambia el idioma
-    context.setLocale(locale);
-    // Guarda la preferencia del usuario
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('languageCode', locale.languageCode);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: tiffanyColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          PopupMenuButton<Locale>(
-            icon: Icon(Icons.language, color: darkTextColor),
-            onSelected: (Locale locale) {
-              _changeLanguage(locale); // Llama a la función para cambiar idioma
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
-              const PopupMenuItem<Locale>(
-                value: Locale('en', ''),
-                child: Text('English'),
-              ),
-              const PopupMenuItem<Locale>(
-                value: Locale('es', ''),
-                child: Text('Español'),
-              ),
-            ],
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           Positioned.fill(child: ParticulasFlotantes()),

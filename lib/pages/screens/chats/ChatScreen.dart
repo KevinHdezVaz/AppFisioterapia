@@ -155,9 +155,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Future<void> _startNewSession() async {
     try {
       final response = await _chatService.startNewSession();
-      
+
       if (!mounted) return;
-      
+
       final welcomeMessage = ChatMessage(
         id: -1,
         chatSessionId: widget.sessionId ?? -1,
@@ -214,6 +214,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     await _playThinkingSound();
 
+    // Pausa terapéutica de 1 segundo
+    await Future.delayed(Duration(seconds: 1));
+
     try {
       final response = await _chatService.sendMessage(
         message: message,
@@ -245,7 +248,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _conversationLevel = response['ai_message']['conversation_level'];
         _typingTimer.cancel();
       });
-      
+
+      // Manejo de estado de crisis
+      if (_emotionalState == 'crisis') {
+        _showCrisisAlert();
+      } else if (_emotionalState == 'sensitive') {
+        _messages.insert(
+          0,
+          ChatMessage(
+            id: -1,
+            chatSessionId: widget.sessionId ?? -1,
+            userId: 0,
+            text: 'Estoy contigo… tómate todo el tiempo que necesites.',
+            isUser: false,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            emotionalState: 'sensitive',
+            conversationLevel: _conversationLevel,
+          ),
+        );
+      }
+
       await _stopThinkingSound();
     } catch (e) {
       if (!mounted) {
@@ -259,6 +282,32 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       await _stopThinkingSound();
       _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
     }
+  }
+
+  void _showCrisisAlert() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Estamos aquí para ti'.tr()),
+        content: Text(
+          'Lo que sientes es importante. Te recomendamos contactar a un profesional o una línea de apoyo cercana. ¿Quieres continuar hablando?'
+              .tr(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Continuar'.tr()),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateBack(context);
+            },
+            child: Text('Salir'.tr()),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveChat() async {
@@ -277,7 +326,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('saveConversation'.tr(), style: TextStyle(color: Colors.black)),
+        title: Text('saveConversation'.tr(),
+            style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -374,13 +424,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     if (available) {
       setState(() => _isListening = true);
+      Timer? silenceTimer;
       _speech.listen(
         onResult: (result) {
           if (mounted) {
-            setState(() => _transcribedText = result.recognizedWords);
+            setState(() {
+              _transcribedText = result.recognizedWords;
+              // Reinicia el temporizador de silencio
+              silenceTimer?.cancel();
+              silenceTimer = Timer(Duration(seconds: 3), () {
+                if (_transcribedText.isNotEmpty) {
+                  _stopListening();
+                }
+              });
+            });
           }
         },
         localeId: 'es_ES',
+        pauseFor: Duration(seconds: 3),
       );
     } else {
       _showErrorSnackBar('speechNotInitialized'.tr());
