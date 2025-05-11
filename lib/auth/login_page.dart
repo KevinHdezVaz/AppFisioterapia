@@ -294,7 +294,7 @@ class _LoginModalState extends State<LoginModal> {
                         style: TextStyle(color: LumorahColors.primaryDarker),
                       ),
                     ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                   Text(
                     'orSignInWith'.tr(), // Traducción
                     style: TextStyle(
@@ -363,7 +363,7 @@ class _LoginModalState extends State<LoginModal> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),

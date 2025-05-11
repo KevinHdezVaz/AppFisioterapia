@@ -525,7 +525,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           decoration: InputDecoration(
             labelText: 'title'.tr(),
             hintText: 'exampleTitle'.tr(),
-            hintStyle: TextStyle(color: Colors.black),
+            hintStyle: TextStyle(color: Colors.grey),
             filled: true,
             fillColor: Color(0xFFF6F6F6),
             border: OutlineInputBorder(
@@ -906,53 +906,67 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildKeyboardInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
-        maxLines: 6,
-        controller: _controller,
-        style: TextStyle(color: Colors.black87),
-        decoration: InputDecoration(
-          hintText: 'writeHint'.tr(),
-          hintStyle: TextStyle(color: Colors.grey),
-          filled: true,
-          fillColor: ivoryColor,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: micButtonColor,
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        height: _controller.text.isEmpty
+            ? 60 // Altura inicial cuando no hay texto
+            : min(
+                60.0 + (_controller.text.split('\n').length * 20.0),
+                200.0, // Altura máxima
+              ),
+        child: TextField(
+          controller: _controller,
+          maxLines: null, // Permite múltiples líneas
+          keyboardType: TextInputType.multiline,
+          style: TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            hintText: 'writeHint'.tr(),
+            hintStyle: TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: ivoryColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide.none,
+            ),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: micButtonColor,
+                  ),
+                  onPressed: () async {
+                    if (_isListening) {
+                      _stopListening();
+                    } else {
+                      if (await _isUserAuthenticated()) {
+                        _startListening();
+                      } else {
+                        if (!mounted) return;
+                        _showAuthModal();
+                      }
+                    }
+                  },
                 ),
-                onPressed: () async {
-                  if (_isListening) {
-                    _stopListening();
-                  } else {
+                IconButton(
+                  icon: Icon(Icons.send, color: micButtonColor),
+                  onPressed: () async {
                     if (await _isUserAuthenticated()) {
-                      _startListening();
+                      _sendMessage(_controller.text);
                     } else {
                       if (!mounted) return;
                       _showAuthModal();
                     }
-                  }
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.send, color: micButtonColor),
-                onPressed: () async {
-                  if (await _isUserAuthenticated()) {
-                    _sendMessage(_controller.text);
-                  } else {
-                    if (!mounted) return;
-                    _showAuthModal();
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           ),
+          onChanged: (text) {
+            setState(() {}); // Esto hace que el AnimatedContainer se redibuje
+          },
         ),
       ),
     );
@@ -1054,15 +1068,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         body: Stack(
           children: [
+            // Elementos de fondo (partículas y círculo animado)
             Positioned.fill(child: _FloatingParticles()),
             _buildAnimatedCircle(),
-            Padding(
-              padding: const EdgeInsets.only(top: 100, bottom: 20),
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  SizedBox(height: 30),
-                  Expanded(
+
+            // Header (ahora detrás de la lista pero delante del fondo)
+            Positioned(
+              top: 20,
+              left: 0,
+              right: 0,
+              child: _buildHeader(),
+            ),
+
+            // Contenido principal (lista y input) con fondo transparente
+            Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    color: Colors.transparent, // Fondo transparente
                     child: ListView.builder(
                       reverse: true,
                       itemCount: _messages.length + (_isTyping ? 1 : 0),
@@ -1075,9 +1098,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       },
                     ),
                   ),
-                  _buildInput(),
-                ],
-              ),
+                ),
+                _buildInput(),
+              ],
             ),
           ],
         ),
