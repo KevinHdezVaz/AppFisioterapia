@@ -1,8 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:easy_localization/easy_localization.dart'; // Nuevo import
+import 'package:easy_localization/easy_localization.dart';
 import 'package:LumorahAI/pages/MenuPrincipal.dart';
+import 'package:LumorahAI/services/storage_service.dart'; // Nuevo import
 
 class IntroPage extends StatefulWidget {
   final int pageIndex;
@@ -19,33 +20,35 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _buttonScaleAnimation;
+  final StorageService _storageService = StorageService(); // Nueva instancia
+  bool _vibrationEnabled = true; // Estado inicial
 
   final List<Map<String, dynamic>> _pageConfigs = [
     {
       'icon': Icons.message_rounded,
-      'mainText': 'writeFreely'.tr(), // Traducción
+      'mainText': 'writeFreely'.tr(),
       'mainTextSize': 24.0,
       'subText': '',
       'subTextSize': 0.0,
-      'buttonLabel': 'nextButton'.tr(), // Traducción
+      'buttonLabel': 'nextButton'.tr(),
       'nextPage': (context) => IntroPage(pageIndex: 2),
     },
     {
       'icon': Icons.mic,
-      'mainText': 'speakWithMic'.tr(), // Traducción
+      'mainText': 'speakWithMic'.tr(),
       'mainTextSize': 30.0,
-      'subText': 'iListen'.tr(), // Traducción
+      'subText': 'iListen'.tr(),
       'subTextSize': 30.0,
-      'buttonLabel': 'nextButton'.tr(), // Traducción
+      'buttonLabel': 'nextButton'.tr(),
       'nextPage': (context) => IntroPage(pageIndex: 3),
     },
     {
       'icon': null,
-      'mainText': 'speakYourWay'.tr(), // Traducción
+      'mainText': 'speakYourWay'.tr(),
       'mainTextSize': 30.0,
-      'subText': 'lumorahListens'.tr(), // Traducción
+      'subText': 'lumorahListens'.tr(),
       'subTextSize': 25.0,
-      'buttonLabel': 'startButton'.tr(), // Traducción
+      'buttonLabel': 'startButton'.tr(),
       'nextPage': (context) => Menuprincipal(),
     },
   ];
@@ -79,6 +82,18 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
     _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _contentController, curve: Curves.easeInOut),
     );
+
+    _loadVibrationPreference(); // Cargar preferencia de vibración al iniciar
+  }
+
+  Future<void> _loadVibrationPreference() async {
+    final vibrationEnabled =
+        await _storageService.getString('vibration_enabled') == 'true' ||
+            await _storageService.getString('vibration_enabled') ==
+                null; // Por defecto true si no está configurado
+    setState(() {
+      _vibrationEnabled = vibrationEnabled;
+    });
   }
 
   @override
@@ -201,7 +216,10 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
                       scale: _buttonScaleAnimation,
                       child: ElevatedButton(
                         onPressed: () {
-                          HapticFeedback.lightImpact(); // Trigger vibration
+                          if (_vibrationEnabled) {
+                            HapticFeedback
+                                .lightImpact(); // Solo si vibración está habilitada
+                          }
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(builder: config['nextPage']),

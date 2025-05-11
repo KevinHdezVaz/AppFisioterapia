@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:LumorahAI/pages/home_page.dart';
+import 'package:LumorahAI/pages/screens/SettingsModal.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -29,6 +31,7 @@ class _MenuprincipalState extends State<Menuprincipal>
   final Color darkTextColor = Colors.black87;
   final Color lightTextColor = Colors.black;
   final Color micButtonColor = Color(0xFF4ECDC4);
+  final AudioPlayer _audioPlayer = AudioPlayer(); // Añade esto
 
   @override
   void initState() {
@@ -43,8 +46,8 @@ class _MenuprincipalState extends State<Menuprincipal>
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    // Cargar idioma almacenado
     _loadStoredLanguage();
+    _playStartupSound(); // Añade esta línea
   }
 
   Future<void> _loadStoredLanguage() async {
@@ -58,6 +61,7 @@ class _MenuprincipalState extends State<Menuprincipal>
   void dispose() {
     _sunController.dispose();
     _textController.dispose();
+    _audioPlayer.dispose(); // Asegúrate de limpiar el reproductor de audio
     super.dispose();
   }
 
@@ -69,6 +73,28 @@ class _MenuprincipalState extends State<Menuprincipal>
   Future<String?> _getUserName() async {
     final user = await _storageService.getUser();
     return user?.nombre;
+  }
+
+  Future<void> _playStartupSound() async {
+    try {
+      // Obtener la preferencia de sonido del usuario
+      final soundPref = await _storageService.getString('sound_enabled');
+      // Si no hay preferencia guardada, se asume true (activado por defecto)
+      final soundEnabled = soundPref == null ? true : soundPref == 'true';
+
+      if (soundEnabled) {
+        await _audioPlayer.setVolume(0.5); // Ajusta el volumen si es necesario
+        await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
+      }
+    } catch (e) {
+      debugPrint('Error al reproducir sonido de inicio: $e');
+      // Opcional: Mostrar un mensaje de error al usuario si lo prefieres
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('errorPlayingSound'.tr())),
+        );
+      }
+    }
   }
 
   Future<void> _signOut(BuildContext context) async {
@@ -86,7 +112,7 @@ class _MenuprincipalState extends State<Menuprincipal>
       await _authService.logout();
 
       if (mounted) {
-        navigator.pop(); // Cierra loading
+        navigator.pop();
         navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => Menuprincipal()),
           (route) => false,
@@ -130,71 +156,126 @@ class _MenuprincipalState extends State<Menuprincipal>
   void _showLanguageSelector(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('selectLanguage'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('Español'),
-              onTap: () async {
-                await _storageService.saveLanguage('es');
-                if (mounted) {
-                  context.setLocale(Locale('es'));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('languageChanged'.tr(args: ['Español']))),
-                  );
-                }
-              },
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 8,
+        child: Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'selectLanguage'.tr(),
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 24,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _buildLanguageCard(
+                    context,
+                    'Español',
+                    'es',
+                    '🇪🇸',
+                    Colors.red[700]!,
+                  ),
+                  _buildLanguageCard(
+                    context,
+                    'English',
+                    'en',
+                    '🇬🇧',
+                    Colors.blue[700]!,
+                  ),
+                  _buildLanguageCard(
+                    context,
+                    'Français',
+                    'fr',
+                    '🇫🇷',
+                    Colors.blue[600]!,
+                  ),
+                  _buildLanguageCard(
+                    context,
+                    'Português',
+                    'pt',
+                    '🇵🇹',
+                    Colors.green[700]!,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageCard(BuildContext context, String languageName,
+      String languageCode, String flag, Color color) {
+    return GestureDetector(
+      onTap: () async {
+        await _storageService.saveLanguage(languageCode);
+        if (mounted) {
+          context.setLocale(Locale(languageCode));
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('languageChanged'.tr(args: [languageName])),
+              backgroundColor: color.withOpacity(0.8),
             ),
-            ListTile(
-              title: Text('English'),
-              onTap: () async {
-                await _storageService.saveLanguage('en');
-                if (mounted) {
-                  context.setLocale(Locale('en'));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('languageChanged'.tr(args: ['English']))),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              title: Text('Français'),
-              onTap: () async {
-                await _storageService.saveLanguage('fr');
-                if (mounted) {
-                  context.setLocale(Locale('fr'));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content:
-                            Text('languageChanged'.tr(args: ['Français']))),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              title: Text('Português'),
-              onTap: () async {
-                await _storageService.saveLanguage('pt');
-                if (mounted) {
-                  context.setLocale(Locale('pt'));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content:
-                            Text('languageChanged'.tr(args: ['Português']))),
-                  );
-                }
-              },
+          );
+        }
+      },
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: ivoryColor,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 5,
+              offset: Offset(0, 2),
             ),
           ],
         ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              flag,
+              style: TextStyle(fontSize: 24),
+            ),
+            SizedBox(width: 10),
+            Text(
+              languageName,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => SettingsModal(
+        onSignOut: () => _signOut(context),
       ),
     );
   }
@@ -272,10 +353,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   FutureBuilder<String?>(
                     future: _getUserName(),
                     builder: (context, userSnapshot) {
-                      String headerText =
-                          isAuthenticated && userSnapshot.data != null
-                              ? 'helloUser'.tr(args: [userSnapshot.data!])
-                              : 'helloLumorah'.tr();
+                      String headerText = 'helloLumorah'.tr();
                       return DrawerHeader(
                         decoration: BoxDecoration(
                           color: ivoryColor.withOpacity(0.7),
@@ -389,9 +467,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Configuración en desarrollo')),
-                      );
+                      _showSettingsModal(context);
                     },
                   ),
                   ListTile(

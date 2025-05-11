@@ -65,7 +65,7 @@
   "advancedLevel": "Level: Advanced",
   "basicLevel": "Level: Basic",
     "selectLanguage": "Select Language",
-"languageChanged": "Language changed to {0}",
+"languageChanged": "Language changed",
 
   "yourConversations": "Your Conversations",
   "searchConversations": "Search conversations...",
@@ -81,7 +81,45 @@
   "errorDeletingConversation": "Error deleting the conversation: %s",
   "errorOpeningConversation": "Error opening the conversation: %s",
   "todayAt": "Today at",
-  "yesterdayAt": "Yesterday at"
+  "yesterdayAt": "Yesterday at",
+  
+    "enable_or_disable_notifications": "Enable or disable notifications",
+    "enable_or_disable_sound": "Enable or disable sound",
+    "enable_or_disable_vibration": "Enable or disable vibration",
+    "enable_or_disable_dark_theme": "Enable or disable dark theme",
+    "reset_preferences": "Reset preferences",
+    "settings_reset": "Preferences reset",
+    
+      "settings": "Settings",
+      "notifications": "Notifications",
+      "enable_or_disable_notifications": "Enable or disable notifications",
+      "sound": "Sound",
+      "enable_or_disable_sound": "Enable or disable sound",
+      "vibration": "Vibration",
+      "enable_or_disable_vibration": "Enable or disable vibration",
+      "dark_theme": "Dark theme",
+      "enable_or_disable_dark_theme": "Enable or disable dark theme",
+      "save": "Save",
+      "settings_saved": "Settings saved",
+      "reset_preferences": "Reset preferences",
+      "settings_reset": "Preferences reset",
+      "logOut": "Log out",
+      
+        "conversation_summarized": "Conversation summarized",
+        "errorSummarizingConversation": "Error summarizing conversation ",
+        
+          "conversationTooLong": "The conversation is too long!",
+          "conversationSummary": "Conversation summary:",
+          "summaryCopied": "Summary copied to clipboard",
+          "close": "Close",
+          "copy": "Copy",
+          "newChat": "New chat",
+          "errorSummarizingConversation": "Error summarizing conversation: %s"
+        
+      
+    
+  
+  
 
 
 }

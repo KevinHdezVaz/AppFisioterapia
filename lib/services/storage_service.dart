@@ -64,4 +64,25 @@ class StorageService {
     await prefs.remove(
         userKey); // También eliminamos los datos del usuario al cerrar sesión
   }
+
+  // Nuevos métodos añadidos
+  Future<void> saveUserName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString(userKey);
+    if (userJson != null) {
+      final userMap = jsonDecode(userJson);
+      userMap['nombre'] = name;
+      await prefs.setString(userKey, jsonEncode(userMap));
+    }
+  }
+
+  Future<void> saveNotificationsPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications', value);
+  }
+
+  Future<bool?> getNotificationsPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('notifications');
+  }
 }

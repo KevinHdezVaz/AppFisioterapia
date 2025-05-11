@@ -64,7 +64,7 @@
     "advancedLevel": "Niveau : Avancé",
     "basicLevel": "Niveau : Basique",
     "selectLanguage": "Choisir la langue",
-    "languageChanged": "Langue changée en {0}",
+    "languageChanged": "Langue changée",
     
         "yourConversations": "Vos conversations",
         "searchConversations": "Rechercher des conversations...",
@@ -80,7 +80,44 @@
         "errorDeletingConversation": "Erreur lors de la suppression de la conversation : %s",
         "errorOpeningConversation": "Erreur lors de l'ouverture de la conversation : %s",
         "todayAt": "Aujourd'hui à",
-        "yesterdayAt": "Hier à"
+        "yesterdayAt": "Hier à",
+        
+            "enable_or_disable_notifications": "Activer ou désactiver les notifications",
+            "enable_or_disable_sound": "Activer ou désactiver le son",
+            "enable_or_disable_vibration": "Activer ou désactiver la vibration",
+            "enable_or_disable_dark_theme": "Activer ou désactiver le thème sombre",
+            "reset_preferences": "Réinitialiser les préférences",
+            "settings_reset": "Préférences réinitialisées",
+
+        
+                "settings": "Paramètres",
+                "notifications": "Notifications",
+                "enable_or_disable_notifications": "Activer ou désactiver les notifications",
+                "sound": "Son",
+                "enable_or_disable_sound": "Activer ou désactiver le son",
+                "vibration": "Vibration",
+                "enable_or_disable_vibration": "Activer ou désactiver la vibration",
+                "dark_theme": "Thème sombre",
+                "enable_or_disable_dark_theme": "Activer ou désactiver le thème sombre",
+                "save": "Enregistrer",
+                "settings_saved": "Paramètres enregistrés",
+                "reset_preferences": "Réinitialiser les préférences",
+                "settings_reset": "Préférences réinitialisées",
+                "logOut": "Se déconnecter",
+                
+                    "conversation_summarized": "Conversation résumée",
+                    "errorSummarizingConversation": "Erreur lors du résumé de la conversation : ",
+                    
+                        "conversationTooLong": "La conversation est trop longue !",
+                        "conversationSummary": "Résumé de la conversation :",
+                        "summaryCopied": "Résumé copié dans le presse-papiers",
+                        "close": "Fermer",
+                        "copy": "Copier",
+                        "newChat": "Nouveau chat",
+                        "errorSummarizingConversation": "Erreur lors du résumé de la conversation : %s"
+                          
+        
+          
       
       
 

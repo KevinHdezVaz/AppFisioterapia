@@ -42,7 +42,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    _playWelcomeSound();
+    _loadSoundPreference(); // Cargar preferencia de sonido al iniciar
+  }
+
+  Future<void> _loadSoundPreference() async {
+    final soundEnabled =
+        await _storageService.getString('sound_enabled') == 'true' ||
+            await _storageService.getString('sound_enabled') ==
+                null; // Por defecto true si no está configurado
+    if (soundEnabled) {
+      _playWelcomeSound();
+    }
   }
 
   Future<void> _playWelcomeSound() async {

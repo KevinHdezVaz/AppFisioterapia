@@ -12,8 +12,10 @@ class AuthService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
+    clientId:
+        '709069828022-dl6ee03rv72hbshc7d99jdfrpk993j8b.apps.googleusercontent.com', // ID de iOS (de GoogleService-Info.plist)
     serverClientId:
-        '709069828022-8kvhc185ue5e20u88eofmv6cfcp0mua3.apps.googleusercontent.com',
+        '709069828022-8kvhc185ue5e20u88eofmv6cfcp0mua3.apps.googleusercontent.com', // ID de web/Android
   );
 
   Future<bool> updateProfile({

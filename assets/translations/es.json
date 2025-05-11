@@ -65,7 +65,7 @@
   "advancedLevel": "Nivel: Avanzado",
   "basicLevel": "Nivel: Básico",
   "selectLanguage": "Seleccionar Idioma",
-  "languageChanged": "Idioma cambiado a {0}",
+  "languageChanged": "Idioma cambiado",
     "yourConversations": "Tus Conversaciones",
     "searchConversations": "Buscar conversaciones...",
     "noConversations": "No hay conversaciones",
@@ -80,7 +80,32 @@
     "errorDeletingConversation": "Error al eliminar la conversación: %s",
     "errorOpeningConversation": "Error al abrir la conversación: %s",
     "todayAt": "Hoy a las",
-    "yesterdayAt": "Ayer a las"
+    "yesterdayAt": "Ayer a las",
+    
+      "settings": "Configuración",
+      "notifications": "Notificaciones",
+      "enable_or_disable_notifications": "Habilitar o deshabilitar notificaciones",
+      "sound": "Sonido",
+      "enable_or_disable_sound": "Habilitar o deshabilitar sonido",
+      "vibration": "Vibración",
+      "enable_or_disable_vibration": "Habilitar o deshabilitar vibración",
+      "dark_theme": "Tema oscuro",
+      "enable_or_disable_dark_theme": "Habilitar o deshabilitar tema oscuro",
+      "save": "Guardar",
+      "settings_saved": "Configuración guardada",
+      "reset_preferences": "Restablecer preferencias",
+      "settings_reset": "Preferencias restablecidas",
+      "logOut": "Cerrar sesión",
+      "conversation_summarized": "Conversación resumida",
+  "errorSummarizingConversation": "Error al resumir la conversación: ",
   
-
+    "conversationTooLong": "¡La conversación es demasiado larga!",
+    "conversationSummary": "Resumen de la conversación:",
+    "summaryCopied": "Resumen copiado al portapapeles",
+    "close": "Cerrar",
+    "copy": "Copiar",
+    "newChat": "Nuevo chat",
+    "errorSummarizingConversation": "Error al resumir la conversación: %s"
+  
+    
 }

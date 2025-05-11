@@ -127,6 +127,37 @@ class ChatServiceApi {
     }
   }
 
+  Future<Map<String, dynamic>> summarizeConversation({
+    required List<Map<String, dynamic>> messages,
+    required int? sessionId,
+    required String language,
+  }) async {
+    final token = await storage.getToken();
+    if (token == null) throw Exception('No autenticado');
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/summarize'),
+      headers: headers,
+      body: jsonEncode({
+        'messages': messages,
+        'session_id': sessionId,
+        'language': language,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to summarize conversation: ${response.body}');
+    }
+  }
+
   Future<ChatSession> saveChatSession({
     required String title,
     required List<Map<String, dynamic>> messages,

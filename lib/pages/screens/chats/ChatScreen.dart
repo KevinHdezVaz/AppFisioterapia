@@ -14,6 +14,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/services.dart'; // Para Clipboard
 
 class ChatScreen extends StatefulWidget {
   final String inputMode;
@@ -56,11 +57,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final Color micButtonColor = Color(0xFF4ECDC4);
 
   List<ChatMessage> _messages = [];
-  int? _currentSessionId; // Almacena el sessionId asignado por el backend
-  bool _isSaved = false; // Indica si la sesión está guardada
+  int? _currentSessionId;
+  bool _isSaved = false;
   String? _emotionalState;
   String? _conversationLevel;
   bool _initialMessageSent = false;
+
+  // Lógica para conteo de tokens y resumen
+  final int _tokenLimit =
+      500; // Límite de tokens (ajusta según tus necesidades)
+  int _totalTokens = 0; // Contador de tokens acumulados
 
   // Mapa de códigos de idioma para reconocimiento de voz
   final Map<String, String> _speechLocales = {
@@ -77,6 +83,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _messages = widget.initialMessages?.reversed.toList() ?? [];
     _currentSessionId = widget.sessionId;
     _isSaved = widget.sessionId != null && widget.initialMessages != null;
+
+    // Calcular tokens iniciales si hay mensajes previos
+    for (var message in _messages) {
+      _updateTokenCount(message.text);
+    }
 
     _sunController = AnimationController(
       vsync: this,
@@ -118,6 +129,136 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // Contar tokens (simplificado: 1 palabra = 1 token)
+  int _countTokens(String message) {
+    return message
+        .split(RegExp(r'\s+'))
+        .length; // Divide por espacios y cuenta palabras
+  }
+
+  // Actualizar el conteo de tokens y verificar si se excede el límite
+  void _updateTokenCount(String message) {
+    final tokens = _countTokens(message);
+    setState(() {
+      _totalTokens += tokens;
+    });
+    if (_totalTokens > _tokenLimit) {
+      _summarizeConversation();
+    }
+  }
+
+  // Función para resumir la conversación y mostrar modal
+  Future<void> _summarizeConversation() async {
+    try {
+      setState(() {
+        _isTyping = true;
+        _typingIndex = 0;
+        _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+          if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
+        });
+      });
+
+      // Enviar solicitud al backend para resumir
+      final response = await _chatService.summarizeConversation(
+        messages: _messages.reversed
+            .map((m) => {
+                  'text': m.text,
+                  'is_user': m.isUser,
+                  'created_at': m.createdAt.toIso8601String(),
+                })
+            .toList(),
+        sessionId: _currentSessionId,
+        language: context.locale.languageCode,
+      );
+
+      if (!mounted) return;
+
+      final summary = response['summary'];
+
+      setState(() {
+        _isTyping = false;
+        _typingTimer.cancel();
+      });
+
+      // Mostrar modal con el resumen
+      _showSummaryModal(summary);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isTyping = false;
+        _typingTimer.cancel();
+      });
+      _showErrorSnackBar(
+          'errorSummarizingConversation'.tr(args: [e.toString()]));
+    }
+  }
+
+  // Mostrar modal con el resumen
+  void _showSummaryModal(String summary) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('conversationTooLong'.tr()),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'conversationSummary'.tr(),
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(summary, textAlign: TextAlign.justify),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text('close'.tr()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4BB6A8)),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: summary));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('summaryCopied'.tr()),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text('copy'.tr(), style: TextStyle(color: Colors.white)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4BB6A8)),
+            onPressed: () {
+              Navigator.pop(context);
+              _startNewChatWithSummary(summary);
+            },
+            child: Text('newChat'.tr(), style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Iniciar un nuevo chat con el resumen como mensaje inicial
+  void _startNewChatWithSummary(String summary) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          inputMode: widget.inputMode,
+          initialMessage: summary,
+        ),
+      ),
+    );
+  }
+
   Future<bool> _isUserAuthenticated() async {
     final token = await _storageService.getToken();
     return token != null && token.isNotEmpty;
@@ -149,8 +290,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Future<void> _playThinkingSound() async {
     try {
-      await _audioPlayer.play(AssetSource('sounds/pensandoIA.mp3'));
-      _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      bool soundEnabled =
+          await _storageService.getString('sound_enabled') == 'true' ||
+              await _storageService.getString('sound_enabled') == null;
+      if (soundEnabled) {
+        await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
+        _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      }
     } catch (e) {
       if (mounted) {
         _showErrorSnackBar('errorPlayingSound'.tr(args: [e.toString()]));
@@ -193,6 +339,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _currentSessionId = response['session_id'];
         _emotionalState = response['ai_message']['emotional_state'];
         _conversationLevel = response['ai_message']['conversation_level'];
+        _updateTokenCount(welcomeMessage.text);
       });
     } catch (e) {
       if (mounted) {
@@ -228,6 +375,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
         if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
       });
+      _updateTokenCount(newMessage.text);
     });
     _controller.clear();
 
@@ -274,6 +422,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         if (!isTemporary && response['session_id'] != null) {
           _currentSessionId = response['session_id'];
         }
+        _updateTokenCount(aiMessage.text);
       });
 
       if (_emotionalState == 'crisis') {
@@ -293,6 +442,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             conversationLevel: _conversationLevel,
           ),
         );
+        _updateTokenCount(
+            _getSensitiveValidationText(context.locale.languageCode));
       }
 
       await _stopThinkingSound();
@@ -756,6 +907,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextField(
+        maxLines: 6,
         controller: _controller,
         style: TextStyle(color: Colors.black87),
         decoration: InputDecoration(

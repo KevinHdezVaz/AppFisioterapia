@@ -64,7 +64,7 @@
     "advancedLevel": "Nível: Avançado",
     "basicLevel": "Nível: Básico",
     "selectLanguage": "Selecionar Idioma",
-    "languageChanged": "Idioma alterado para {0}",
+    "languageChanged": "Idioma alterado",
     
       "yourConversations": "Suas conversas",
       "searchConversations": "Buscar conversas...",
@@ -80,7 +80,41 @@
       "errorDeletingConversation": "Erro ao excluir a conversa: %s",
       "errorOpeningConversation": "Erro ao abrir a conversa: %s",
       "todayAt": "Hoje às",
-      "yesterdayAt": "Ontem às"
+      "yesterdayAt": "Ontem às",
+      
+        "enable_or_disable_notifications": "Ativar ou desativar notificações",
+        "enable_or_disable_sound": "Ativar ou desativar som",
+        "enable_or_disable_vibration": "Ativar ou desativar vibração",
+        "enable_or_disable_dark_theme": "Ativar ou desativar tema escuro",
+        "reset_preferences": "Redefinir preferências",
+        "settings_reset": "Preferências redefinidas",
+        
+          "settings": "Configurações",
+          "notifications": "Notificações",
+          "enable_or_disable_notifications": "Ativar ou desativar notificações",
+          "sound": "Som",
+          "enable_or_disable_sound": "Ativar ou desativar som",
+          "vibration": "Vibração",
+          "enable_or_disable_vibration": "Ativar ou desativar vibração",
+          "dark_theme": "Tema escuro",
+          "enable_or_disable_dark_theme": "Ativar ou desativar tema escuro",
+          "save": "Salvar",
+          "settings_saved": "Configurações salvas",
+          "reset_preferences": "Redefinir preferências",
+          "settings_reset": "Preferências redefinidas",
+          "logOut": "Sair",
+          
+            "conversation_summarized": "Conversa resumida",
+            "errorSummarizingConversation": "Erro ao resumir a conversa: ",
+            
+              "conversationTooLong": "A conversa está muito longa!",
+              "conversationSummary": "Resumo da conversa:",
+              "summaryCopied": "Resumo copiado para a área de transferência",
+              "close": "Fechar",
+              "copy": "Copiar",
+              "newChat": "Novo chat",
+              "errorSummarizingConversation": "Erro ao resumir a conversa: %s"
+          
     
     
 
