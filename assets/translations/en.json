@@ -74,14 +74,14 @@
   "newConversation": "New Conversation",
   "deleteConversation": "Delete this conversation?",
   "deleteConversationPrompt": "This space has been part of your process.\nDo you want to let it go?",
-  "cancel": "Cancel",
+
   "delete": "Delete",
   "conversationDeleted": "Conversation deleted",
   "errorLoadingConversations": "Error loading your conversations: %s",
   "errorDeletingConversation": "Error deleting the conversation: %s",
   "errorOpeningConversation": "Error opening the conversation: %s",
-  "todayAt": "Today at %s",
-  "yesterdayAt": "Yesterday at %s"
+  "todayAt": "Today at",
+  "yesterdayAt": "Yesterday at"
 
 
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:particles_flutter/particles_engine.dart';
 import 'package:LumorahAI/auth/auth_service.dart';
@@ -72,13 +73,13 @@ class _RegisterModalState extends State<RegisterModal> {
           ),
         );
       } else {
-        showErrorSnackBar('registrationFailed'.tr());
+        showErrorToast('registrationFailed'.tr());
       }
     } catch (e) {
       if (!mounted) return;
 
       Navigator.pop(context); // Close loading dialog
-      showErrorSnackBar('generalError'.tr(args: [e.toString()]));
+      showErrorToast('generalError'.tr(args: [e.toString()]));
     }
   }
 
@@ -87,43 +88,39 @@ class _RegisterModalState extends State<RegisterModal> {
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      showErrorSnackBar('fillAllFields'.tr());
+      showErrorToast('fillAllFields'.tr());
       return false;
     }
 
     if (!_emailController.text.contains('@')) {
-      showErrorSnackBar('invalidEmail'.tr());
-      return false;
-    }
-
-    if (_nameController.text.contains(RegExp(r'[^a-zA-Z\s]'))) {
-      showErrorSnackBar('onlyLetters'.tr());
+      showErrorToast('invalidEmail'.tr());
       return false;
     }
 
     if (_passwordController.text.length < 6) {
-      showErrorSnackBar('passwordTooShort'.tr());
+      showErrorToast('passwordTooShort'.tr());
       return false;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      showErrorSnackBar('passwordsMismatch'.tr());
+      showErrorToast('passwordsMismatch'.tr());
       return false;
     }
 
     return true;
   }
 
-  void showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: LumorahColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+  void showErrorToast(String message) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM, // Muestra en la parte superior
+      timeInSecForIosWeb: 3,
+      backgroundColor: LumorahColors.error,
+      textColor: Colors.white,
+      fontSize: 16.0,
+      webPosition: "center", // Para versión web
+      webBgColor: LumorahColors.error.toString(),
     );
   }
 
@@ -258,6 +255,10 @@ class _RegisterModalState extends State<RegisterModal> {
                           children: [
                             TextField(
                               controller: _nameController,
+                              style: TextStyle(
+                                  color: Colors
+                                      .black), // <- Aquí se cambia el color del texto
+
                               decoration: InputDecoration(
                                 labelText: 'name'.tr(), // Traducción
                                 labelStyle: TextStyle(
@@ -281,6 +282,10 @@ class _RegisterModalState extends State<RegisterModal> {
                             TextField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              style: TextStyle(
+                                  color: Colors
+                                      .black), // <- Aquí se cambia el color del texto
+
                               decoration: InputDecoration(
                                 labelText: 'email'.tr(), // Traducción
                                 labelStyle: TextStyle(
@@ -304,6 +309,10 @@ class _RegisterModalState extends State<RegisterModal> {
                             TextField(
                               controller: _passwordController,
                               obscureText: isObscure,
+                              style: TextStyle(
+                                  color: Colors
+                                      .black), // <- Aquí se cambia el color del texto
+
                               decoration: InputDecoration(
                                 labelText: 'password'.tr(), // Traducción
                                 labelStyle: TextStyle(
@@ -335,6 +344,10 @@ class _RegisterModalState extends State<RegisterModal> {
                             ),
                             const SizedBox(height: 16),
                             TextField(
+                              style: TextStyle(
+                                  color: Colors
+                                      .black), // <- Aquí se cambia el color del texto
+
                               controller: _confirmPasswordController,
                               obscureText: isObscure,
                               decoration: InputDecoration(
@@ -425,12 +438,12 @@ class _RegisterModalState extends State<RegisterModal> {
                                 ),
                               );
                             } else {
-                              showErrorSnackBar('googleSignInError'.tr());
+                              showErrorToast('googleSignInError'.tr());
                             }
                           } catch (e) {
                             if (!mounted) return;
                             Navigator.pop(context); // Cerrar loading
-                            showErrorSnackBar(
+                            showErrorToast(
                                 'generalError'.tr(args: [e.toString()]));
                           }
                         },

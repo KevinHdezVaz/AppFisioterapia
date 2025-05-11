@@ -57,7 +57,6 @@
     "saveConversation": "Salvar Conversa",
     "title": "Título",
     "exampleTitle": "Ex.: Conversa sobre ansiedade",
-    "cancel": "Cancelar",
     "chatSavedSuccessfully": "Conversa salva com sucesso",
     "sensitiveState": "💙 Sensível",
     "crisisState": "⚠️ Precisa de apoio",
@@ -80,8 +79,8 @@
       "errorLoadingConversations": "Erro ao carregar suas conversas: %s",
       "errorDeletingConversation": "Erro ao excluir a conversa: %s",
       "errorOpeningConversation": "Erro ao abrir a conversa: %s",
-      "todayAt": "Hoje às %s",
-      "yesterdayAt": "Ontem às %s"
+      "todayAt": "Hoje às",
+      "yesterdayAt": "Ontem às"
     
     
 

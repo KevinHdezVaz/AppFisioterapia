@@ -2,6 +2,7 @@ import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/utils/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart'; // Nuevo import
 
@@ -63,43 +64,44 @@ class _LoginModalState extends State<LoginModal> {
           ),
         );
       } else {
-        showErrorSnackBar('invalidCredentials'.tr());
+        showErrorToast('invalidCredentials'.tr());
       }
     } catch (e) {
       Navigator.pop(context); // Close loading dialog
-      showErrorSnackBar('generalError'.tr(args: [e.toString()]));
+      showErrorToast('generalError'.tr(args: [e.toString()]));
     }
   }
 
   bool validateLogin() {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      showErrorSnackBar('fillAllFields'.tr());
+      showErrorToast('fillAllFields'.tr());
       return false;
     }
 
     if (!_emailController.text.contains('@')) {
-      showErrorSnackBar('invalidEmail'.tr());
+      showErrorToast('invalidEmail'.tr());
       return false;
     }
 
     if (_passwordController.text.length < 6) {
-      showErrorSnackBar('passwordTooShort'.tr());
+      showErrorToast('passwordTooShort'.tr());
       return false;
     }
 
     return true;
   }
 
-  void showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: LumorahColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+  void showErrorToast(String message) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM, // Muestra en la parte superior
+      timeInSecForIosWeb: 3,
+      backgroundColor: LumorahColors.error,
+      textColor: Colors.white,
+      fontSize: 16.0,
+      webPosition: "center", // Para versión web
+      webBgColor: LumorahColors.error.toString(),
     );
   }
 
@@ -330,13 +332,12 @@ class _LoginModalState extends State<LoginModal> {
                             ),
                           );
                         } else {
-                          showErrorSnackBar('googleSignInError'.tr());
+                          showErrorToast('googleSignInError'.tr());
                         }
                       } catch (e) {
                         if (!mounted) return;
                         Navigator.pop(context); // Cerrar loading
-                        showErrorSnackBar(
-                            'generalError'.tr(args: [e.toString()]));
+                        showErrorToast('generalError'.tr(args: [e.toString()]));
                       }
                     },
                     style: OutlinedButton.styleFrom(

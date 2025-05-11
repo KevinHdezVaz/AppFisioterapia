@@ -57,7 +57,6 @@
     "saveConversation": "Enregistrer la conversation",
     "title": "Titre",
     "exampleTitle": "Ex. : Conversation sur l'anxiété",
-    "cancel": "Annuler",
     "chatSavedSuccessfully": "Conversation enregistrée avec succès",
     "sensitiveState": "💙 Sensible",
     "crisisState": "⚠️ Besoin de soutien",
@@ -80,8 +79,8 @@
         "errorLoadingConversations": "Erreur lors du chargement de vos conversations : %s",
         "errorDeletingConversation": "Erreur lors de la suppression de la conversation : %s",
         "errorOpeningConversation": "Erreur lors de l'ouverture de la conversation : %s",
-        "todayAt": "Aujourd'hui à %s",
-        "yesterdayAt": "Hier à %s"
+        "todayAt": "Aujourd'hui à",
+        "yesterdayAt": "Hier à"
       
       
 

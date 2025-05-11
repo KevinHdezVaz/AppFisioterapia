@@ -14,17 +14,31 @@ class ChatHistoryScreen extends StatefulWidget {
   State<ChatHistoryScreen> createState() => _ChatHistoryScreenState();
 }
 
-class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
+class _ChatHistoryScreenState extends State<ChatHistoryScreen>
+    with SingleTickerProviderStateMixin {
   final ChatServiceApi _chatService = ChatServiceApi();
   List<ChatSession> _sessions = [];
   bool _isLoading = true;
   String _searchQuery = '';
   final Color tiffanyColor = Color(0xFF88D5C2);
+  final Color ivoryColor = Color(0xFFFDF8F2);
+  final Color darkTextColor = Colors.black87;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
     _fetchSessions();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchSessions() async {
@@ -87,12 +101,19 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   void _startNewConversation() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => ChatScreen(
           initialMessages: [],
           inputMode: 'keyboard',
           sessionId: null,
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        transitionDuration: Duration(milliseconds: 700),
       ),
     );
   }
@@ -114,27 +135,32 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
         title: Text(
           'yourConversations'.tr(),
           style: GoogleFonts.lora(
-            color: Colors.white,
+            color: darkTextColor,
             fontWeight: FontWeight.w700,
             fontSize: 24,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(color: darkTextColor),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.black, size: 28),
+            icon: Icon(Icons.refresh, color: darkTextColor, size: 28),
             onPressed: _fetchSessions,
           ),
           SizedBox(width: 16),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _startNewConversation,
-        backgroundColor: LumorahColors.secondary,
-        child: Icon(Icons.add, color: Colors.white),
-        tooltip: 'newConversation'.tr(),
+      floatingActionButton: ScaleTransition(
+        scale: Tween(begin: 1.0, end: 1.1).animate(
+          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+        ),
+        child: FloatingActionButton(
+          onPressed: _startNewConversation,
+          backgroundColor: ivoryColor,
+          child: Icon(Icons.add, color: darkTextColor),
+          tooltip: 'newConversation'.tr(),
+        ),
       ),
       body: Stack(
         children: [
@@ -145,7 +171,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 child: Column(
                   children: [
                     Card(
-                      color: Colors.white.withOpacity(0.12),
+                      color: ivoryColor.withOpacity(0.9),
                       elevation: 3,
                       shadowColor: Colors.white.withOpacity(0.1),
                       shape: RoundedRectangleBorder(
@@ -153,17 +179,17 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                       child: TextField(
                         decoration: InputDecoration(
                           hintText: 'searchConversations'.tr(),
-                          hintStyle: GoogleFonts.lora(color: Colors.black),
-                          prefixIcon: Icon(Icons.search,
-                              color: LumorahColors.secondary),
+                          hintStyle: GoogleFonts.lora(
+                              color: darkTextColor.withOpacity(0.6)),
+                          prefixIcon: Icon(Icons.search, color: tiffanyColor),
                           filled: true,
                           fillColor: Colors.transparent,
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                               horizontal: 16, vertical: 14),
                         ),
-                        style:
-                            GoogleFonts.lora(color: Colors.black, fontSize: 16),
+                        style: GoogleFonts.lora(
+                            color: darkTextColor, fontSize: 16),
                         onChanged: (value) =>
                             setState(() => _searchQuery = value),
                       ),
@@ -176,14 +202,14 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 child: _isLoading
                     ? Center(
                         child: CircularProgressIndicator(
-                          color: LumorahColors.secondary,
+                          color: ivoryColor,
                           strokeWidth: 3,
                         ),
                       )
                     : _filteredSessions.isEmpty
                         ? _buildEmptyState()
                         : RefreshIndicator(
-                            color: LumorahColors.secondary,
+                            color: ivoryColor,
                             onRefresh: _fetchSessions,
                             child: ListView.builder(
                               padding: EdgeInsets.only(
@@ -205,17 +231,14 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
   Widget _buildSessionCard(ChatSession session) {
     return Card(
-      color: Colors.white.withOpacity(0.12),
+      color: ivoryColor.withOpacity(0.9),
       elevation: 3,
       shadowColor: Colors.white.withOpacity(0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.05),
-              Colors.white.withOpacity(0.15)
-            ],
+            colors: [ivoryColor.withOpacity(0.8), ivoryColor.withOpacity(0.9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -224,17 +247,17 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
         child: ListTile(
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: CircleAvatar(
-            backgroundColor: LumorahColors.secondary.withOpacity(0.2),
+            backgroundColor: tiffanyColor.withOpacity(0.2),
             child: Icon(
               Icons.bookmark,
-              color: LumorahColors.secondary,
+              color: tiffanyColor,
               size: 24,
             ),
           ),
           title: Text(
             session.title,
             style: GoogleFonts.lora(
-              color: Colors.black,
+              color: darkTextColor,
               fontWeight: FontWeight.w600,
               fontSize: 18,
             ),
@@ -244,12 +267,12 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
           subtitle: Text(
             _formatDate(session.createdAt),
             style: GoogleFonts.lora(
-              color: Colors.black38,
+              color: darkTextColor.withOpacity(0.6),
               fontSize: 14,
             ),
           ),
           trailing: IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.red[300], size: 24),
+            icon: Icon(Icons.delete_outline, color: tiffanyColor, size: 24),
             onPressed: () => _showDeleteDialog(session.id),
           ),
           onTap: () => _openChat(session),
@@ -264,21 +287,20 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Color(0xFFFDF8F2),
+        backgroundColor: ivoryColor,
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  color: Color.fromARGB(255, 214, 126, 18), size: 48),
+              Icon(Icons.warning_amber_rounded, color: tiffanyColor, size: 48),
               SizedBox(height: 16),
               Text(
                 'deleteConversation'.tr(),
                 style: GoogleFonts.lora(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: darkTextColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -287,7 +309,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 'deleteConversationPrompt'.tr(),
                 style: GoogleFonts.lora(
                   fontSize: 16,
-                  color: Colors.black54,
+                  color: darkTextColor.withOpacity(0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -298,7 +320,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF88D5C2),
+                      backgroundColor: ivoryColor,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       padding:
@@ -308,7 +330,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                       'cancel'.tr(),
                       style: GoogleFonts.lora(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                        color: darkTextColor,
                         fontSize: 16,
                       ),
                     ),
@@ -319,7 +341,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                       _deleteSession(sessionId);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[400],
+                      backgroundColor: tiffanyColor,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       padding:
@@ -330,6 +352,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                       style: GoogleFonts.lora(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: ivoryColor,
                       ),
                     ),
                   ),
@@ -346,15 +369,21 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
     try {
       final messages = await _chatService.getSessionMessages(session.id);
       if (!mounted) return;
-
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => ChatScreen(
             initialMessages: messages,
             inputMode: 'keyboard',
             sessionId: session.id,
           ),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: Duration(milliseconds: 700),
         ),
       );
     } catch (e) {
@@ -373,13 +402,13 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             Icon(
               Icons.forum_outlined,
               size: 80,
-              color: LumorahColors.secondary.withOpacity(0.7),
+              color: ivoryColor.withOpacity(0.7),
             ),
             const SizedBox(height: 24),
             Text(
               'noConversations'.tr(),
               style: GoogleFonts.lora(
-                color: Colors.white,
+                color: darkTextColor,
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
               ),
@@ -389,7 +418,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             Text(
               'startNewConversationPrompt'.tr(),
               style: GoogleFonts.lora(
-                color: Colors.white70,
+                color: darkTextColor.withOpacity(0.7),
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -398,7 +427,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             ElevatedButton(
               onPressed: _startNewConversation,
               style: ElevatedButton.styleFrom(
-                backgroundColor: LumorahColors.secondary,
+                backgroundColor: ivoryColor,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -406,7 +435,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
               child: Text(
                 'newConversation'.tr(),
                 style: GoogleFonts.lora(
-                  color: Colors.white,
+                  color: darkTextColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -424,12 +453,14 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
     final yesterday = today.subtract(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
 
+    final formattedTime = _formatTime(date);
+
     if (dateOnly == today) {
-      return 'todayAt'.tr(args: [_formatTime(date)]);
+      return '${'todayAt'.tr()} $formattedTime';
     } else if (dateOnly == yesterday) {
-      return 'yesterdayAt'.tr(args: [_formatTime(date)]);
+      return '${'yesterdayAt'.tr()} $formattedTime';
     } else {
-      return '${date.day}/${date.month}/${date.year} ${_formatTime(date)}';
+      return '${date.day}/${date.month}/${date.year} $formattedTime';
     }
   }
 

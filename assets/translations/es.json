@@ -79,8 +79,8 @@
     "errorLoadingConversations": "Error al cargar tus conversaciones: %s",
     "errorDeletingConversation": "Error al eliminar la conversación: %s",
     "errorOpeningConversation": "Error al abrir la conversación: %s",
-    "todayAt": "Hoy a las %s",
-    "yesterdayAt": "Ayer a las %s"
+    "todayAt": "Hoy a las",
+    "yesterdayAt": "Ayer a las"
   
 
 }

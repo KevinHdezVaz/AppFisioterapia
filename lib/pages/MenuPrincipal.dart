@@ -72,25 +72,33 @@ class _MenuprincipalState extends State<Menuprincipal>
   }
 
   Future<void> _signOut(BuildContext context) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+        builder: (_) => WillPopScope(
+          onWillPop: () async => false,
+          child: const Center(child: CircularProgressIndicator()),
         ),
       );
 
       await _authService.logout();
-      Navigator.pop(context);
+
+      if (mounted) {
+        navigator.pop(); // Cierra loading
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => Menuprincipal()),
+          (route) => false,
+        );
+      }
     } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cerrar sesión: ${e.toString()}'),
-          backgroundColor: LumorahColors.error,
-        ),
-      );
+      if (mounted) navigator.pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('logout_error'.tr(args: [e.toString()]))),
+        );
+      }
     }
   }
 

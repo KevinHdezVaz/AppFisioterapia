@@ -70,11 +70,12 @@ Future<void> main() async {
         Locale('en'), // English
         Locale('es'), // Spanish
         Locale('fr'), // French
-        Locale('pt'),
+        Locale('pt'), // Portuguese
       ],
       path: 'assets/translations',
       fallbackLocale: const Locale('es'), // Fallback en español
       startLocale: startLocale,
+      useOnlyLangCode: true, // Ignora códigos de país como MX, CO, AR
       child: ChangeNotifierProvider(
         create: (context) => ThemeProvider(),
         child: const MyApp(),
