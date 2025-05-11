@@ -1,7 +1,8 @@
 import 'dart:math';
+import 'package:LumorahAI/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:easy_localization/easy_localization.dart'; // Nuevo import
+import 'package:easy_localization/easy_localization.dart';
 import 'package:LumorahAI/auth/auth_service.dart';
 import 'package:LumorahAI/auth/login_page.dart';
 import 'package:LumorahAI/auth/register_page.dart';
@@ -41,6 +42,16 @@ class _MenuprincipalState extends State<Menuprincipal>
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
+
+    // Cargar idioma almacenado
+    _loadStoredLanguage();
+  }
+
+  Future<void> _loadStoredLanguage() async {
+    final storedLanguage = await _storageService.getLanguage();
+    if (storedLanguage != null && mounted) {
+      context.setLocale(Locale(storedLanguage));
+    }
   }
 
   @override
@@ -104,6 +115,78 @@ class _MenuprincipalState extends State<Menuprincipal>
           _showLoginModal(context);
         },
         inputMode: 'keyboard',
+      ),
+    );
+  }
+
+  void _showLanguageSelector(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('selectLanguage'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('Español'),
+              onTap: () async {
+                await _storageService.saveLanguage('es');
+                if (mounted) {
+                  context.setLocale(Locale('es'));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('languageChanged'.tr(args: ['Español']))),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              title: Text('English'),
+              onTap: () async {
+                await _storageService.saveLanguage('en');
+                if (mounted) {
+                  context.setLocale(Locale('en'));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('languageChanged'.tr(args: ['English']))),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              title: Text('Français'),
+              onTap: () async {
+                await _storageService.saveLanguage('fr');
+                if (mounted) {
+                  context.setLocale(Locale('fr'));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content:
+                            Text('languageChanged'.tr(args: ['Français']))),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              title: Text('Português'),
+              onTap: () async {
+                await _storageService.saveLanguage('pt');
+                if (mounted) {
+                  context.setLocale(Locale('pt'));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content:
+                            Text('languageChanged'.tr(args: ['Português']))),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -181,11 +264,10 @@ class _MenuprincipalState extends State<Menuprincipal>
                   FutureBuilder<String?>(
                     future: _getUserName(),
                     builder: (context, userSnapshot) {
-                      String headerText = isAuthenticated &&
-                              userSnapshot.data != null
-                          ? 'helloUser'.tr(
-                              args: [userSnapshot.data!]) // Traducción dinámica
-                          : 'helloLumorah'.tr(); // Traducción
+                      String headerText =
+                          isAuthenticated && userSnapshot.data != null
+                              ? 'helloUser'.tr(args: [userSnapshot.data!])
+                              : 'helloLumorah'.tr();
                       return DrawerHeader(
                         decoration: BoxDecoration(
                           color: ivoryColor.withOpacity(0.7),
@@ -205,7 +287,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   ListTile(
                     leading: Icon(Icons.chat, color: lightTextColor),
                     title: Text(
-                      'chat'.tr(), // Traducción
+                      'chat'.tr(),
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -252,7 +334,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                     ListTile(
                       leading: Icon(Icons.history, color: lightTextColor),
                       title: Text(
-                        'chatHistory'.tr(), // Traducción
+                        'chatHistory'.tr(),
                         style: TextStyle(
                           color: lightTextColor,
                           fontSize: 16,
@@ -273,7 +355,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   ListTile(
                     leading: Icon(Icons.language, color: lightTextColor),
                     title: Text(
-                      'changeLanguage'.tr(), // Traducción
+                      'changeLanguage'.tr(),
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -283,15 +365,13 @@ class _MenuprincipalState extends State<Menuprincipal>
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Configuración en desarrollo')),
-                      );
+                      _showLanguageSelector(context);
                     },
                   ),
                   ListTile(
                     leading: Icon(Icons.settings, color: lightTextColor),
                     title: Text(
-                      'settings'.tr(), // Traducción
+                      'settings'.tr(),
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -312,9 +392,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                       color: lightTextColor,
                     ),
                     title: Text(
-                      isAuthenticated
-                          ? 'logOut'.tr()
-                          : 'logIn'.tr(), // Traducción
+                      isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -373,7 +451,7 @@ class _MenuprincipalState extends State<Menuprincipal>
               children: [
                 SizedBox(height: 180),
                 Text(
-                  'writeOrSpeak'.tr(), // Traducción
+                  'writeOrSpeak'.tr(),
                   style: TextStyle(
                     fontSize: 30,
                     color: Colors.black,
@@ -385,7 +463,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'iAmHere'.tr(), // Traducción
+                  'iAmHere'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     color: Colors.black.withOpacity(0.9),
@@ -401,7 +479,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                     controller: _textController,
                     style: TextStyle(color: Colors.black),
                     decoration: InputDecoration(
-                      hintText: 'writeHint'.tr(), // Traducción
+                      hintText: 'writeHint'.tr(),
                       hintStyle: TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: ivoryColor,
@@ -431,43 +509,6 @@ class _MenuprincipalState extends State<Menuprincipal>
           ),
         ],
       ),
-    );
-  }
-}
-
-class ParticulasFlotantes extends StatefulWidget {
-  @override
-  _ParticulasFlotantesState createState() => _ParticulasFlotantesState();
-}
-
-class _ParticulasFlotantesState extends State<ParticulasFlotantes>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _particlesController;
-
-  @override
-  void initState() {
-    super.initState();
-    _particlesController = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: 20),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _particlesController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _particlesController,
-      builder: (context, child) {
-        return CustomPaint(
-          painter: _ParticulasPainter(_particlesController.value),
-        );
-      },
     );
   }
 }

@@ -13,7 +13,7 @@ import 'package:LumorahAI/services/storage_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
-import 'package:easy_localization/easy_localization.dart'; // Nuevo import
+import 'package:easy_localization/easy_localization.dart';
 
 class ChatScreen extends StatefulWidget {
   final String inputMode;
@@ -56,16 +56,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final Color micButtonColor = Color(0xFF4ECDC4);
 
   List<ChatMessage> _messages = [];
-  bool _isNewSession = false;
+  int? _currentSessionId; // Almacena el sessionId asignado por el backend
+  bool _isSaved = false; // Indica si la sesión está guardada
   String? _emotionalState;
   String? _conversationLevel;
+  bool _initialMessageSent = false;
+
+  // Mapa de códigos de idioma para reconocimiento de voz
+  final Map<String, String> _speechLocales = {
+    'es': 'es_ES',
+    'en': 'en_US',
+    'fr': 'fr_FR',
+    'pt': 'pt_BR',
+  };
 
   @override
   void initState() {
     super.initState();
 
     _messages = widget.initialMessages?.reversed.toList() ?? [];
-    _isNewSession = widget.sessionId == null;
+    _currentSessionId = widget.sessionId;
+    _isSaved = widget.sessionId != null && widget.initialMessages != null;
 
     _sunController = AnimationController(
       vsync: this,
@@ -78,12 +89,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     _speech = stt.SpeechToText();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
+  }
 
-    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _sendMessage(widget.initialMessage!);
-      });
-    } else if (_isNewSession && _messages.isEmpty) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialMessageSent &&
+        widget.initialMessage != null &&
+        widget.initialMessage!.isNotEmpty) {
+      _initialMessageSent = true;
+      _sendMessage(widget.initialMessage!);
+    } else if (_currentSessionId == null && _messages.isEmpty) {
       _startNewSession();
     }
   }
@@ -154,13 +170,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Future<void> _startNewSession() async {
     try {
-      final response = await _chatService.startNewSession();
+      final response = await _chatService.startNewSession(
+        language: context.locale.languageCode,
+      );
 
       if (!mounted) return;
 
       final welcomeMessage = ChatMessage(
         id: -1,
-        chatSessionId: widget.sessionId ?? -1,
+        chatSessionId: response['session_id'] ?? -1,
         userId: 0,
         text: response['ai_message']['text'],
         isUser: false,
@@ -172,6 +190,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       setState(() {
         _messages.insert(0, welcomeMessage);
+        _currentSessionId = response['session_id'];
         _emotionalState = response['ai_message']['emotional_state'];
         _conversationLevel = response['ai_message']['conversation_level'];
       });
@@ -182,7 +201,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _sendMessage(String message) async {
+  Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
     if (!await _isUserAuthenticated()) {
       if (!mounted) return;
       _showAuthModal();
@@ -194,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final currentUser = await _storageService.getUser();
     final newMessage = ChatMessage(
       id: -1,
-      chatSessionId: widget.sessionId ?? -1,
+      chatSessionId: _currentSessionId ?? -1,
       userId: currentUser?.id ?? -1,
       text: message,
       isUser: true,
@@ -214,15 +233,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     await _playThinkingSound();
 
-    // Pausa terapéutica de 1 segundo
     await Future.delayed(Duration(seconds: 1));
 
     try {
-      final response = await _chatService.sendMessage(
-        message: message,
-        sessionId: widget.sessionId,
-        isTemporary: false,
-      );
+      final response = isTemporary
+          ? await _chatService.sendTemporaryMessage(
+              message,
+              language: context.locale.languageCode,
+            )
+          : await _chatService.sendMessage(
+              message: message,
+              sessionId: _currentSessionId,
+              isTemporary: false,
+              language: context.locale.languageCode,
+            );
 
       if (!mounted) {
         await _stopThinkingSound();
@@ -231,7 +255,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       final aiMessage = ChatMessage(
         id: -1,
-        chatSessionId: widget.sessionId ?? -1,
+        chatSessionId: response['session_id'] ?? _currentSessionId ?? -1,
         userId: 0,
         text: response['ai_message']['text'],
         isUser: false,
@@ -247,9 +271,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _emotionalState = response['ai_message']['emotional_state'];
         _conversationLevel = response['ai_message']['conversation_level'];
         _typingTimer.cancel();
+        if (!isTemporary && response['session_id'] != null) {
+          _currentSessionId = response['session_id'];
+        }
       });
 
-      // Manejo de estado de crisis
       if (_emotionalState == 'crisis') {
         _showCrisisAlert();
       } else if (_emotionalState == 'sensitive') {
@@ -257,9 +283,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           0,
           ChatMessage(
             id: -1,
-            chatSessionId: widget.sessionId ?? -1,
+            chatSessionId: _currentSessionId ?? -1,
             userId: 0,
-            text: 'Estoy contigo… tómate todo el tiempo que necesites.',
+            text: _getSensitiveValidationText(context.locale.languageCode),
             isUser: false,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -281,6 +307,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
       await _stopThinkingSound();
       _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
+    }
+  }
+
+  String _getSensitiveValidationText(String languageCode) {
+    switch (languageCode) {
+      case 'en':
+        return "I'm here with you… take all the time you need.";
+      case 'fr':
+        return "Je suis là avec vous… prenez tout le temps dont vous avez besoin.";
+      case 'pt':
+        return "Estou aqui com você… leve o tempo que precisar.";
+      default:
+        return "Estoy contigo… tómate todo el tiempo que necesites.";
     }
   }
 
@@ -372,7 +411,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (title == null || title.isEmpty) return;
 
     try {
-      await _chatService.saveChatSession(
+      final session = await _chatService.saveChatSession(
         title: title,
         messages: _messages.reversed
             .map((m) => {
@@ -381,9 +420,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   'created_at': m.createdAt.toIso8601String(),
                 })
             .toList(),
+        sessionId: _currentSessionId,
       );
 
       if (!mounted) return;
+
+      setState(() {
+        _isSaved = true;
+        _currentSessionId = session.id;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -405,15 +450,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
 
     if (_isListening) {
-      print('Reconocimiento de voz ya está activo, ignorando nueva solicitud.');
+      debugPrint(
+          'Reconocimiento de voz ya está activo, ignorando nueva solicitud.');
       return;
     }
 
     bool available = _isSpeechInitialized;
     if (!_isSpeechInitialized) {
       available = await _speech.initialize(
-        onStatus: (status) => print('Status: $status'),
-        onError: (error) => print('Error: $error'),
+        onStatus: (status) => debugPrint('Speech status: $status'),
+        onError: (error) => debugPrint('Speech error: $error'),
       );
       if (available) {
         _isSpeechInitialized = true;
@@ -425,12 +471,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (available) {
       setState(() => _isListening = true);
       Timer? silenceTimer;
+      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
       _speech.listen(
         onResult: (result) {
           if (mounted) {
             setState(() {
               _transcribedText = result.recognizedWords;
-              // Reinicia el temporizador de silencio
               silenceTimer?.cancel();
               silenceTimer = Timer(Duration(seconds: 3), () {
                 if (_transcribedText.isNotEmpty) {
@@ -440,7 +486,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             });
           }
         },
-        localeId: 'es_ES',
+        localeId: localeId,
         pauseFor: Duration(seconds: 3),
       );
     } else {
@@ -513,8 +559,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     style: TextStyle(
                       color: Colors.black87,
                       fontFamily: 'Lora',
-                      fontSize: 12,
+                      fontSize: 16,
                     ),
+                    semanticsLabel: message.isUser
+                        ? 'Mensaje del usuario: ${message.text}'
+                        : 'Mensaje de Lumorah: ${message.text}',
                   ),
                   if (message.imageUrl != null)
                     Image.network(message.imageUrl!),
@@ -523,8 +572,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     time,
                     style: TextStyle(
                       color: Colors.grey[600],
-                      fontSize: 12,
+                      fontSize: 14,
                     ),
+                    semanticsLabel: 'Enviado a las $time',
                   ),
                 ],
               ),
@@ -537,9 +587,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 '${_getEmotionalStateText(message.emotionalState)} • ${_getConversationLevelText(message.conversationLevel)}',
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: 10,
+                  fontSize: 12,
                   fontStyle: FontStyle.italic,
                 ),
+                semanticsLabel:
+                    'Estado emocional: ${_getEmotionalStateText(message.emotionalState)}, Nivel: ${_getConversationLevelText(message.conversationLevel)}',
               ),
             ),
         ],
@@ -605,7 +657,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Text(
-            'withYou'.tr(), // Traducción
+            'withYou'.tr(),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -617,7 +669,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         SizedBox(height: 10),
         Text(
-          'speakWhenever'.tr(), // Traducción
+          'speakWhenever'.tr(),
           style: TextStyle(
             fontSize: 18,
             color: Colors.black.withOpacity(0.85),
@@ -707,7 +759,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         controller: _controller,
         style: TextStyle(color: Colors.black87),
         decoration: InputDecoration(
-          hintText: 'writeHint'.tr(), // Traducción
+          hintText: 'writeHint'.tr(),
           hintStyle: TextStyle(color: Colors.grey),
           filled: true,
           fillColor: ivoryColor,
@@ -755,45 +807,58 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildVoiceInput() {
-    return Center(
-      child: GestureDetector(
-        onTap: () async {
-          if (_isListening) {
-            _stopListening();
-          } else {
-            if (await _isUserAuthenticated()) {
-              _startListening();
-            } else {
-              if (!mounted) return;
-              _showAuthModal();
-            }
-          }
-        },
-        child: Container(
-          width: 70,
-          height: 70,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _isListening
-                ? Colors.red.withOpacity(0.7)
-                : Colors.white.withOpacity(0.7),
-            boxShadow: [
-              BoxShadow(
+    return Column(
+      children: [
+        Center(
+          child: GestureDetector(
+            onTap: () async {
+              if (_isListening) {
+                _stopListening();
+              } else {
+                if (await _isUserAuthenticated()) {
+                  _startListening();
+                } else {
+                  if (!mounted) return;
+                  _showAuthModal();
+                }
+              }
+            },
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: _isListening
-                    ? Colors.red.withOpacity(0.4)
-                    : Colors.white.withOpacity(0.4),
-                blurRadius: 15,
-                spreadRadius: 2,
+                    ? Colors.red.withOpacity(0.7)
+                    : Colors.white.withOpacity(0.7),
+                boxShadow: [
+                  BoxShadow(
+                    color: _isListening
+                        ? Colors.red.withOpacity(0.4)
+                        : Colors.white.withOpacity(0.4),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Icon(
-            _isListening ? Icons.mic : Icons.mic_none,
-            size: 30,
-            color: _isListening ? Colors.white : Colors.black54,
+              child: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                size: 30,
+                color: _isListening ? Colors.white : Colors.black54,
+              ),
+            ),
           ),
         ),
-      ),
+        if (_transcribedText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Text(
+              _transcribedText,
+              style: TextStyle(color: Colors.black87, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
     );
   }
 
@@ -814,13 +879,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             onPressed: () => _navigateBack(context),
           ),
           actions: [
-            if (!_isNewSession)
+            if (!_isSaved)
               Padding(
                 padding: EdgeInsets.only(right: 10),
                 child: TextButton.icon(
                   icon: Icon(Icons.save, color: Colors.black, size: 22),
                   label: Text(
-                    'save'.tr(), // Traducción
+                    'save'.tr(),
                     style: TextStyle(color: Colors.black, fontSize: 14),
                   ),
                   onPressed: _saveChat,
@@ -888,12 +953,12 @@ class __FloatingParticlesState extends State<_FloatingParticles>
       duration: Duration(seconds: 30),
     )..repeat();
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 10; i++) {
       _particles.add(Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        size: _random.nextDouble() * 3 + 1,
-        speed: _random.nextDouble() * 0.2 + 0.1,
+        size: _random.nextDouble() * 2 + 1,
+        speed: _random.nextDouble() * 0.15 + 0.05,
       ));
     }
   }

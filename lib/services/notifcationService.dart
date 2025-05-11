@@ -1,10 +1,11 @@
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:LumorahAI/auth/auth_service.dart';
 import 'dart:convert';
 import 'package:LumorahAI/services/storage_service.dart';
-
+/*
 class NotificationService {
+
+
   static Future<void> init() async {
    try {
       // Inicializar OneSignal
@@ -101,3 +102,4 @@ class NotificationService {
     await init();
   }
 }
+*/

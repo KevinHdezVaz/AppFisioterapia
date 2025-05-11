@@ -11,6 +11,16 @@ class StorageService {
     await prefs.setString(tokenKey, token);
   }
 
+  Future<void> saveLanguage(String languageCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language', languageCode);
+  }
+
+  Future<String?> getLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('language');
+  }
+
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString(tokenKey);

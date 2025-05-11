@@ -63,5 +63,25 @@
   "crisisState": "⚠️ Needs support",
   "neutralState": "😊 Neutral",
   "advancedLevel": "Level: Advanced",
-  "basicLevel": "Level: Basic"
+  "basicLevel": "Level: Basic",
+    "selectLanguage": "Select Language",
+"languageChanged": "Language changed to {0}",
+
+  "yourConversations": "Your Conversations",
+  "searchConversations": "Search conversations...",
+  "noConversations": "No conversations",
+  "startNewConversationPrompt": "Start a new conversation today!",
+  "newConversation": "New Conversation",
+  "deleteConversation": "Delete this conversation?",
+  "deleteConversationPrompt": "This space has been part of your process.\nDo you want to let it go?",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "conversationDeleted": "Conversation deleted",
+  "errorLoadingConversations": "Error loading your conversations: %s",
+  "errorDeletingConversation": "Error deleting the conversation: %s",
+  "errorOpeningConversation": "Error opening the conversation: %s",
+  "todayAt": "Today at %s",
+  "yesterdayAt": "Yesterday at %s"
+
+
 }

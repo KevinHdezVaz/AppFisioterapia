@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:LumorahAI/model/ChatMessage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:LumorahAI/model/ChatSession.dart';
@@ -13,11 +14,16 @@ class ChatServiceApi {
     required String method,
     required String endpoint,
     Map<String, dynamic>? body,
+    Map<String, String>? queryParams,
   }) async {
     final token = await storage.getToken();
     if (token == null) throw Exception('No autenticado');
 
-    final uri = Uri.parse('$baseUrl/$endpoint');
+    final uri = Uri.parse('$baseUrl/$endpoint').replace(
+      queryParameters: queryParams != null
+          ? {for (var e in queryParams.entries) e.key: e.value.toString()}
+          : null,
+    );
     final headers = {
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
@@ -25,27 +31,28 @@ class ChatServiceApi {
     };
 
     try {
-      final response = await http.Request(method, uri)
-        ..headers.addAll(headers)
-        ..body = body != null ? jsonEncode(body) : '';
+      final request = http.Request(method, uri)..headers.addAll(headers);
+      if (body != null) {
+        request.body = jsonEncode(body);
+      }
 
       final streamedResponse =
-          await response.send().timeout(const Duration(seconds: 10));
-      final responseBody = await http.Response.fromStream(streamedResponse);
+          await request.send().timeout(const Duration(seconds: 10));
+      final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint('[$method] $endpoint - Status: ${responseBody.statusCode}');
-      debugPrint('Response: ${responseBody.body}');
+      debugPrint('[$method] $endpoint - Status: ${response.statusCode}');
+      debugPrint('Response: ${response.body}');
 
-      if (responseBody.statusCode == 401) {
+      if (response.statusCode == 401) {
         throw Exception('Sesión expirada, por favor vuelve a iniciar sesión');
       }
 
-      if (responseBody.statusCode >= 400) {
-        final errorData = jsonDecode(responseBody.body);
+      if (response.statusCode >= 400) {
+        final errorData = jsonDecode(response.body);
         throw Exception(errorData['message'] ?? 'Error en la solicitud');
       }
 
-      return jsonDecode(responseBody.body);
+      return jsonDecode(response.body);
     } on TimeoutException {
       throw Exception('Tiempo de espera agotado');
     } catch (e) {
@@ -53,11 +60,12 @@ class ChatServiceApi {
     }
   }
 
-  Future<List<ChatSession>> getSessions() async {
+  Future<List<ChatSession>> getSessions({bool saved = true}) async {
     try {
       final response = await _authenticatedRequest(
         method: 'GET',
         endpoint: 'chat/sessions',
+        queryParams: {'saved': saved.toString()},
       );
 
       debugPrint('Response from getSessions: $response');
@@ -99,39 +107,53 @@ class ChatServiceApi {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getSessionMessages(int sessionId) async {
+  Future<List<ChatMessage>> getSessionMessages(int sessionId) async {
     final response = await _authenticatedRequest(
       method: 'GET',
       endpoint: 'chat/sessions/$sessionId/messages',
     );
 
     if (response is List) {
-      return List<Map<String, dynamic>>.from(response);
+      return response
+          .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } else if (response is Map<String, dynamic> && response['data'] is List) {
+      return (response['data'] as List)
+          .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+          .toList();
     } else {
       throw FormatException(
           'Se esperaba una lista de mensajes, se obtuvo ${response.runtimeType}');
     }
   }
 
-  Future<void> saveChatSession({
+  Future<ChatSession> saveChatSession({
     required String title,
     required List<Map<String, dynamic>> messages,
+    int? sessionId,
   }) async {
-    await _authenticatedRequest(
+    final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/sessions',
       body: {
         'title': title,
         'messages': messages,
+        if (sessionId != null) 'session_id': sessionId,
       },
     );
+
+    if (response is Map<String, dynamic> && response['success'] == true) {
+      return ChatSession.fromJson(response['data']);
+    } else {
+      throw Exception('Error al guardar la sesión');
+    }
   }
 
-  // Métodos existentes actualizados
   Future<Map<String, dynamic>> sendMessage({
     required String message,
     int? sessionId,
     bool isTemporary = false,
+    required String language,
   }) async {
     final response = await _authenticatedRequest(
       method: 'POST',
@@ -140,38 +162,45 @@ class ChatServiceApi {
         'message': message,
         'session_id': sessionId,
         'is_temporary': isTemporary,
+        'language': language,
       },
     );
     return response;
   }
 
-  // Nuevos métodos para Lumorah.AI
-  Future<Map<String, dynamic>> sendTemporaryMessage(String message) async {
+  Future<Map<String, dynamic>> sendTemporaryMessage(
+    String message, {
+    required String language,
+  }) async {
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/send-temporary-message',
-      body: {'message': message},
+      body: {
+        'message': message,
+        'language': language,
+      },
     );
     return response;
   }
 
-  Future<Map<String, dynamic>> startNewSession() async {
+  Future<Map<String, dynamic>> startNewSession(
+      {required String language}) async {
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/start-new-session',
+      body: {'language': language},
     );
     return response;
   }
 
-  Future<void> updateUserName(String name) async {
+  Future<void> updateUserName(String name, {required String language}) async {
     await _authenticatedRequest(
       method: 'POST',
       endpoint: 'update-name',
-      body: {'name': name},
+      body: {'name': name, 'language': language},
     );
   }
 
-  // Método para guardar sesión existente
   Future<void> saveSession(int sessionId, String title) async {
     await _authenticatedRequest(
       method: 'PUT',

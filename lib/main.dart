@@ -66,7 +66,12 @@ Future<void> main() async {
 
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('es')],
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('es'), // Spanish
+        Locale('fr'), // French
+        Locale('pt'),
+      ],
       path: 'assets/translations',
       fallbackLocale: const Locale('es'), // Fallback en español
       startLocale: startLocale,
@@ -98,7 +103,12 @@ class _MyAppState extends State<MyApp> {
         Provider<PaymentService>(create: (_) => PaymentService()),
       ],
       child: MaterialApp(
-        localizationsDelegates: context.localizationDelegates,
+        localizationsDelegates: [
+          ...context.localizationDelegates,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         supportedLocales: context.supportedLocales,
         locale: context.locale,
         debugShowCheckedModeBanner: false,

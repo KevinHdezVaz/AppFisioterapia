@@ -22,14 +22,18 @@ class ChatSession {
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     try {
       return ChatSession(
-        id: _parseInt(json['id']),
-        userId: _parseInt(json['user_id']),
-        title: _parseString(json['title']),
-        isSaved: _parseBool(json['is_saved']),
-        createdAt: _parseDateTime(json['created_at']),
-        updatedAt: _parseDateTime(json['updated_at']),
+        id: int.tryParse(json['id'].toString()) ?? -1,
+        userId: int.tryParse(json['user_id'].toString()) ?? -1,
+        title: json['title']?.toString() ?? 'Sin título',
+        isSaved: json['is_saved'] is bool
+            ? json['is_saved']
+            : (json['is_saved'] == 1 || json['is_saved'].toString() == 'true'),
+        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+            DateTime.now(),
         deletedAt: json['deleted_at'] != null
-            ? _parseDateTime(json['deleted_at'])
+            ? DateTime.tryParse(json['deleted_at'].toString())
             : null,
       );
     } catch (e) {
@@ -47,38 +51,6 @@ class ChatSession {
         'deleted_at': deletedAt?.toIso8601String(),
       };
 
-  // Helpers para parseo seguro
-  static int _parseInt(dynamic value) {
-    if (value == null) throw ArgumentError('Expected integer, got null');
-    return value is int ? value : int.tryParse(value.toString()) ?? 0;
-  }
-
-  static String _parseString(dynamic value) {
-    if (value == null) throw ArgumentError('Expected string, got null');
-    return value.toString();
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value == null) return false;
-    if (value is bool) return value;
-    if (value is int) return value != 0;
-    if (value is String) {
-      return value.toLowerCase() == 'true' || value == '1';
-    }
-    return false;
-  }
-
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) throw ArgumentError('Expected date string, got null');
-    if (value is DateTime) return value;
-    try {
-      return DateTime.parse(value.toString());
-    } catch (e) {
-      throw FormatException('Invalid date format: $value');
-    }
-  }
-
-  // Método para copiar con cambios
   ChatSession copyWith({
     int? id,
     int? userId,

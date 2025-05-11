@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:LumorahAI/model/ChatMessage.dart';
 import 'package:LumorahAI/model/ChatSession.dart';
-import 'package:LumorahAI/pages/home_page.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
 import 'package:LumorahAI/utils/colors.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ChatHistoryScreen extends StatefulWidget {
   const ChatHistoryScreen({Key? key}) : super(key: key);
@@ -30,20 +30,16 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   Future<void> _fetchSessions() async {
     try {
       setState(() => _isLoading = true);
-      final sessions = await _chatService.getSessions();
+      final sessions = await _chatService.getSessions(saved: true);
       setState(() {
-        if (sessions is List<ChatSession>) {
-          _sessions =
-              sessions.where((session) => session.deletedAt == null).toList();
-        } else {
-          throw FormatException(
-              'Se esperaba List<ChatSession>, se obtuvo ${sessions.runtimeType}');
-        }
+        _sessions = sessions
+            .where((session) => session.deletedAt == null && session.isSaved)
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Error al cargar tus conversaciones: $e');
+      _showError('errorLoadingConversations'.tr(args: [e.toString()]));
     }
   }
 
@@ -60,19 +56,15 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
   }
 
   List<ChatSession> get _filteredSessions {
-    var filtered = _sessions.toList();
+    if (_searchQuery.isEmpty) return _sessions;
 
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered
-          .where((session) =>
-              session.title
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ||
-              _formatDate(session.createdAt).contains(_searchQuery))
-          .toList();
-    }
-
-    return filtered;
+    return _sessions
+        .where((session) =>
+            session.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            _formatDate(session.createdAt)
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()))
+        .toList();
   }
 
   Future<void> _deleteSession(int id) async {
@@ -81,8 +73,14 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       setState(() {
         _sessions.removeWhere((session) => session.id == id);
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('conversationDeleted'.tr()),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      _showError('Error al eliminar la conversación: $e');
+      _showError('errorDeletingConversation'.tr(args: [e.toString()]));
     }
   }
 
@@ -114,7 +112,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
           ),
         ),
         title: Text(
-          'Tus Conversaciones',
+          'yourConversations'.tr(),
           style: GoogleFonts.lora(
             color: Colors.white,
             fontWeight: FontWeight.w700,
@@ -132,6 +130,12 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
           SizedBox(width: 16),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _startNewConversation,
+        backgroundColor: LumorahColors.secondary,
+        child: Icon(Icons.add, color: Colors.white),
+        tooltip: 'newConversation'.tr(),
+      ),
       body: Stack(
         children: [
           Column(
@@ -148,7 +152,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                           borderRadius: BorderRadius.circular(24)),
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: 'Buscar conversaciones...',
+                          hintText: 'searchConversations'.tr(),
                           hintStyle: GoogleFonts.lora(color: Colors.black),
                           prefixIcon: Icon(Icons.search,
                               color: LumorahColors.secondary),
@@ -222,7 +226,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
           leading: CircleAvatar(
             backgroundColor: LumorahColors.secondary.withOpacity(0.2),
             child: Icon(
-              session.isSaved ? Icons.bookmark : Icons.chat_bubble_outline,
+              Icons.bookmark,
               color: LumorahColors.secondary,
               size: 24,
             ),
@@ -270,7 +274,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                   color: Color.fromARGB(255, 214, 126, 18), size: 48),
               SizedBox(height: 16),
               Text(
-                '¿Eliminar esta conversación?',
+                'deleteConversation'.tr(),
                 style: GoogleFonts.lora(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -280,7 +284,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
               ),
               SizedBox(height: 12),
               Text(
-                'Este espacio ha sido parte de tu proceso.\n¿Deseas dejarlo ir?',
+                'deleteConversationPrompt'.tr(),
                 style: GoogleFonts.lora(
                   fontSize: 16,
                   color: Colors.black54,
@@ -301,7 +305,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                           EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: Text(
-                      'Cancelar',
+                      'cancel'.tr(),
                       style: GoogleFonts.lora(
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
@@ -322,7 +326,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                           EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: Text(
-                      'Eliminar',
+                      'delete'.tr(),
                       style: GoogleFonts.lora(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -340,12 +344,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
 
   Future<void> _openChat(ChatSession session) async {
     try {
-      final messagesJson = await _chatService.getSessionMessages(session.id);
-      final messages = messagesJson
-          .map<ChatMessage>(
-              (json) => ChatMessage.fromJson(json as Map<String, dynamic>))
-          .toList();
-
+      final messages = await _chatService.getSessionMessages(session.id);
       if (!mounted) return;
 
       Navigator.push(
@@ -360,7 +359,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      _showError('Error al abrir la conversación: $e');
+      _showError('errorOpeningConversation'.tr(args: [e.toString()]));
     }
   }
 
@@ -378,7 +377,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'No hay conversaciones',
+              'noConversations'.tr(),
               style: GoogleFonts.lora(
                 color: Colors.white,
                 fontSize: 22,
@@ -388,7 +387,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '¡Comienza una nueva conversación hoy!',
+              'startNewConversationPrompt'.tr(),
               style: GoogleFonts.lora(
                 color: Colors.white70,
                 fontSize: 16,
@@ -405,7 +404,7 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: Text(
-                'Nueva Conversación',
+                'newConversation'.tr(),
                 style: GoogleFonts.lora(
                   color: Colors.white,
                   fontSize: 16,
@@ -426,9 +425,9 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
     final dateOnly = DateTime(date.year, date.month, date.day);
 
     if (dateOnly == today) {
-      return 'Hoy a las ${_formatTime(date)}';
+      return 'todayAt'.tr(args: [_formatTime(date)]);
     } else if (dateOnly == yesterday) {
-      return 'Ayer a las ${_formatTime(date)}';
+      return 'yesterdayAt'.tr(args: [_formatTime(date)]);
     } else {
       return '${date.day}/${date.month}/${date.year} ${_formatTime(date)}';
     }
