@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:LumorahAI/model/ChatSession.dart';
 import 'package:LumorahAI/services/storage_service.dart';
 import 'package:LumorahAI/utils/constantes.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ChatServiceApi {
   final StorageService storage = StorageService();
@@ -214,6 +215,54 @@ class ChatServiceApi {
     return response;
   }
 
+  Future<String> transcribeAudio(String filePath) async {
+    final token = await storage.getToken(); // Ajusta según tu almacenamiento
+    final uri = Uri.parse('$baseUrl/chat/transcribe-audio');
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers.addAll({
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'audio',
+        filePath,
+        contentType: MediaType(
+            'audio', _getMimeType(filePath)), // Necesitarás este helper
+      ),
+    );
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['text'] ?? '';
+        } else {
+          throw Exception('Transcripción fallida');
+        }
+      } else {
+        debugPrint('Error transcripción: ${response.body}');
+        throw Exception('Error de servidor (${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Error al conectar con el backend: $e');
+    }
+  }
+
+  String _getMimeType(String path) {
+    if (path.endsWith('.m4a')) return 'mp4'; // m4a usualmente se maneja así
+    if (path.endsWith('.mp3')) return 'mpeg';
+    if (path.endsWith('.wav')) return 'wav';
+    if (path.endsWith('.ogg')) return 'ogg';
+    if (path.endsWith('.webm')) return 'webm';
+    return 'mpeg'; // valor por defecto
+  }
+
   Future<Map<String, dynamic>> startNewSession(
       {required String language}) async {
     final response = await _authenticatedRequest(
@@ -240,9 +289,7 @@ class ChatServiceApi {
     );
   }
 
-
-
- Future<Map<String, dynamic>> sendVoiceMessage({
+  Future<Map<String, dynamic>> sendVoiceMessage({
     required String message,
     int? sessionId,
     required String language,
@@ -291,7 +338,8 @@ class ChatServiceApi {
     final responseData = await response.stream.bytesToString();
 
     if (response.statusCode != 200) {
-      throw Exception('Error al subir audio: ${jsonDecode(responseData)['message']}');
+      throw Exception(
+          'Error al subir audio: ${jsonDecode(responseData)['message']}');
     }
 
     return jsonDecode(responseData)['audio_url'];

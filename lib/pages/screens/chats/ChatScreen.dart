@@ -3,6 +3,7 @@ import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+
 import 'package:flutter_chat_bubble/chat_bubble.dart';
 import 'package:flutter_chat_bubble/bubble_type.dart';
 import 'package:flutter_chat_bubble/clippers/chat_bubble_clipper_1.dart';
@@ -40,7 +41,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isSpeechAvailable = false;
   bool _isListening = false;
+  String _lastWords = '';
   String _transcribedText = '';
   bool _isTyping = false;
   int _typingIndex = 0;
@@ -112,17 +115,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Future<void> _initializeSpeech() async {
     try {
-      _isSpeechInitialized = await _speech.initialize(
-        onStatus: (status) => debugPrint('Status: $status'),
-        onError: (error) => debugPrint('Error: $error'),
+      _isSpeechAvailable = await _speech.initialize(
+        onStatus: (status) => debugPrint('Speech status: $status'),
+        onError: (error) => debugPrint('Speech error: $error'),
       );
-      if (!_isSpeechInitialized && mounted) {
-        _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
-      }
+      setState(() {});
     } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar('Error al inicializar reconocimiento de voz: $e');
-      }
+      debugPrint('Error initializing speech: $e');
+      _showErrorSnackBar('Error initializing speech recognition');
     }
   }
 
@@ -206,7 +206,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isTyping = false;
         _typingTimer.cancel();
       });
-      _showErrorSnackBar('errorSummarizingConversation'.tr(args: [e.toString()]));
+      _showErrorSnackBar(
+          'errorSummarizingConversation'.tr(args: [e.toString()]));
     }
   }
 
@@ -454,7 +455,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             conversationLevel: _conversationLevel,
           ),
         );
-        _updateTokenCount(_getSensitiveValidationText(context.locale.languageCode));
+        _updateTokenCount(
+            _getSensitiveValidationText(context.locale.languageCode));
       }
 
       await _stopThinkingSound();
@@ -491,7 +493,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         title: Text('Estamos aquí para ti'.tr()),
         content: Text(
-          'Lo que sientes es importante. Te recomendamos contactar a un profesional o una línea de apoyo cercana. ¿Quieres continuar hablando?'.tr(),
+          'Lo que sientes es importante. Te recomendamos contactar a un profesional o una línea de apoyo cercana. ¿Quieres continuar hablando?'
+              .tr(),
         ),
         actions: [
           TextButton(
@@ -526,7 +529,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('saveConversation'.tr(), style: TextStyle(color: Colors.black)),
+        title: Text('saveConversation'.tr(),
+            style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -599,6 +603,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  // Elimina esta línea:
+// String _transcribedText = '';
+
+// Y modifica el _startListening y _stopListening:
   Future<void> _startListening() async {
     if (_isListening) return;
 
@@ -617,8 +625,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       await _recorderController.record();
       setState(() {
         _isListening = true;
-        _transcribedText = '';
-        _controller.clear();
+        _controller.clear(); // Limpia el controlador al empezar
       });
 
       final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
@@ -626,9 +633,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _speech.listen(
         onResult: (result) {
           setState(() {
-            _transcribedText = result.recognizedWords;
-            _controller.text = _transcribedText;
-            _controller.selection = TextSelection.collapsed(offset: _transcribedText.length);
+            _controller.text =
+                result.recognizedWords; // Usa directamente el controlador
+            _controller.selection =
+                TextSelection.collapsed(offset: _controller.text.length);
           });
         },
         localeId: localeId,
@@ -639,6 +647,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     } catch (e) {
       setState(() => _isListening = false);
       _showErrorSnackBar('Error al iniciar: $e');
+    }
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+
+    try {
+      await _recorderController.stop();
+      await _speech.stop();
+      setState(() {
+        _isListening = false;
+        // No necesitas hacer nada más con el texto, ya está en el controlador
+      });
+    } catch (e) {
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al detener: $e');
     }
   }
 
@@ -659,25 +683,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _stopListening() async {
-    if (!_isListening) return;
-
-    try {
-      await _recorderController.stop();
-      await _speech.stop();
-      setState(() {
-        _isListening = false;
-        if (_transcribedText.isNotEmpty) {
-          _controller.text = _transcribedText;
-          _controller.selection = TextSelection.collapsed(offset: _transcribedText.length);
-        }
-      });
-    } catch (e) {
-      setState(() => _isListening = false);
-      _showErrorSnackBar('Error al detener: $e');
-    }
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -690,16 +695,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    final time = "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
+    final time =
+        "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Column(
-        crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           ChatBubble(
             clipper: ChatBubbleClipper1(
-              type: message.isUser ? BubbleType.sendBubble : BubbleType.receiverBubble,
+              type: message.isUser
+                  ? BubbleType.sendBubble
+                  : BubbleType.receiverBubble,
             ),
             alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
             margin: EdgeInsets.only(top: 5),
@@ -707,10 +716,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ? Color(0xFFFFE0B2).withOpacity(0.9)
                 : Colors.white.withOpacity(0.8),
             child: Container(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.7),
               child: Column(
-                crossAxisAlignment:
-                    message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: message.isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   Text(
                     message.text,
@@ -723,7 +734,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         ? 'Mensaje del usuario: ${message.text}'
                         : 'Mensaje de Lumorah: ${message.text}',
                   ),
-                  if (message.imageUrl != null) Image.network(message.imageUrl!),
+                  if (message.imageUrl != null)
+                    Image.network(message.imageUrl!),
                   SizedBox(height: 5),
                   Text(
                     time,
@@ -782,7 +794,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         margin: EdgeInsets.only(top: 5),
         backGroundColor: Colors.white.withOpacity(0.8),
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          constraints:
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: List.generate(3, (index) {
@@ -876,12 +889,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => Menuprincipal(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            Menuprincipal(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(-1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
           return SlideTransition(
             position: slideAnimation,
@@ -905,7 +920,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             curve: Curves.easeOut,
             height: _controller.text.isEmpty
                 ? 60
-                : min(60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
+                : min(
+                    60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
             child: TextField(
               controller: _controller,
               maxLines: null,
@@ -929,7 +945,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         color: _isListening ? Colors.red : micButtonColor,
                         size: _isListening ? 30 : 24,
                       ),
-                      tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
+                      tooltip: _isListening
+                          ? 'Detener grabación'
+                          : 'Iniciar grabación',
                       onPressed: () async {
                         if (_isListening) {
                           await _stopListening();
@@ -1034,11 +1052,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
-        if (_transcribedText.isNotEmpty)
+        if (_controller.text
+            .isNotEmpty) // Usa _controller.text en lugar de _transcribedText
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Text(
-              _transcribedText,
+              _controller.text,
               style: TextStyle(color: Colors.black87, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -1087,7 +1106,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                           ),
                         ),
                       ),
@@ -1112,8 +1132,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                 if (_isTyping && index == 0) {
                                   return _buildTypingIndicator();
                                 }
-                                final messageIndex = _isTyping ? index - 1 : index;
-                                return _buildMessageBubble(_messages[messageIndex]);
+                                final messageIndex =
+                                    _isTyping ? index - 1 : index;
+                                return _buildMessageBubble(
+                                    _messages[messageIndex]);
                               },
                             ),
                           ),
@@ -1189,7 +1211,11 @@ class __FloatingParticlesState extends State<_FloatingParticles>
 
 class Particle {
   double x, y, size, speed;
-  Particle({required this.x, required this.y, required this.size, required this.speed});
+  Particle(
+      {required this.x,
+      required this.y,
+      required this.size,
+      required this.speed});
 }
 
 class _ParticlesPainter extends CustomPainter {

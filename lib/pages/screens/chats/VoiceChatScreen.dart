@@ -10,7 +10,7 @@ import 'package:LumorahAI/model/ChatMessage.dart';
 class VoiceChatScreen extends StatefulWidget {
   final int? sessionId;
   final String language;
-  
+
   const VoiceChatScreen({
     Key? key,
     this.sessionId,
@@ -21,7 +21,7 @@ class VoiceChatScreen extends StatefulWidget {
   _VoiceChatScreenState createState() => _VoiceChatScreenState();
 }
 
-class _VoiceChatScreenState extends State<VoiceChatScreen> 
+class _VoiceChatScreenState extends State<VoiceChatScreen>
     with SingleTickerProviderStateMixin {
   late RecorderController _recorderController;
   late stt.SpeechToText _speech;
@@ -31,10 +31,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
   String _currentMessage = '';
   List<ChatMessage> _messages = [];
   String? _currentAudioPath;
-  
+
   late AnimationController _animationController;
   late Animation<double> _animation;
-  
+
   final ChatServiceApi _chatService = ChatServiceApi();
   final Color _primaryColor = Color(0xFF4ECDC4);
   final Color _backgroundColor = Color(0xFFFDF8F2);
@@ -55,12 +55,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
 
     _speech = stt.SpeechToText();
     _tts = FlutterTts();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    
+
     _animation = Tween<double>(begin: 0.9, end: 1.1).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -95,7 +95,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
       // Iniciar grabación de audio
       final audioPath = await _getAudioPath();
       await _recorderController.record(path: audioPath);
-      
+
       setState(() {
         _isListening = true;
         _currentMessage = '';
@@ -104,12 +104,18 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
 
       _speech.listen(
         onResult: (result) {
+          debugPrint(
+              'Reconocido parcial: ${result.recognizedWords}, final: ${result.finalResult}');
+
           if (result.finalResult) {
             setState(() => _currentMessage = result.recognizedWords);
           }
         },
-        localeId: widget.language,
-        listenFor: Duration(minutes: 5),
+        localeId: 'es_MX',
+        listenFor: Duration(seconds: 10),
+        pauseFor: Duration(seconds: 3),
+        cancelOnError: true,
+        partialResults: true,
         onSoundLevelChange: (level) {
           _animationController.animateTo(level / 100);
         },
@@ -126,44 +132,64 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
 
   Future<void> _stopListening() async {
     try {
+      debugPrint('Deteniendo grabación...'); // <-- Nuevo log
       await _recorderController.stop();
       await _speech.stop();
-      
+      debugPrint('Grabación detenida correctamente'); // <-- Nuevo log
+
       setState(() {
         _isListening = false;
         _isThinking = true;
       });
 
       if (_currentMessage.isNotEmpty) {
+        debugPrint('Procesando mensaje: $_currentMessage'); // <-- Nuevo log
         await _processVoiceMessage();
+      } else {
+        debugPrint('Mensaje vacío, no se procesará'); // <-- Nuevo log
       }
     } catch (e) {
+      debugPrint('Error al detener grabación: $e'); // <-- Nuevo log
       _showError('Error al detener grabación: ${e.toString()}');
     }
   }
 
   Future<void> _processVoiceMessage() async {
+    debugPrint('Iniciando _processVoiceMessage'); // <-- Nuevo log
     try {
-      // 1. Subir audio al servidor (opcional)
-      String? audioUrl;
-      if (_currentAudioPath != null) {
-        audioUrl = await _chatService.uploadAudioFile(_currentAudioPath!);
+      if (_currentAudioPath == null) {
+        debugPrint('Error: _currentAudioPath es nulo'); // <-- Nuevo log
+        _showError('No se encontró el archivo de audio');
+        return;
       }
 
-      // 2. Enviar mensaje de voz
+      setState(() => _isThinking = true);
+      debugPrint('Transcribiendo audio: $_currentAudioPath'); // <-- Nuevo log
+
+      final transcription =
+          await _chatService.transcribeAudio(_currentAudioPath!);
+      debugPrint('Transcripción recibida: $transcription'); // <-- Nuevo log
+
+      if (transcription.isEmpty) {
+        debugPrint('Error: Transcripción vacía'); // <-- Nuevo log
+        _showError('No se pudo transcribir el audio');
+        return;
+      }
+
+      debugPrint('Enviando mensaje de voz...'); // <-- Nuevo log
       final response = await _chatService.sendVoiceMessage(
-  message: _currentMessage,  // Añade 'message:'
-  sessionId: widget.sessionId,
-  language: widget.language,
-  audioUrl: audioUrl,
-);
-      // 3. Procesar respuesta
+        message: transcription,
+        sessionId: widget.sessionId,
+        language: widget.language,
+        audioUrl: null,
+      );
+      debugPrint('Respuesta recibida: $response'); // <-- Nuevo log
+
       _handleAIResponse(response);
-      
-      // 4. Reproducir respuesta
       await _tts.speak(response['ai_message']['text']);
     } catch (e) {
-      _showError('Error al procesar mensaje: ${e.toString()}');
+      debugPrint('Error en _processVoiceMessage: $e'); // <-- Nuevo log
+      _showError('Error al procesar el mensaje: $e');
     } finally {
       setState(() => _isThinking = false);
     }
@@ -183,15 +209,17 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
     );
 
     setState(() {
-      _messages.insert(0, ChatMessage(
-        id: -1,
-        chatSessionId: widget.sessionId ?? -1,
-        userId: 0,
-        text: _currentMessage,
-        isUser: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      _messages.insert(
+          0,
+          ChatMessage(
+            id: -1,
+            chatSessionId: widget.sessionId ?? -1,
+            userId: 0,
+            text: _currentMessage,
+            isUser: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ));
       _messages.insert(0, aiMessage);
       _currentMessage = '';
     });
@@ -207,9 +235,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
   Widget _buildVoiceAnimation() {
     return AnimatedSwitcher(
       duration: Duration(milliseconds: 300),
-      child: _isThinking
-          ? _buildThinkingAnimation()
-          : _buildVoiceWaveAnimation(),
+      child:
+          _isThinking ? _buildThinkingAnimation() : _buildVoiceWaveAnimation(),
     );
   }
 
@@ -261,15 +288,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: message.isUser 
-            ? _primaryColor.withOpacity(0.2)
-            : Colors.white,
+        color: message.isUser ? _primaryColor.withOpacity(0.2) : Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 3,
-            offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 2)),
         ],
       ),
       child: Text(
@@ -309,7 +331,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
                       child: _buildVoiceAnimation(),
                     ),
                   ),
-                  
+
                   // Mensaje actual
                   if (_currentMessage.isNotEmpty && _isListening)
                     _buildMessageBubble(ChatMessage(
@@ -321,7 +343,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
                       createdAt: DateTime.now(),
                       updatedAt: DateTime.now(),
                     )),
-                  
+
                   // Historial de mensajes
                   Expanded(
                     child: ListView.builder(
@@ -336,7 +358,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
               ),
             ),
           ),
-          
+
           // Botón de micrófono
           Padding(
             padding: EdgeInsets.only(bottom: 30),
