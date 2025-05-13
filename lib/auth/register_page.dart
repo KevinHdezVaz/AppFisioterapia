@@ -209,24 +209,7 @@ class _RegisterModalState extends State<RegisterModal> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: 16),
-                      Center(
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.amber.withOpacity(0.3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.amber.withOpacity(0.5),
-                                blurRadius: 50,
-                                spreadRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                      
                       Text(
                         'startYourJourney'.tr(), // Traducción
                         style: GoogleFonts.inter(
@@ -235,19 +218,7 @@ class _RegisterModalState extends State<RegisterModal> {
                           color: LumorahColors.textOnPrimary,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          'iAmHereForEveryStep'.tr(), // Traducción
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.lato(
-                            fontSize: 16,
-                            color: LumorahColors.textOnPrimary.withOpacity(0.9),
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
+                     
                       const SizedBox(height: 20),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -257,7 +228,7 @@ class _RegisterModalState extends State<RegisterModal> {
                               controller: _nameController,
                               style: TextStyle(
                                   color: Colors
-                                      .black), // <- Aquí se cambia el color del texto
+                                      .black), 
 
                               decoration: InputDecoration(
                                 labelText: 'name'.tr(), // Traducción

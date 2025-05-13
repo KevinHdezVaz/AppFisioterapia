@@ -10,8 +10,12 @@ import 'package:LumorahAI/auth/login_page.dart';
 import 'package:LumorahAI/auth/register_page.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatHistoryScreen.dart';
 import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
+import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
 import 'package:LumorahAI/utils/colors.dart';
 import 'package:LumorahAI/services/storage_service.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class Menuprincipal extends StatefulWidget {
   @override
@@ -25,13 +29,27 @@ class _MenuprincipalState extends State<Menuprincipal>
   late Animation<double> _sunAnimation;
   late AnimationController _sunController;
   final TextEditingController _textController = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  late RecorderController _recorderController;
 
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
   final Color lightTextColor = Colors.black;
   final Color micButtonColor = Color(0xFF4ECDC4);
-  final AudioPlayer _audioPlayer = AudioPlayer(); // Añade esto
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  bool _isListening = false;
+  String _transcribedText = '';
+  bool _isSpeechInitialized = false;
+
+  // Mapa de códigos de idioma para reconocimiento de voz
+  final Map<String, String> _speechLocales = {
+    'es': 'es_ES',
+    'en': 'en_US',
+    'fr': 'fr_FR',
+    'pt': 'pt_BR',
+  };
 
   @override
   void initState() {
@@ -46,8 +64,32 @@ class _MenuprincipalState extends State<Menuprincipal>
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
+    _recorderController = RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 16000;
+
+    _initializeSpeech();
     _loadStoredLanguage();
-    _playStartupSound(); // Añade esta línea
+    _playStartupSound();
+  }
+
+  Future<void> _initializeSpeech() async {
+    try {
+      _isSpeechInitialized = await _speech.initialize(
+        onStatus: (status) => debugPrint('Status: $status'),
+        onError: (error) => debugPrint('Error: $error'),
+      );
+      if (!_isSpeechInitialized && mounted) {
+        _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar(
+            'Error al inicializar reconocimiento de voz: ${e.toString()}');
+      }
+    }
   }
 
   Future<void> _loadStoredLanguage() async {
@@ -61,7 +103,10 @@ class _MenuprincipalState extends State<Menuprincipal>
   void dispose() {
     _sunController.dispose();
     _textController.dispose();
-    _audioPlayer.dispose(); // Asegúrate de limpiar el reproductor de audio
+    _audioPlayer.dispose();
+    _speech.stop();
+    _speech.cancel();
+    _recorderController.dispose();
     super.dispose();
   }
 
@@ -77,18 +122,14 @@ class _MenuprincipalState extends State<Menuprincipal>
 
   Future<void> _playStartupSound() async {
     try {
-      // Obtener la preferencia de sonido del usuario
       final soundPref = await _storageService.getString('sound_enabled');
-      // Si no hay preferencia guardada, se asume true (activado por defecto)
       final soundEnabled = soundPref == null ? true : soundPref == 'true';
-
       if (soundEnabled) {
-        await _audioPlayer.setVolume(0.5); // Ajusta el volumen si es necesario
+        await _audioPlayer.setVolume(0.5);
         await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
       }
     } catch (e) {
       debugPrint('Error al reproducir sonido de inicio: $e');
-      // Opcional: Mostrar un mensaje de error al usuario si lo prefieres
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('errorPlayingSound'.tr())),
@@ -280,6 +321,112 @@ class _MenuprincipalState extends State<Menuprincipal>
     );
   }
 
+  Future<void> _startListening() async {
+    if (_isListening) return;
+
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
+      _showErrorSnackBar('Se requieren permisos de micrófono');
+      return;
+    }
+
+    if (!_isSpeechInitialized) {
+      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
+      return;
+    }
+
+    try {
+      await _recorderController.record();
+      setState(() {
+        _isListening = true;
+        _transcribedText = '';
+        _textController.clear();
+      });
+
+      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+
+      _speech.listen(
+        onResult: (result) {
+          if (result.finalResult) {
+            setState(() {
+              _transcribedText = result.recognizedWords;
+              _textController.text = _transcribedText;
+              _textController.selection = TextSelection.collapsed(
+                offset: _transcribedText.length,
+              );
+            });
+          } else {
+            setState(() {
+              _transcribedText = result.recognizedWords;
+              _textController.text = _transcribedText;
+              _textController.selection = TextSelection.collapsed(
+                offset: _transcribedText.length,
+              );
+            });
+          }
+        },
+        localeId: localeId,
+        listenFor: Duration(minutes: 5),
+        partialResults: true,
+        onSoundLevelChange: (level) {},
+      );
+    } catch (e) {
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al iniciar: ${e.toString()}');
+    }
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+
+    try {
+      await _recorderController.stop();
+      await _speech.stop();
+      setState(() {
+        _isListening = false;
+        if (_transcribedText.isNotEmpty) {
+          _textController.text = _transcribedText;
+          _textController.selection = TextSelection.collapsed(
+            offset: _transcribedText.length,
+          );
+        }
+      });
+    } catch (e) {
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al detener: ${e.toString()}');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceVisualizer() {
+    return Container(
+      height: 50,
+      margin: EdgeInsets.symmetric(vertical: 8),
+      child: AudioWaveforms(
+        size: Size(double.infinity, 50),
+        recorderController: _recorderController,
+        enableGesture: false,
+        waveStyle: WaveStyle(
+          waveColor: Colors.deepPurple,
+          showMiddleLine: false,
+          spacing: 8,
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleAction(BuildContext context,
       {bool isVoice = false}) async {
     final isAuthenticated = await _isUserAuthenticated();
@@ -324,6 +471,98 @@ class _MenuprincipalState extends State<Menuprincipal>
     if (message.isNotEmpty) {
       _textController.clear();
     }
+  }
+
+  Widget _buildKeyboardInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          if (_isListening) _buildVoiceVisualizer(),
+          const SizedBox(height: 8),
+          AnimatedContainer(
+            duration: Duration(milliseconds: 100),
+            curve: Curves.easeOut,
+            height: _textController.text.isEmpty
+                ? 60
+                : min(
+                    60.0 + (_textController.text.split('\n').length * 20.0),
+                    200.0,
+                  ),
+            child: TextField(
+              controller: _textController,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              style: TextStyle(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'writeHint'.tr(),
+                hintStyle: TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey.shade200,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.stop_circle : Icons.mic_none,
+                        color: _isListening ? Colors.red : micButtonColor,
+                        size: _isListening ? 30 : 24,
+                      ),
+                      tooltip: _isListening
+                          ? 'Detener grabación'
+                          : 'Iniciar grabación',
+                      onPressed: () async {
+                        if (_isListening) {
+                          await _stopListening();
+                        } else {
+                          await _startListening();
+                        }
+                      },
+                    ),
+                    if (_textController.text.isNotEmpty)
+                      IconButton(
+                        icon: Icon(Icons.send, color: micButtonColor),
+                        onPressed: () => _handleAction(context),
+                      ),
+                    if (_textController.text.isEmpty)
+                      Container(
+                        margin: EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.record_voice_over,
+                            color: micButtonColor,
+                            size: 22,
+                          ),
+                          tooltip: 'Chat de voz avanzado',
+                          onPressed: () => _handleAction(context, isVoice: true),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              onChanged: (text) {
+                setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(height: 15),
+        ],
+      ),
+    );
   }
 
   @override
@@ -557,37 +796,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 40),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    controller: _textController,
-                    style: TextStyle(color: Colors.black),
-                    decoration: InputDecoration(
-                      hintText: 'writeHint'.tr(),
-                      hintStyle: TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: ivoryColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.mic, color: micButtonColor),
-                            onPressed: () =>
-                                _handleAction(context, isVoice: true),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.send, color: micButtonColor),
-                            onPressed: () => _handleAction(context),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                _buildKeyboardInput(),
               ],
             ),
           ),
@@ -597,26 +806,85 @@ class _MenuprincipalState extends State<Menuprincipal>
   }
 }
 
-class _ParticulasPainter extends CustomPainter {
-  final double progress;
-  final Random _random = Random();
+class ParticulasFlotantes extends StatefulWidget {
+  @override
+  _ParticulasFlotantesState createState() => _ParticulasFlotantesState();
+}
 
-  _ParticulasPainter(this.progress);
+class _ParticulasFlotantesState extends State<ParticulasFlotantes>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final Random _random = Random();
+  final List<Particle> _particles = [];
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 30),
+    )..repeat();
 
-    for (int i = 0; i < 25; i++) {
-      final dx = (size.width * ((i * 17 + progress * 120) % 100) / 50);
-      final dy = size.height * ((i * 13 + progress * 90) % 100) / 100;
-      final radius = 1.8 + (i % 4);
-      canvas.drawCircle(Offset(dx, dy), radius, paint);
+    for (int i = 0; i < 10; i++) {
+      _particles.add(Particle(
+        x: _random.nextDouble(),
+        y: _random.nextDouble(),
+        size: _random.nextDouble() * 2 + 1,
+        speed: _random.nextDouble() * 0.15 + 0.05,
+      ));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticulasPainter oldDelegate) => true;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SizedBox.expand(
+          child: CustomPaint(
+            painter: _ParticlesPainter(_particles, _controller.value),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class Particle {
+  double x, y, size, speed;
+  Particle({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.speed,
+  });
+}
+
+class _ParticlesPainter extends CustomPainter {
+  final List<Particle> particles;
+  final double time;
+
+  _ParticlesPainter(this.particles, this.time);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+
+    for (var particle in particles) {
+      final x = (particle.x + time * particle.speed) % 1.0 * size.width;
+      final y = (particle.y + time * particle.speed * 0.5) % 1.0 * size.height;
+      canvas.drawCircle(Offset(x, y), particle.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) => true;
 }

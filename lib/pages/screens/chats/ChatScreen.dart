@@ -1,4 +1,7 @@
+import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_chat_bubble/chat_bubble.dart';
 import 'package:flutter_chat_bubble/bubble_type.dart';
@@ -36,7 +39,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
-  late stt.SpeechToText _speech;
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   String _transcribedText = '';
   bool _isTyping = false;
@@ -63,10 +66,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String? _conversationLevel;
   bool _initialMessageSent = false;
 
+  late RecorderController _recorderController;
+
   // Lógica para conteo de tokens y resumen
-  final int _tokenLimit =
-      500; // Límite de tokens (ajusta según tus necesidades)
-  int _totalTokens = 0; // Contador de tokens acumulados
+  final int _tokenLimit = 500;
+  int _totalTokens = 0;
 
   // Mapa de códigos de idioma para reconocimiento de voz
   final Map<String, String> _speechLocales = {
@@ -79,12 +83,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
     _messages = widget.initialMessages?.reversed.toList() ?? [];
     _currentSessionId = widget.sessionId;
     _isSaved = widget.sessionId != null && widget.initialMessages != null;
 
-    // Calcular tokens iniciales si hay mensajes previos
     for (var message in _messages) {
       _updateTokenCount(message.text);
     }
@@ -94,12 +96,34 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
-    _sunAnimation = Tween<double>(begin: 90.0, end: 110.0).animate(
+    _sunAnimation = Tween<double>(begin: 50.0, end: 70.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    _speech = stt.SpeechToText();
+    _recorderController = RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 16000;
+
+    _initializeSpeech();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
+  }
+
+  Future<void> _initializeSpeech() async {
+    try {
+      _isSpeechInitialized = await _speech.initialize(
+        onStatus: (status) => debugPrint('Status: $status'),
+        onError: (error) => debugPrint('Error: $error'),
+      );
+      if (!_isSpeechInitialized && mounted) {
+        _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error al inicializar reconocimiento de voz: $e');
+      }
+    }
   }
 
   @override
@@ -119,6 +143,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void dispose() {
     _speech.stop();
     _speech.cancel();
+    _recorderController.dispose();
     _controller.dispose();
     if (_typingTimer.isActive) {
       _typingTimer.cancel();
@@ -129,14 +154,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Contar tokens (simplificado: 1 palabra = 1 token)
   int _countTokens(String message) {
-    return message
-        .split(RegExp(r'\s+'))
-        .length; // Divide por espacios y cuenta palabras
+    return message.split(RegExp(r'\s+')).length;
   }
 
-  // Actualizar el conteo de tokens y verificar si se excede el límite
   void _updateTokenCount(String message) {
     final tokens = _countTokens(message);
     setState(() {
@@ -147,7 +168,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  // Función para resumir la conversación y mostrar modal
   Future<void> _summarizeConversation() async {
     try {
       setState(() {
@@ -158,7 +178,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         });
       });
 
-      // Enviar solicitud al backend para resumir
       final response = await _chatService.summarizeConversation(
         messages: _messages.reversed
             .map((m) => {
@@ -180,7 +199,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _typingTimer.cancel();
       });
 
-      // Mostrar modal con el resumen
       _showSummaryModal(summary);
     } catch (e) {
       if (!mounted) return;
@@ -188,12 +206,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isTyping = false;
         _typingTimer.cancel();
       });
-      _showErrorSnackBar(
-          'errorSummarizingConversation'.tr(args: [e.toString()]));
+      _showErrorSnackBar('errorSummarizingConversation'.tr(args: [e.toString()]));
     }
   }
 
-  // Mostrar modal con el resumen
   void _showSummaryModal(String summary) {
     showDialog(
       context: context,
@@ -214,9 +230,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
             child: Text('close'.tr()),
           ),
           ElevatedButton(
@@ -246,7 +260,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Iniciar un nuevo chat con el resumen como mensaje inicial
   void _startNewChatWithSummary(String summary) {
     Navigator.pushReplacement(
       context,
@@ -266,7 +279,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   void _showAuthModal() {
     if (!mounted) return;
-
     showDialog(
       context: context,
       builder: (context) => LoginModal(
@@ -442,8 +454,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             conversationLevel: _conversationLevel,
           ),
         );
-        _updateTokenCount(
-            _getSensitiveValidationText(context.locale.languageCode));
+        _updateTokenCount(_getSensitiveValidationText(context.locale.languageCode));
       }
 
       await _stopThinkingSound();
@@ -480,8 +491,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         title: Text('Estamos aquí para ti'.tr()),
         content: Text(
-          'Lo que sientes es importante. Te recomendamos contactar a un profesional o una línea de apoyo cercana. ¿Quieres continuar hablando?'
-              .tr(),
+          'Lo que sientes es importante. Te recomendamos contactar a un profesional o una línea de apoyo cercana. ¿Quieres continuar hablando?'.tr(),
         ),
         actions: [
           TextButton(
@@ -516,8 +526,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('saveConversation'.tr(),
-            style: TextStyle(color: Colors.black)),
+        title: Text('saveConversation'.tr(), style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -534,10 +543,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Color(0xFF4BB6A8),
-                width: 2,
-              ),
+              borderSide: BorderSide(color: Color(0xFF4BB6A8), width: 2),
             ),
           ),
         ),
@@ -594,72 +600,82 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _startListening() async {
-    if (!await _isUserAuthenticated()) {
-      if (!mounted) return;
-      _showAuthModal();
+    if (_isListening) return;
+
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
+      _showErrorSnackBar('Se requieren permisos de micrófono');
       return;
     }
 
-    if (_isListening) {
-      debugPrint(
-          'Reconocimiento de voz ya está activo, ignorando nueva solicitud.');
-      return;
-    }
-
-    bool available = _isSpeechInitialized;
     if (!_isSpeechInitialized) {
-      available = await _speech.initialize(
-        onStatus: (status) => debugPrint('Speech status: $status'),
-        onError: (error) => debugPrint('Speech error: $error'),
-      );
-      if (available) {
-        _isSpeechInitialized = true;
-      }
+      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
+      return;
     }
 
-    if (!mounted) return;
+    try {
+      await _recorderController.record();
+      setState(() {
+        _isListening = true;
+        _transcribedText = '';
+        _controller.clear();
+      });
 
-    if (available) {
-      setState(() => _isListening = true);
-      Timer? silenceTimer;
       final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+
       _speech.listen(
         onResult: (result) {
-          if (mounted) {
-            setState(() {
-              _transcribedText = result.recognizedWords;
-              silenceTimer?.cancel();
-              silenceTimer = Timer(Duration(seconds: 3), () {
-                if (_transcribedText.isNotEmpty) {
-                  _stopListening();
-                }
-              });
-            });
-          }
+          setState(() {
+            _transcribedText = result.recognizedWords;
+            _controller.text = _transcribedText;
+            _controller.selection = TextSelection.collapsed(offset: _transcribedText.length);
+          });
         },
         localeId: localeId,
-        pauseFor: Duration(seconds: 3),
+        listenFor: Duration(minutes: 5),
+        partialResults: true,
+        onSoundLevelChange: (level) {},
       );
-    } else {
-      _showErrorSnackBar('speechNotInitialized'.tr());
+    } catch (e) {
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al iniciar: $e');
     }
   }
 
-  void _stopListening() {
-    if (_isListening) {
-      _speech.stop();
-      _speech.cancel();
+  Widget _buildVoiceVisualizer() {
+    return Container(
+      height: 50,
+      margin: EdgeInsets.symmetric(vertical: 8),
+      child: AudioWaveforms(
+        size: Size(double.infinity, 50),
+        recorderController: _recorderController,
+        enableGesture: false,
+        waveStyle: WaveStyle(
+          waveColor: Colors.deepPurple,
+          showMiddleLine: false,
+          spacing: 8,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+
+    try {
+      await _recorderController.stop();
+      await _speech.stop();
+      setState(() {
+        _isListening = false;
+        if (_transcribedText.isNotEmpty) {
+          _controller.text = _transcribedText;
+          _controller.selection = TextSelection.collapsed(offset: _transcribedText.length);
+        }
+      });
+    } catch (e) {
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al detener: $e');
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      _isListening = false;
-      if (_transcribedText.isNotEmpty) {
-        _sendMessage(_transcribedText);
-        _transcribedText = '';
-      }
-    });
   }
 
   void _showErrorSnackBar(String message) {
@@ -668,28 +684,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    final time =
-        "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
+    final time = "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Column(
-        crossAxisAlignment:
-            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           ChatBubble(
             clipper: ChatBubbleClipper1(
-              type: message.isUser
-                  ? BubbleType.sendBubble
-                  : BubbleType.receiverBubble,
+              type: message.isUser ? BubbleType.sendBubble : BubbleType.receiverBubble,
             ),
             alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
             margin: EdgeInsets.only(top: 5),
@@ -697,13 +707,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ? Color(0xFFFFE0B2).withOpacity(0.9)
                 : Colors.white.withOpacity(0.8),
             child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
-              ),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
               child: Column(
-                crossAxisAlignment: message.isUser
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   Text(
                     message.text,
@@ -716,15 +723,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         ? 'Mensaje del usuario: ${message.text}'
                         : 'Mensaje de Lumorah: ${message.text}',
                   ),
-                  if (message.imageUrl != null)
-                    Image.network(message.imageUrl!),
+                  if (message.imageUrl != null) Image.network(message.imageUrl!),
                   SizedBox(height: 5),
                   Text(
                     time,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     semanticsLabel: 'Enviado a las $time',
                   ),
                 ],
@@ -779,9 +782,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         margin: EdgeInsets.only(top: 5),
         backGroundColor: Colors.white.withOpacity(0.8),
         child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.7,
-          ),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: List.generate(3, (index) {
@@ -833,34 +834,30 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildAnimatedCircle() {
-    return Positioned(
-      top: 50,
-      right: 50,
-      child: AnimatedBuilder(
-        animation: _sunAnimation,
-        builder: (context, child) {
-          return Container(
-            width: _sunAnimation.value,
-            height: _sunAnimation.value,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  Color(0xFFFFE5B4).withOpacity(0.7),
-                  Color(0xFFFFE5B4).withOpacity(0.5),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFFFFF3E0).withOpacity(0.3),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                ),
+    return AnimatedBuilder(
+      animation: _sunAnimation,
+      builder: (context, child) {
+        return Container(
+          width: _sunAnimation.value,
+          height: _sunAnimation.value,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Color(0xFFFFE5B4).withOpacity(0.7),
+                Color(0xFFFFE5B4).withOpacity(0.5),
               ],
             ),
-          );
-        },
-      ),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFFFFF3E0).withOpacity(0.3),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -879,23 +876,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            Menuprincipal(),
+        pageBuilder: (context, animation, secondaryAnimation) => Menuprincipal(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(-1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
-
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
-
           return SlideTransition(
             position: slideAnimation,
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
+            child: FadeTransition(opacity: animation, child: child),
           );
         },
         transitionDuration: Duration(milliseconds: 300),
@@ -906,68 +896,97 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildKeyboardInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 100),
-        curve: Curves.easeOut,
-        height: _controller.text.isEmpty
-            ? 60 // Altura inicial cuando no hay texto
-            : min(
-                60.0 + (_controller.text.split('\n').length * 20.0),
-                200.0, // Altura máxima
+      child: Column(
+        children: [
+          if (_isListening) _buildVoiceVisualizer(),
+          const SizedBox(height: 8),
+          AnimatedContainer(
+            duration: Duration(milliseconds: 100),
+            curve: Curves.easeOut,
+            height: _controller.text.isEmpty
+                ? 60
+                : min(60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
+            child: TextField(
+              controller: _controller,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              style: TextStyle(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'writeHint'.tr(),
+                hintStyle: TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey.shade200,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.stop_circle : Icons.mic_none,
+                        color: _isListening ? Colors.red : micButtonColor,
+                        size: _isListening ? 30 : 24,
+                      ),
+                      tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
+                      onPressed: () async {
+                        if (_isListening) {
+                          await _stopListening();
+                        } else {
+                          await _startListening();
+                        }
+                      },
+                    ),
+                    if (_controller.text.isNotEmpty)
+                      IconButton(
+                        icon: Icon(Icons.send, color: micButtonColor),
+                        onPressed: () {
+                          _sendMessage(_controller.text);
+                          _controller.clear();
+                        },
+                      ),
+                    if (_controller.text.isEmpty)
+                      Container(
+                        margin: EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.record_voice_over,
+                            color: micButtonColor,
+                            size: 22,
+                          ),
+                          tooltip: 'Chat de voz avanzado',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VoiceChatScreen(
+                                  sessionId: _currentSessionId,
+                                  language: context.locale.languageCode,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               ),
-        child: TextField(
-          controller: _controller,
-          maxLines: null, // Permite múltiples líneas
-          keyboardType: TextInputType.multiline,
-          style: TextStyle(color: Colors.black87),
-          decoration: InputDecoration(
-            hintText: 'writeHint'.tr(),
-            hintStyle: TextStyle(color: Colors.grey),
-            filled: true,
-            fillColor: ivoryColor,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide.none,
-            ),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _isListening ? Icons.mic : Icons.mic_none,
-                    color: micButtonColor,
-                  ),
-                  onPressed: () async {
-                    if (_isListening) {
-                      _stopListening();
-                    } else {
-                      if (await _isUserAuthenticated()) {
-                        _startListening();
-                      } else {
-                        if (!mounted) return;
-                        _showAuthModal();
-                      }
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.send, color: micButtonColor),
-                  onPressed: () async {
-                    if (await _isUserAuthenticated()) {
-                      _sendMessage(_controller.text);
-                    } else {
-                      if (!mounted) return;
-                      _showAuthModal();
-                    }
-                  },
-                ),
-              ],
+              onChanged: (text) => setState(() {}),
             ),
           ),
-          onChanged: (text) {
-            setState(() {}); // Esto hace que el AnimatedContainer se redibuje
-          },
-        ),
+          const SizedBox(height: 15),
+        ],
       ),
     );
   }
@@ -1037,69 +1056,79 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       },
       child: Scaffold(
         backgroundColor: tiffanyColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => _navigateBack(context),
-          ),
-          actions: [
-            if (!_isSaved)
-              Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: TextButton.icon(
-                  icon: Icon(Icons.save, color: Colors.black, size: 22),
-                  label: Text(
-                    'save'.tr(),
-                    style: TextStyle(color: Colors.black, fontSize: 14),
-                  ),
-                  onPressed: _saveChat,
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  ),
-                ),
-              ),
-          ],
-        ),
         body: Stack(
           children: [
-            // Elementos de fondo (partículas y círculo animado)
-            Positioned.fill(child: _FloatingParticles()),
-            _buildAnimatedCircle(),
-
-            // Header (ahora detrás de la lista pero delante del fondo)
-            Positioned(
-              top: 20,
-              left: 0,
-              right: 0,
-              child: _buildHeader(),
-            ),
-
-            // Contenido principal (lista y input) con fondo transparente
+            // Fondo con partículas
+            _FloatingParticles(),
+            // Contenido principal
             Column(
               children: [
+                // AppBar
+                AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  leading: IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () => _navigateBack(context),
+                  ),
+                  actions: [
+                    if (!_isSaved)
+                      Padding(
+                        padding: EdgeInsets.only(right: 10),
+                        child: TextButton.icon(
+                          icon: Icon(Icons.save, color: Colors.black, size: 22),
+                          label: Text(
+                            'save'.tr(),
+                            style: TextStyle(color: Colors.black, fontSize: 14),
+                          ),
+                          onPressed: _saveChat,
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: _buildHeader(),
+                ),
+                // Lista de mensajes y entrada
                 Expanded(
-                  child: Container(
-                    color: Colors.transparent, // Fondo transparente
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _messages.length + (_isTyping ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (_isTyping && index == 0) {
-                          return _buildTypingIndicator();
-                        }
-                        final messageIndex = _isTyping ? index - 1 : index;
-                        return _buildMessageBubble(_messages[messageIndex]);
-                      },
-                    ),
+                  child: Stack(
+                    children: [
+                      Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              reverse: true,
+                              itemCount: _messages.length + (_isTyping ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (_isTyping && index == 0) {
+                                  return _buildTypingIndicator();
+                                }
+                                final messageIndex = _isTyping ? index - 1 : index;
+                                return _buildMessageBubble(_messages[messageIndex]);
+                              },
+                            ),
+                          ),
+                          _buildInput(),
+                        ],
+                      ),
+                      // Sol animado
+                      Positioned(
+                        top: 0,
+                        right: 30,
+                        child: _buildAnimatedCircle(),
+                      ),
+                    ],
                   ),
                 ),
-                _buildInput(),
               ],
             ),
           ],
@@ -1149,10 +1178,9 @@ class __FloatingParticlesState extends State<_FloatingParticles>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return SizedBox.expand(
-          child: CustomPaint(
-            painter: _ParticlesPainter(_particles, _controller.value),
-          ),
+        return CustomPaint(
+          size: Size.infinite,
+          painter: _ParticlesPainter(_particles, _controller.value),
         );
       },
     );
@@ -1161,12 +1189,7 @@ class __FloatingParticlesState extends State<_FloatingParticles>
 
 class Particle {
   double x, y, size, speed;
-  Particle({
-    required this.x,
-    required this.y,
-    required this.size,
-    required this.speed,
-  });
+  Particle({required this.x, required this.y, required this.size, required this.speed});
 }
 
 class _ParticlesPainter extends CustomPainter {

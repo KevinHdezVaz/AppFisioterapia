@@ -20,17 +20,38 @@ class LoginModal extends StatefulWidget {
   State<LoginModal> createState() => _LoginModalState();
 }
 
-class _LoginModalState extends State<LoginModal> {
+class _LoginModalState extends State<LoginModal> with TickerProviderStateMixin {
   bool isRember = false;
   bool isObscure = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+late AnimationController _animationController;
+late Animation<double> _scaleAnimation;
+
+@override
+void initState() {
+  super.initState();
+  _animationController = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  )..repeat(reverse: true);
+
+  _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+    CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ),
+  );
+}
+
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+      _animationController.dispose();
+
     super.dispose();
   }
 
@@ -165,23 +186,27 @@ class _LoginModalState extends State<LoginModal> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.amber.withOpacity(0.3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withOpacity(0.5),
-                            blurRadius: 50,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                Center(
+  child: ScaleTransition(
+    scale: _scaleAnimation,
+    child: Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFFFE5B4).withOpacity(0.7),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFE5B4).withOpacity(0.8),
+            blurRadius: 50,
+            spreadRadius: 4,
+          ),
+        ],
+      ),
+    ),
+  ),
+),
+
                   const SizedBox(height: 16),
                   Text(
                     'welcomeToLumorah'.tr(), // Traducción

@@ -239,4 +239,79 @@ class ChatServiceApi {
       body: {'title': title},
     );
   }
+
+
+
+ Future<Map<String, dynamic>> sendVoiceMessage({
+    required String message,
+    int? sessionId,
+    required String language,
+    String? audioUrl,
+  }) async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/send-voice-message',
+      body: {
+        'message': message,
+        'session_id': sessionId,
+        'language': language,
+        if (audioUrl != null) 'audio_url': audioUrl,
+        'is_voice': true, // Para respuestas optimizadas para voz
+      },
+    );
+
+    return _parseVoiceResponse(response);
+  }
+
+  Map<String, dynamic> _parseVoiceResponse(dynamic response) {
+    if (response is! Map<String, dynamic>) {
+      throw Exception('Formato de respuesta inesperado');
+    }
+
+    return {
+      'ai_message': {
+        'text': response['response'] ?? response['text'] ?? '',
+        'emotional_state': response['emotional_state'] ?? 'neutral',
+        'conversation_level': response['conversation_level'] ?? 'basic',
+      },
+      'session_id': response['session_id'],
+    };
+  }
+
+  Future<String> uploadAudioFile(String filePath) async {
+    final token = await storage.getToken();
+    if (token == null) throw Exception('No autenticado');
+
+    final uri = Uri.parse('$baseUrl/upload-audio');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(await http.MultipartFile.fromPath('audio', filePath));
+
+    final response = await request.send();
+    final responseData = await response.stream.bytesToString();
+
+    if (response.statusCode != 200) {
+      throw Exception('Error al subir audio: ${jsonDecode(responseData)['message']}');
+    }
+
+    return jsonDecode(responseData)['audio_url'];
+  }
+
+  Future<Map<String, dynamic>> processVoiceConversation({
+    required String audioUrl,
+    required String language,
+    int? sessionId,
+  }) async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/process-voice',
+      body: {
+        'audio_url': audioUrl,
+        'language': language,
+        if (sessionId != null) 'session_id': sessionId,
+      },
+    );
+
+    return _parseVoiceResponse(response);
+  }
 }
