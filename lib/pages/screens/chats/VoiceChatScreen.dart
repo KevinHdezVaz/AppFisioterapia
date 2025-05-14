@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audio_waveforms/audio_waveforms.dart';
-import 'package:path_provider/path_provider.dart';
+ import 'package:path_provider/path_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:avatar_glow/avatar_glow.dart';
@@ -23,8 +22,7 @@ class VoiceChatScreen extends StatefulWidget {
 
 class _VoiceChatScreenState extends State<VoiceChatScreen>
     with SingleTickerProviderStateMixin {
-  late RecorderController _recorderController;
-  late stt.SpeechToText _speech;
+   late stt.SpeechToText _speech;
   late FlutterTts _tts;
   bool _isListening = false;
   bool _isThinking = false;
@@ -47,11 +45,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
   }
 
   void _initializeControllers() {
-    _recorderController = RecorderController()
-      ..androidEncoder = AndroidEncoder.aac
-      ..androidOutputFormat = AndroidOutputFormat.mpeg4
-      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-      ..sampleRate = 16000;
+  
 
     _speech = stt.SpeechToText();
     _tts = FlutterTts();
@@ -78,8 +72,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
 
   @override
   void dispose() {
-    _recorderController.dispose();
-    _speech.cancel();
+     _speech.cancel();
     _tts.stop();
     _animationController.dispose();
     super.dispose();
@@ -94,8 +87,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
     try {
       // Iniciar grabación de audio
       final audioPath = await _getAudioPath();
-      await _recorderController.record(path: audioPath);
-
+ 
       setState(() {
         _isListening = true;
         _currentMessage = '';
@@ -133,8 +125,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
   Future<void> _stopListening() async {
     try {
       debugPrint('Deteniendo grabación...'); // <-- Nuevo log
-      await _recorderController.stop();
-      await _speech.stop();
+       await _speech.stop();
       debugPrint('Grabación detenida correctamente'); // <-- Nuevo log
 
       setState(() {
@@ -232,26 +223,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
     setState(() => _isThinking = false);
   }
 
-  Widget _buildVoiceAnimation() {
-    return AnimatedSwitcher(
-      duration: Duration(milliseconds: 300),
-      child:
-          _isThinking ? _buildThinkingAnimation() : _buildVoiceWaveAnimation(),
-    );
-  }
-
-  Widget _buildVoiceWaveAnimation() {
-    return AudioWaveforms(
-      key: ValueKey('voice-wave'),
-      size: Size(MediaQuery.of(context).size.width * 0.8, 100),
-      recorderController: _recorderController,
-      waveStyle: WaveStyle(
-        waveColor: _primaryColor,
-        showMiddleLine: false,
-        extendWaveform: true,
-      ),
-    );
-  }
+   
+ 
 
   Widget _buildThinkingAnimation() {
     return AnimatedBuilder(
@@ -325,13 +298,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
               child: Column(
                 children: [
                   // Área de animación
-                  Container(
-                    height: 200,
-                    child: Center(
-                      child: _buildVoiceAnimation(),
-                    ),
-                  ),
-
+               
                   // Mensaje actual
                   if (_currentMessage.isNotEmpty && _isListening)
                     _buildMessageBubble(ChatMessage(

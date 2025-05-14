@@ -13,8 +13,7 @@ import 'package:LumorahAI/pages/screens/chats/ChatScreen.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
 import 'package:LumorahAI/utils/colors.dart';
 import 'package:LumorahAI/services/storage_service.dart';
-import 'package:audio_waveforms/audio_waveforms.dart';
-import 'package:permission_handler/permission_handler.dart';
+ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class Menuprincipal extends StatefulWidget {
@@ -30,8 +29,7 @@ class _MenuprincipalState extends State<Menuprincipal>
   late AnimationController _sunController;
   final TextEditingController _textController = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
-  late RecorderController _recorderController;
-
+ 
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
@@ -64,11 +62,7 @@ class _MenuprincipalState extends State<Menuprincipal>
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    _recorderController = RecorderController()
-      ..androidEncoder = AndroidEncoder.aac
-      ..androidOutputFormat = AndroidOutputFormat.mpeg4
-      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-      ..sampleRate = 16000;
+ 
 
     _initializeSpeech();
     _loadStoredLanguage();
@@ -106,8 +100,7 @@ class _MenuprincipalState extends State<Menuprincipal>
     _audioPlayer.dispose();
     _speech.stop();
     _speech.cancel();
-    _recorderController.dispose();
-    super.dispose();
+     super.dispose();
   }
 
   Future<bool> _isUserAuthenticated() async {
@@ -125,7 +118,7 @@ class _MenuprincipalState extends State<Menuprincipal>
       final soundPref = await _storageService.getString('sound_enabled');
       final soundEnabled = soundPref == null ? true : soundPref == 'true';
       if (soundEnabled) {
-        await _audioPlayer.setVolume(0.5);
+        await _audioPlayer.setVolume(0.2);
         await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
       }
     } catch (e) {
@@ -336,8 +329,7 @@ class _MenuprincipalState extends State<Menuprincipal>
     }
 
     try {
-      await _recorderController.record();
-      setState(() {
+       setState(() {
         _isListening = true;
         _transcribedText = '';
         _textController.clear();
@@ -380,8 +372,7 @@ class _MenuprincipalState extends State<Menuprincipal>
     if (!_isListening) return;
 
     try {
-      await _recorderController.stop();
-      await _speech.stop();
+       await _speech.stop();
       setState(() {
         _isListening = false;
         if (_transcribedText.isNotEmpty) {
@@ -409,23 +400,7 @@ class _MenuprincipalState extends State<Menuprincipal>
       ),
     );
   }
-
-  Widget _buildVoiceVisualizer() {
-    return Container(
-      height: 50,
-      margin: EdgeInsets.symmetric(vertical: 8),
-      child: AudioWaveforms(
-        size: Size(double.infinity, 50),
-        recorderController: _recorderController,
-        enableGesture: false,
-        waveStyle: WaveStyle(
-          waveColor: Colors.deepPurple,
-          showMiddleLine: false,
-          spacing: 8,
-        ),
-      ),
-    );
-  }
+ 
 
   Future<void> _handleAction(BuildContext context,
       {bool isVoice = false}) async {
@@ -478,7 +453,7 @@ class _MenuprincipalState extends State<Menuprincipal>
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          if (_isListening) _buildVoiceVisualizer(),
+          if (_isListening)  
           const SizedBox(height: 8),
           AnimatedContainer(
             duration: Duration(milliseconds: 100),

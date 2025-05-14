@@ -1,45 +1,45 @@
 {
   "project_info": {
-    "project_number": "709069828022",
-    "project_id": "lumorahai-891ad",
-    "storage_bucket": "lumorahai-891ad.firebasestorage.app"
+    "project_number": "949136826033",
+    "project_id": "lumorah-765ad",
+    "storage_bucket": "lumorah-765ad.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:709069828022:android:2c18a174ec820f82025b17",
+        "mobilesdk_app_id": "1:949136826033:android:f12f96f348aa136f478c90",
         "android_client_info": {
           "package_name": "com.lumorah.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "709069828022-8kvhc185ue5e20u88eofmv6cfcp0mua3.apps.googleusercontent.com",
+          "client_id": "949136826033-th7stlhp7p8compjtba6ir443fq71ig2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.lumorah.app",
-            "certificate_hash": "2572a8ad1accb6888f5f8f26f9be92dafff43b0a"
+            "certificate_hash": "4830c044e3db168d4c593379fe6f48c69919d3fb"
           }
         },
         {
-          "client_id": "709069828022-3aevo1nl2c8126kn15lklo5adfs8dv9i.apps.googleusercontent.com",
+          "client_id": "949136826033-nlamtgceiqu3e3nhoobdvr8t5hkdlfbd.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAqd9kg7UQLSrppIKYsV9BFIhY0vPbh-z8"
+          "current_key": "AIzaSyCYWGP7ooPwenyDQKGg43WTw1wF85vSpGk"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "709069828022-3aevo1nl2c8126kn15lklo5adfs8dv9i.apps.googleusercontent.com",
+              "client_id": "949136826033-nlamtgceiqu3e3nhoobdvr8t5hkdlfbd.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "709069828022-dl6ee03rv72hbshc7d99jdfrpk993j8b.apps.googleusercontent.com",
+              "client_id": "949136826033-t8qlmk4g0rvbrl2vr1l89441at29b81v.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.lumorah.app"

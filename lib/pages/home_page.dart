@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
  Future<void> _playWelcomeSound() async {
   try {
-    await _audioPlayer.setVolume(0.5); // Establecer volumen al 50%
+    await _audioPlayer.setVolume(0.2); // Establecer volumen al 50%
     await _audioPlayer.play(AssetSource('sounds/sonido_inicial.mp3'));
   } catch (e) {
     if (mounted) {

@@ -1,6 +1,6 @@
+import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
-import 'package:audio_waveforms/audio_waveforms.dart';
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -68,9 +68,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String? _emotionalState;
   String? _conversationLevel;
   bool _initialMessageSent = false;
-
-  late RecorderController _recorderController;
-
+ 
+double _soundLevel = 0.0; // Nueva variable para el nivel de sonido
   // Lógica para conteo de tokens y resumen
   final int _tokenLimit = 500;
   int _totalTokens = 0;
@@ -103,29 +102,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    _recorderController = RecorderController()
-      ..androidEncoder = AndroidEncoder.aac
-      ..androidOutputFormat = AndroidOutputFormat.mpeg4
-      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-      ..sampleRate = 16000;
-
+ 
     _initializeSpeech();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
   }
 
-  Future<void> _initializeSpeech() async {
-    try {
-      _isSpeechAvailable = await _speech.initialize(
-        onStatus: (status) => debugPrint('Speech status: $status'),
-        onError: (error) => debugPrint('Speech error: $error'),
-      );
-      setState(() {});
-    } catch (e) {
-      debugPrint('Error initializing speech: $e');
-      _showErrorSnackBar('Error initializing speech recognition');
+Future<void> _initializeSpeech() async {
+  try {
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
+      _showErrorSnackBar('Se requieren permisos de micrófono');
+      return;
     }
+    _isSpeechAvailable = await _speech.initialize(
+      onStatus: (status) => debugPrint('Speech status: $status'),
+      onError: (error) => debugPrint('Speech error: $error'),
+    );
+    if (_isSpeechAvailable) {
+      setState(() {
+        _isSpeechInitialized = true;
+      });
+      // Lista los idiomas disponibles
+      final locales = await _speech.locales();
+      debugPrint('Available locales: ${locales.map((l) => l.localeId).toList()}');
+      debugPrint('Speech initialized successfully');
+    } else {
+      debugPrint('Speech initialization failed');
+    }
+  } catch (e) {
+    debugPrint('Error initializing speech: $e');
+    _showErrorSnackBar('Error initializing speech recognition');
   }
-
+}
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -143,8 +151,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void dispose() {
     _speech.stop();
     _speech.cancel();
-    _recorderController.dispose();
-    _controller.dispose();
+     _controller.dispose();
     if (_typingTimer.isActive) {
       _typingTimer.cancel();
     }
@@ -307,6 +314,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           await _storageService.getString('sound_enabled') == 'true' ||
               await _storageService.getString('sound_enabled') == null;
       if (soundEnabled) {
+            await _audioPlayer.setVolume(0.2); // Establecer volumen al 50%
+
         await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
         _audioPlayer.setReleaseMode(ReleaseMode.loop);
       }
@@ -606,82 +615,86 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   // Elimina esta línea:
 // String _transcribedText = '';
 
-// Y modifica el _startListening y _stopListening:
-  Future<void> _startListening() async {
-    if (_isListening) return;
+Future<void> _startListening() async {
+  if (_isListening) return;
 
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      _showErrorSnackBar('Se requieren permisos de micrófono');
-      return;
-    }
-
-    if (!_isSpeechInitialized) {
-      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
-      return;
-    }
-
-    try {
-      await _recorderController.record();
-      setState(() {
-        _isListening = true;
-        _controller.clear(); // Limpia el controlador al empezar
-      });
-
-      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
-
-      _speech.listen(
-        onResult: (result) {
-          setState(() {
-            _controller.text =
-                result.recognizedWords; // Usa directamente el controlador
-            _controller.selection =
-                TextSelection.collapsed(offset: _controller.text.length);
-          });
-        },
-        localeId: localeId,
-        listenFor: Duration(minutes: 5),
-        partialResults: true,
-        onSoundLevelChange: (level) {},
-      );
-    } catch (e) {
-      setState(() => _isListening = false);
-      _showErrorSnackBar('Error al iniciar: $e');
-    }
+  final micStatus = await Permission.microphone.request();
+  if (!micStatus.isGranted) {
+    _showErrorSnackBar('Se requieren permisos de micrófono');
+    return;
   }
 
-  Future<void> _stopListening() async {
-    if (!_isListening) return;
-
-    try {
-      await _recorderController.stop();
-      await _speech.stop();
-      setState(() {
-        _isListening = false;
-        // No necesitas hacer nada más con el texto, ya está en el controlador
-      });
-    } catch (e) {
-      setState(() => _isListening = false);
-      _showErrorSnackBar('Error al detener: $e');
-    }
+  if (!_isSpeechInitialized) {
+    _showErrorSnackBar('El reconocimiento de voz no está inicializado');
+    return;
   }
 
-  Widget _buildVoiceVisualizer() {
-    return Container(
-      height: 50,
-      margin: EdgeInsets.symmetric(vertical: 8),
-      child: AudioWaveforms(
-        size: Size(double.infinity, 50),
-        recorderController: _recorderController,
-        enableGesture: false,
-        waveStyle: WaveStyle(
-          waveColor: Colors.deepPurple,
-          showMiddleLine: false,
-          spacing: 8,
-        ),
-      ),
+  try {
+    setState(() {
+      _isListening = true;
+      _controller.clear();
+    });
+
+    final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+    debugPrint('Starting speech recognition with locale: $localeId');
+
+    _speech.listen(
+      onResult: (result) {
+        debugPrint('Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+        setState(() {
+          _controller.text = result.recognizedWords;
+          _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+        });
+      },
+      localeId: localeId,
+      listenFor: Duration(minutes: 5),
+      pauseFor: Duration(seconds: 3),
+      partialResults: true,
+      onSoundLevelChange: (level) {
+        debugPrint('Sound level: $level');
+        setState(() {
+          _soundLevel = level;
+        });
+      },
     );
+  } catch (e) {
+    debugPrint('Error starting speech recognition: $e');
+    setState(() => _isListening = false);
+    _showErrorSnackBar('Error al iniciar: $e');
   }
+}
+
+Future<void> _stopListening() async {
+  if (!_isListening) return;
+
+  try {
+    await _speech.stop();
+    setState(() {
+      _isListening = false;
+      _soundLevel = 0.0;
+    });
+  } catch (e) {
+    debugPrint('Error stopping speech recognition: $e');
+    setState(() {
+      _isListening = false;
+      _soundLevel = 0.0;
+    });
+    _showErrorSnackBar('Error al detener: $e');
+  }
+}
+
+
+ 
+ 
+
+Widget _buildVoiceVisualizer() {
+  if (!_isListening) return const SizedBox.shrink();
+  return WaveVisualizer(
+    soundLevel: _soundLevel,
+    primaryColor: Colors.grey,  
+    secondaryColor: Colors.black, // e.g., Color(0xFF88D5C2)
+  );
+}
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -908,106 +921,103 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildKeyboardInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          if (_isListening) _buildVoiceVisualizer(),
-          const SizedBox(height: 8),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 100),
-            curve: Curves.easeOut,
-            height: _controller.text.isEmpty
-                ? 60
-                : min(
-                    60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
-            child: TextField(
-              controller: _controller,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              style: TextStyle(color: Colors.black87),
-              decoration: InputDecoration(
-                hintText: 'writeHint'.tr(),
-                hintStyle: TextStyle(color: Colors.grey),
-                filled: true,
-                fillColor: Colors.grey.shade200,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+Widget _buildKeyboardInput() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: Column(
+      children: [
+        if (_isListening) _buildVoiceVisualizer(), // Muestra la visualización cuando está escuchando
+        const SizedBox(height: 8),
+        AnimatedContainer(
+          duration: Duration(milliseconds: 100),
+          curve: Curves.easeOut,
+          height: _controller.text.isEmpty
+              ? 60
+              : min(60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
+          child: TextField(
+            controller: _controller,
+            maxLines: null,
+            keyboardType: TextInputType.multiline,
+            style: TextStyle(color: Colors.black87),
+            decoration: InputDecoration(
+              hintText: 'writeHint'.tr(),
+              hintStyle: TextStyle(color: Colors.grey),
+              filled: true,
+              fillColor: Colors.grey.shade200,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.stop_circle : Icons.mic_none,
+                      color: _isListening ? Colors.red : micButtonColor,
+                      size: _isListening ? 30 : 24,
+                    ),
+                    tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
+                    onPressed: () async {
+                      if (_isListening) {
+                        await _stopListening();
+                      } else {
+                        await _startListening();
+                      }
+                    },
+                  ),
+                  if (_controller.text.isNotEmpty)
                     IconButton(
-                      icon: Icon(
-                        _isListening ? Icons.stop_circle : Icons.mic_none,
-                        color: _isListening ? Colors.red : micButtonColor,
-                        size: _isListening ? 30 : 24,
-                      ),
-                      tooltip: _isListening
-                          ? 'Detener grabación'
-                          : 'Iniciar grabación',
-                      onPressed: () async {
-                        if (_isListening) {
-                          await _stopListening();
-                        } else {
-                          await _startListening();
-                        }
+                      icon: Icon(Icons.send, color: micButtonColor),
+                      onPressed: () {
+                        _sendMessage(_controller.text);
+                        _controller.clear();
                       },
                     ),
-                    if (_controller.text.isNotEmpty)
-                      IconButton(
-                        icon: Icon(Icons.send, color: micButtonColor),
+                  if (_controller.text.isEmpty)
+                    Container(
+                      margin: EdgeInsets.only(left: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2)),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.record_voice_over,
+                          color: micButtonColor,
+                          size: 22,
+                        ),
+                        tooltip: 'Chat de voz avanzado',
                         onPressed: () {
-                          _sendMessage(_controller.text);
-                          _controller.clear();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => VoiceChatScreen(
+                                sessionId: _currentSessionId,
+                                language: context.locale.languageCode,
+                              ),
+                            ),
+                          );
                         },
                       ),
-                    if (_controller.text.isEmpty)
-                      Container(
-                        margin: EdgeInsets.only(left: 8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2)),
-                          ],
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.record_voice_over,
-                            color: micButtonColor,
-                            size: 22,
-                          ),
-                          tooltip: 'Chat de voz avanzado',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VoiceChatScreen(
-                                  sessionId: _currentSessionId,
-                                  language: context.locale.languageCode,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-              onChanged: (text) => setState(() {}),
             ),
+            onChanged: (text) => setState(() {}),
           ),
-          const SizedBox(height: 15),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 15),
+      ],
+    ),
+  );
+}
 
   Widget _buildVoiceInput() {
     return Column(

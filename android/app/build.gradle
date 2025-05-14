@@ -67,6 +67,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'com.google.mlkit:barcode-scanning:17.2.0'
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation('com.google.firebase:firebase-messaging:24.1.1') {
         exclude group: 'com.google.firebase', module: 'firebase-iid'
     }

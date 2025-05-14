@@ -24,6 +24,9 @@ class RegisterModal extends StatefulWidget {
 
 class _RegisterModalState extends State<RegisterModal> {
   bool isObscure = true;
+bool isPasswordObscure = true;
+bool isConfirmPasswordObscure = true;
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
@@ -213,7 +216,7 @@ class _RegisterModalState extends State<RegisterModal> {
                       Text(
                         'startYourJourney'.tr(), // Traducción
                         style: GoogleFonts.inter(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: LumorahColors.textOnPrimary,
                         ),
@@ -279,7 +282,7 @@ class _RegisterModalState extends State<RegisterModal> {
                             const SizedBox(height: 16),
                             TextField(
                               controller: _passwordController,
-                              obscureText: isObscure,
+                              obscureText: isPasswordObscure,
                               style: TextStyle(
                                   color: Colors
                                       .black), // <- Aquí se cambia el color del texto
@@ -294,13 +297,13 @@ class _RegisterModalState extends State<RegisterModal> {
                                     color: LumorahColors.primary),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    isObscure
+                                    isPasswordObscure
                                         ? Icons.visibility_off
                                         : Icons.visibility,
                                     color: LumorahColors.primary,
                                   ),
                                   onPressed: () =>
-                                      setState(() => isObscure = !isObscure),
+                                      setState(() => isPasswordObscure = !isPasswordObscure),
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
@@ -320,15 +323,25 @@ class _RegisterModalState extends State<RegisterModal> {
                                       .black), // <- Aquí se cambia el color del texto
 
                               controller: _confirmPasswordController,
-                              obscureText: isObscure,
+                              obscureText: isConfirmPasswordObscure,
                               decoration: InputDecoration(
                                 labelText: 'confirmPassword'.tr(), // Traducción
                                 labelStyle: TextStyle(
                                     color: LumorahColors.primaryDarker),
                                 filled: true,
                                 fillColor: Colors.white.withOpacity(0.8),
-                                prefixIcon: Icon(Icons.lock,
+                             prefixIcon: Icon(Icons.lock,
                                     color: LumorahColors.primary),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    isConfirmPasswordObscure
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: LumorahColors.primary,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => isConfirmPasswordObscure = !isConfirmPasswordObscure),
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide.none,

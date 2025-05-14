@@ -30,15 +30,19 @@ Future<void> main() async {
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: '.env');
 
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-  } catch (e) {
-    debugPrint("Error inicializando Firebase: $e");
+try {
+  // Verifica si la app DEFAULT ya existe
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } else {
+    // Si ya existe, obtén la instancia existente
+    Firebase.app();
   }
+} catch (e) {
+  debugPrint("Error inicializando Firebase: $e");
+}
 
   await FirebaseApi().initNotifications();
 
