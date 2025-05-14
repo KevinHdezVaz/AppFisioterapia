@@ -1,9 +1,10 @@
 import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-
+import 'package:flutter/painting.dart'
+    as painting; // Import explícito para TextDirection
 import 'package:flutter_chat_bubble/chat_bubble.dart';
 import 'package:flutter_chat_bubble/bubble_type.dart';
 import 'package:flutter_chat_bubble/clippers/chat_bubble_clipper_1.dart';
@@ -68,8 +69,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String? _emotionalState;
   String? _conversationLevel;
   bool _initialMessageSent = false;
- 
-double _soundLevel = 0.0; // Nueva variable para el nivel de sonido
+
+  double _soundLevel = 0.0; // Nueva variable para el nivel de sonido
   // Lógica para conteo de tokens y resumen
   final int _tokenLimit = 500;
   int _totalTokens = 0;
@@ -102,38 +103,39 @@ double _soundLevel = 0.0; // Nueva variable para el nivel de sonido
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
- 
     _initializeSpeech();
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
   }
 
-Future<void> _initializeSpeech() async {
-  try {
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      _showErrorSnackBar('Se requieren permisos de micrófono');
-      return;
+  Future<void> _initializeSpeech() async {
+    try {
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        _showErrorSnackBar('Se requieren permisos de micrófono');
+        return;
+      }
+      _isSpeechAvailable = await _speech.initialize(
+        onStatus: (status) => debugPrint('Speech status: $status'),
+        onError: (error) => debugPrint('Speech error: $error'),
+      );
+      if (_isSpeechAvailable) {
+        setState(() {
+          _isSpeechInitialized = true;
+        });
+        // Lista los idiomas disponibles
+        final locales = await _speech.locales();
+        debugPrint(
+            'Available locales: ${locales.map((l) => l.localeId).toList()}');
+        debugPrint('Speech initialized successfully');
+      } else {
+        debugPrint('Speech initialization failed');
+      }
+    } catch (e) {
+      debugPrint('Error initializing speech: $e');
+      _showErrorSnackBar('Error initializing speech recognition');
     }
-    _isSpeechAvailable = await _speech.initialize(
-      onStatus: (status) => debugPrint('Speech status: $status'),
-      onError: (error) => debugPrint('Speech error: $error'),
-    );
-    if (_isSpeechAvailable) {
-      setState(() {
-        _isSpeechInitialized = true;
-      });
-      // Lista los idiomas disponibles
-      final locales = await _speech.locales();
-      debugPrint('Available locales: ${locales.map((l) => l.localeId).toList()}');
-      debugPrint('Speech initialized successfully');
-    } else {
-      debugPrint('Speech initialization failed');
-    }
-  } catch (e) {
-    debugPrint('Error initializing speech: $e');
-    _showErrorSnackBar('Error initializing speech recognition');
   }
-}
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -151,7 +153,7 @@ Future<void> _initializeSpeech() async {
   void dispose() {
     _speech.stop();
     _speech.cancel();
-     _controller.dispose();
+    _controller.dispose();
     if (_typingTimer.isActive) {
       _typingTimer.cancel();
     }
@@ -314,7 +316,7 @@ Future<void> _initializeSpeech() async {
           await _storageService.getString('sound_enabled') == 'true' ||
               await _storageService.getString('sound_enabled') == null;
       if (soundEnabled) {
-            await _audioPlayer.setVolume(0.2); // Establecer volumen al 50%
+        await _audioPlayer.setVolume(0.2); // Establecer volumen al 50%
 
         await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
         _audioPlayer.setReleaseMode(ReleaseMode.loop);
@@ -615,86 +617,85 @@ Future<void> _initializeSpeech() async {
   // Elimina esta línea:
 // String _transcribedText = '';
 
-Future<void> _startListening() async {
-  if (_isListening) return;
+  Future<void> _startListening() async {
+    if (_isListening) return;
 
-  final micStatus = await Permission.microphone.request();
-  if (!micStatus.isGranted) {
-    _showErrorSnackBar('Se requieren permisos de micrófono');
-    return;
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
+      _showErrorSnackBar('Se requieren permisos de micrófono');
+      return;
+    }
+
+    if (!_isSpeechInitialized) {
+      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
+      return;
+    }
+
+    try {
+      setState(() {
+        _isListening = true;
+        _controller.clear();
+      });
+
+      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+      debugPrint('Starting speech recognition with locale: $localeId');
+
+      _speech.listen(
+        onResult: (result) {
+          debugPrint(
+              'Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+          setState(() {
+            _controller.text = result.recognizedWords;
+            // Keep cursor at the end
+            _controller.selection =
+                TextSelection.collapsed(offset: _controller.text.length);
+          });
+        },
+        localeId: localeId,
+        listenFor: const Duration(minutes: 5),
+        pauseFor: const Duration(seconds: 3),
+        partialResults: true,
+        onSoundLevelChange: (level) {
+          debugPrint('Sound level: $level');
+          setState(() {
+            _soundLevel = level;
+          });
+        },
+      );
+    } catch (e) {
+      debugPrint('Error starting speech recognition: $e');
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al iniciar: $e');
+    }
   }
 
-  if (!_isSpeechInitialized) {
-    _showErrorSnackBar('El reconocimiento de voz no está inicializado');
-    return;
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+
+    try {
+      await _speech.stop();
+      setState(() {
+        _isListening = false;
+        _soundLevel = 0.0;
+      });
+    } catch (e) {
+      debugPrint('Error stopping speech recognition: $e');
+      setState(() {
+        _isListening = false;
+        _soundLevel = 0.0;
+      });
+      _showErrorSnackBar('Error al detener: $e');
+    }
   }
 
-  try {
-    setState(() {
-      _isListening = true;
-      _controller.clear();
-    });
-
-    final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
-    debugPrint('Starting speech recognition with locale: $localeId');
-
-    _speech.listen(
-      onResult: (result) {
-        debugPrint('Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
-        setState(() {
-          _controller.text = result.recognizedWords;
-          _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
-        });
-      },
-      localeId: localeId,
-      listenFor: Duration(minutes: 5),
-      pauseFor: Duration(seconds: 3),
-      partialResults: true,
-      onSoundLevelChange: (level) {
-        debugPrint('Sound level: $level');
-        setState(() {
-          _soundLevel = level;
-        });
-      },
+  Widget _buildVoiceVisualizer() {
+    if (!_isListening) return const SizedBox.shrink();
+    return WaveVisualizer(
+      soundLevel: _soundLevel,
+      primaryColor: Colors.grey,
+      secondaryColor: Colors.black, // e.g., Color(0xFF88D5C2)
     );
-  } catch (e) {
-    debugPrint('Error starting speech recognition: $e');
-    setState(() => _isListening = false);
-    _showErrorSnackBar('Error al iniciar: $e');
   }
-}
-
-Future<void> _stopListening() async {
-  if (!_isListening) return;
-
-  try {
-    await _speech.stop();
-    setState(() {
-      _isListening = false;
-      _soundLevel = 0.0;
-    });
-  } catch (e) {
-    debugPrint('Error stopping speech recognition: $e');
-    setState(() {
-      _isListening = false;
-      _soundLevel = 0.0;
-    });
-    _showErrorSnackBar('Error al detener: $e');
-  }
-}
-
-
- 
- 
-
-Widget _buildVoiceVisualizer() {
-  if (!_isListening) return const SizedBox.shrink();
-  return WaveVisualizer(
-    soundLevel: _soundLevel,
-    primaryColor: Colors.grey,  
-    secondaryColor: Colors.black, // e.g., Color(0xFF88D5C2)
-  );
-}
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -921,103 +922,131 @@ Widget _buildVoiceVisualizer() {
     );
   }
 
-Widget _buildKeyboardInput() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      children: [
-        if (_isListening) _buildVoiceVisualizer(), // Muestra la visualización cuando está escuchando
-        const SizedBox(height: 8),
-        AnimatedContainer(
-          duration: Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-          height: _controller.text.isEmpty
-              ? 60
-              : min(60.0 + (_controller.text.split('\n').length * 20.0), 200.0),
-          child: TextField(
-            controller: _controller,
-            maxLines: null,
-            keyboardType: TextInputType.multiline,
-            style: TextStyle(color: Colors.black87),
-            decoration: InputDecoration(
-              hintText: 'writeHint'.tr(),
-              hintStyle: TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.grey.shade200,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: BorderSide.none,
-              ),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _isListening ? Icons.stop_circle : Icons.mic_none,
-                      color: _isListening ? Colors.red : micButtonColor,
-                      size: _isListening ? 30 : 24,
+  Widget _buildKeyboardInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          if (_isListening) _buildVoiceVisualizer(),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Calcular la altura basada en el contenido
+              final textPainter = TextPainter(
+                text: TextSpan(
+                  text: _controller.text.isEmpty ? ' ' : _controller.text,
+                  style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
+                ),
+                maxLines: null,
+                textDirection:
+                    painting.TextDirection.ltr, // Usar TextDirection de Flutter
+              )..layout(
+                  maxWidth:
+                      constraints.maxWidth - 80); // Ajuste por padding/iconos
+
+              final lineCount = textPainter.computeLineMetrics().length;
+              final baseHeight = 60.0;
+              final lineHeight = 20.0;
+              final calculatedHeight =
+                  baseHeight + (lineCount - 1) * lineHeight;
+              final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                height: textFieldHeight,
+                child: TextField(
+                  controller: _controller,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: InputDecoration(
+                    hintText: 'writeHint'.tr(),
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.grey.shade200,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
                     ),
-                    tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
-                    onPressed: () async {
-                      if (_isListening) {
-                        await _stopListening();
-                      } else {
-                        await _startListening();
-                      }
-                    },
-                  ),
-                  if (_controller.text.isNotEmpty)
-                    IconButton(
-                      icon: Icon(Icons.send, color: micButtonColor),
-                      onPressed: () {
-                        _sendMessage(_controller.text);
-                        _controller.clear();
-                      },
-                    ),
-                  if (_controller.text.isEmpty)
-                    Container(
-                      margin: EdgeInsets.only(left: 8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 2)),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.record_voice_over,
-                          color: micButtonColor,
-                          size: 22,
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isListening ? Icons.stop_circle : Icons.mic_none,
+                            color: _isListening ? Colors.red : micButtonColor,
+                            size: _isListening ? 30 : 24,
+                          ),
+                          tooltip: _isListening
+                              ? 'Detener grabación'
+                              : 'Iniciar grabación',
+                          onPressed: () async {
+                            if (_isListening) {
+                              await _stopListening(); // Solo detener la grabación
+                            } else {
+                              await _startListening();
+                            }
+                          },
                         ),
-                        tooltip: 'Chat de voz avanzado',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VoiceChatScreen(
-                                sessionId: _currentSessionId,
-                                language: context.locale.languageCode,
-                              ),
+                        if (_controller.text.isNotEmpty)
+                          IconButton(
+                            icon: Icon(Icons.send, color: micButtonColor),
+                            onPressed: () {
+                              _sendMessage(_controller.text);
+                              _controller.clear();
+                            },
+                          ),
+                        if (_controller.text.isEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.record_voice_over,
+                                color: micButtonColor,
+                                size: 22,
+                              ),
+                              tooltip: 'Chat de voz avanzado',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VoiceChatScreen(
+                                      sessionId: _currentSessionId,
+                                      language: context.locale.languageCode,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-            ),
-            onChanged: (text) => setState(() {}),
+                  ),
+                  onChanged: (text) {
+                    setState(() {}); // Reconstruir para actualizar la altura
+                  },
+                  scrollController: ScrollController(),
+                ),
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 15),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
 
   Widget _buildVoiceInput() {
     return Column(

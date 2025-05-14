@@ -9,16 +9,18 @@ import 'package:LumorahAI/services/storage_service.dart';
 import 'package:LumorahAI/utils/constantes.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:LumorahAI/model/User.dart' as lumorah;
+
 class AuthService {
   final storage = StorageService();
-   final firebase_auth.FirebaseAuth _firebaseAuth = firebase_auth.FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _firebaseAuth =
+      firebase_auth.FirebaseAuth.instance;
 
-   final GoogleSignIn _googleSignIn = GoogleSignIn(
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    clientId: '949136826033-th7stlhp7p8compjtba6ir443fq71ig2.apps.googleusercontent.com', // Android
-    serverClientId: '949136826033-nlamtgceiqu3e3nhoobdvr8t5hkdlfbd.apps.googleusercontent.com', // Web (Firebase)
+    // Solo necesitas el serverClientId (Web Client ID)
+    serverClientId:
+        '949136826033-nlamtgceiqu3e3nhoobdvr8t5hkdlfbd.apps.googleusercontent.com',
   );
-
 
   Future<bool> updateProfile({
     String? name,
@@ -76,69 +78,69 @@ class AuthService {
     }
   }
 
-  
   Future<bool> login(String email, String password,
-    {double? latitude, double? longitude}) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': email,
-        'password': password,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
-    );
+      {double? latitude, double? longitude}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
 
-    print('Login response status: ${response.statusCode}');
-    print('Login response body: ${response.body}');
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Error: ${response.statusCode}');
-    }
-
-    final data = json.decode(response.body);
-    if (data['token'] != null) {
-      await storage.saveToken(data['token']);
-      print('Token saved: ${data['token']}');
-      if (data['user'] != null) {
-        final user = lumorah.User.fromJson(data['user']);  // Usando el alias
-        print('User parsed: ${user.toJson()}');
-        await storage.saveUser(user);
-        print('User saved to storage');
-        if (data['user']['id'] != null) {
-          await saveUserId(data['user']['id']);
-          print('User ID saved: ${data['user']['id']}');
-        }
-      } else {
-        print('No user data in response');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Error: ${response.statusCode}');
       }
-      return true;
+
+      final data = json.decode(response.body);
+      if (data['token'] != null) {
+        await storage.saveToken(data['token']);
+        print('Token saved: ${data['token']}');
+        if (data['user'] != null) {
+          final user = lumorah.User.fromJson(data['user']); // Usando el alias
+          print('User parsed: ${user.toJson()}');
+          await storage.saveUser(user);
+          print('User saved to storage');
+          if (data['user']['id'] != null) {
+            await saveUserId(data['user']['id']);
+            print('User ID saved: ${data['user']['id']}');
+          }
+        } else {
+          print('No user data in response');
+        }
+        return true;
+      }
+      print('No token in response');
+      return false;
+    } catch (e) {
+      print('Error login: $e');
+      return false;
     }
-    print('No token in response');
-    return false;
-  } catch (e) {
-    print('Error login: $e');
-    return false;
   }
-}
 
   Future<bool> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return false;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = 
+      final UserCredential userCredential =
           await _firebaseAuth.signInWithCredential(credential);
-      
+
       final String? firebaseToken = await userCredential.user?.getIdToken();
       if (firebaseToken == null) throw Exception("No Firebase token");
 
@@ -148,7 +150,8 @@ class AuthService {
       return false;
     }
   }
-Future<bool> loginWithGoogle(String firebaseToken) async {
+
+  Future<bool> loginWithGoogle(String firebaseToken) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/google-login'),
@@ -214,7 +217,7 @@ Future<bool> loginWithGoogle(String firebaseToken) async {
     }
   }
 
- Future<void> logout() async {
+  Future<void> logout() async {
     try {
       await http.post(
         Uri.parse('$baseUrl/logout'),
@@ -319,7 +322,8 @@ Future<bool> loginWithGoogle(String firebaseToken) async {
         await storage.saveToken(token);
         print('Register token saved: $token');
 
-        final user = lumorah.User.fromJson(data['user'] as Map<String, dynamic>);
+        final user =
+            lumorah.User.fromJson(data['user'] as Map<String, dynamic>);
         await storage.saveUser(user);
         print('Register user saved: ${user.toJson()}');
 
