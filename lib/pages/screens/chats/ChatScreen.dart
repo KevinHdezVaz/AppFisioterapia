@@ -1019,15 +1019,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               ),
                               tooltip: 'Chat de voz avanzado',
                               onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => VoiceChatScreen(
-                                      sessionId: _currentSessionId,
-                                      language: context.locale.languageCode,
-                                    ),
-                                  ),
-                                );
+                              Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => VoiceChatScreen(
+      sessionId: _currentSessionId,
+      language: context.locale.languageCode, // por ejemplo: "es"
+    ),
+  ),
+);
+
                               },
                             ),
                           ),

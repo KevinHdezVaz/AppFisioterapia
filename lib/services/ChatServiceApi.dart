@@ -7,6 +7,8 @@ import 'package:LumorahAI/model/ChatSession.dart';
 import 'package:LumorahAI/services/storage_service.dart';
 import 'package:LumorahAI/utils/constantes.dart';
 import 'package:http_parser/http_parser.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ChatServiceApi {
   final StorageService storage = StorageService();
@@ -215,42 +217,65 @@ class ChatServiceApi {
     return response;
   }
 
-  Future<String> transcribeAudio(String filePath) async {
-    final token = await storage.getToken(); // Ajusta según tu almacenamiento
-    final uri = Uri.parse('$baseUrl/chat/transcribe-audio');
-    final request = http.MultipartRequest('POST', uri);
+  Future<Map<String, dynamic>> sendVoiceMessage({
+    required String message,
+    required int? sessionId,
+    required String language,
+    String? audioUrl,
+  }) async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/send-message',
+      body: {
+        'message': message,
+        'session_id': sessionId,
+        'language': language,
+        if (audioUrl != null) 'audio_url': audioUrl,
+      },
+    );
+    return response;
+  }
 
-    request.headers.addAll({
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    });
+  Future<String> transcribeAudio(File audioFile) async {
+    final token = await storage.getToken();
+    if (token == null) throw Exception('No autenticado');
 
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'audio',
-        filePath,
-        contentType: MediaType(
-            'audio', _getMimeType(filePath)), // Necesitarás este helper
-      ),
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/transcribe-audio'),
     );
 
-    try {
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath(
+      'audio',
+      audioFile.path,
+    ));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          return data['text'] ?? '';
-        } else {
-          throw Exception('Transcripción fallida');
-        }
-      } else {
-        debugPrint('Error transcripción: ${response.body}');
-        throw Exception('Error de servidor (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Error al conectar con el backend: $e');
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      return responseData['text'] ?? '';
+    } else {
+      throw Exception('Error al transcribir: ${response.body}');
+    }
+  }
+
+  Future<String> synthesizeSpeech(String text, {String voice = 'nova'}) async {
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'chat/speak',
+      body: {
+        'text': text,
+        'voice': voice,
+      },
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response['url'] ?? '';
+    } else {
+      throw Exception('Error en TTS: Respuesta inesperada');
     }
   }
 
@@ -287,28 +312,7 @@ class ChatServiceApi {
       endpoint: 'chat/sessions/$sessionId',
       body: {'title': title},
     );
-  }
-
-  Future<Map<String, dynamic>> sendVoiceMessage({
-    required String message,
-    int? sessionId,
-    required String language,
-    String? audioUrl,
-  }) async {
-    final response = await _authenticatedRequest(
-      method: 'POST',
-      endpoint: 'chat/send-voice-message',
-      body: {
-        'message': message,
-        'session_id': sessionId,
-        'language': language,
-        if (audioUrl != null) 'audio_url': audioUrl,
-        'is_voice': true, // Para respuestas optimizadas para voz
-      },
-    );
-
-    return _parseVoiceResponse(response);
-  }
+  } 
 
   Map<String, dynamic> _parseVoiceResponse(dynamic response) {
     if (response is! Map<String, dynamic>) {
