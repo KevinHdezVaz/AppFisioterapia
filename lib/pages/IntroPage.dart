@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:LumorahAI/pages/MenuPrincipal.dart';
-import 'package:LumorahAI/services/storage_service.dart'; // Nuevo import
+import 'package:LumorahAI/services/storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Nuevo import
 
 class IntroPage extends StatefulWidget {
   final int pageIndex;
@@ -32,6 +33,7 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
       'subTextSize': 0.0,
       'buttonLabel': 'nextButton'.tr(),
       'nextPage': (context) => IntroPage(pageIndex: 2),
+      'isLastPage': false, // Añade esto
     },
     {
       'icon': Icons.mic,
@@ -41,6 +43,7 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
       'subTextSize': 30.0,
       'buttonLabel': 'nextButton'.tr(),
       'nextPage': (context) => IntroPage(pageIndex: 3),
+      'isLastPage': false, // Añade esto
     },
     {
       'icon': null,
@@ -50,9 +53,19 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
       'subTextSize': 25.0,
       'buttonLabel': 'startButton'.tr(),
       'nextPage': (context) => Menuprincipal(),
+      'isLastPage': true, // Añade esto
     },
   ];
 
+  Future<void> _completeOnboarding() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', true);
+    debugPrint('Onboarding marcado como completado'); // Para debug
+  } catch (e) {
+    debugPrint('Error guardando preferencia: $e');
+  }
+}
   @override
   void initState() {
     super.initState();
@@ -199,53 +212,43 @@ class _IntroPageState extends State<IntroPage> with TickerProviderStateMixin {
                     },
                   ),
                 ),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 50),
-                  child: GestureDetector(
-                    onTapDown: (_) {
-                      _contentController.reverse();
-                    },
-                    onTapUp: (_) {
-                      _contentController.forward();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: config['nextPage']),
-                      );
-                    },
-                    child: ScaleTransition(
-                      scale: _buttonScaleAnimation,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_vibrationEnabled) {
-                            HapticFeedback
-                                .lightImpact(); // Solo si vibración está habilitada
-                          }
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: config['nextPage']),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFFDF8F2),
-                          foregroundColor: Colors.black87,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 80, vertical: 15),
-                          elevation: 2,
-                        ),
-                        child: Text(
-                          config['buttonLabel'],
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              Padding(
+  padding: EdgeInsets.only(bottom: 50),
+  child: ElevatedButton(
+    onPressed: () async {
+      if (_vibrationEnabled) {
+        HapticFeedback.lightImpact();
+      }
+      
+      if (widget.pageIndex == _pageConfigs.length) { // Verifica si es la última página
+        await _completeOnboarding();
+      }
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: _pageConfigs[widget.pageIndex - 1]['nextPage']
+        ),
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Color(0xFFFDF8F2),
+      foregroundColor: Colors.black87,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
+      elevation: 2,
+    ),
+    child: Text(
+      config['buttonLabel'],
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  ),
+),
               ],
             ),
           ),

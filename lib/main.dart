@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:LumorahAI/pages/MenuPrincipal.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,8 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:LumorahAI/auth/auth_check.dart';
 import 'package:LumorahAI/auth/auth_service.dart';
-import 'package:LumorahAI/onscreen/onboardingWrapper.dart';
-import 'package:LumorahAI/pages/Mercadopago/payment_service.dart';
+ import 'package:LumorahAI/pages/Mercadopago/payment_service.dart';
 import 'package:LumorahAI/pages/bottom_nav.dart';
 import 'package:LumorahAI/pages/home_page.dart';
 import 'package:LumorahAI/services/functions/firebase_notification.dart';
@@ -87,7 +87,6 @@ try {
     ),
   );
 }
-
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -96,6 +95,21 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  bool _onboardingCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -122,7 +136,7 @@ class _MyAppState extends State<MyApp> {
         themeMode: themeProvider.currentTheme,
         theme: lightTheme,
         darkTheme: darkTheme,
-        home: HomeScreen(),
+        home: _onboardingCompleted ? Menuprincipal() : HomeScreen(),
       ),
     );
   }

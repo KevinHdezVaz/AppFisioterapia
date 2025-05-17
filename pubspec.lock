@@ -539,6 +539,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.28.0"
+  flutter_spinkit:
+    dependency: "direct main"
+    description:
+      name: flutter_spinkit
+      sha256: d2696eed13732831414595b98863260e33e8882fc069ee80ec35d4ac9ddb0472
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.2.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -630,7 +638,7 @@ packages:
     source: hosted
     version: "1.4.0"
   http_parser:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http_parser
       sha256: "178d74305e7866013777bab2c3d8726205dc5a4dd935297175b19a23a2e66571"
@@ -809,10 +817,10 @@ packages:
     dependency: transitive
     description:
       name: mime
-      sha256: "41a20518f0cb1256669420fdba0cd90d21561e560ac240f26ef8322e45bb7ed6"
+      sha256: "801fd0b26f14a4a58ccb09d5892c3fbdeff209594300a542492cf13fba9d247a"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "1.0.6"
   nested:
     dependency: transitive
     description:
@@ -997,6 +1005,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.5"
+  pusher_channels_flutter:
+    dependency: "direct main"
+    description:
+      name: pusher_channels_flutter
+      sha256: "0b06194d85d1665d21e634ea091917b28670fb6d585d76903a4f72d894906000"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   rxdart:
     dependency: transitive
     description:

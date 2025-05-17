@@ -1023,8 +1023,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   context,
   MaterialPageRoute(
     builder: (context) => VoiceChatScreen(
-      sessionId: _currentSessionId,
-      language: context.locale.languageCode, // por ejemplo: "es"
+       language: context.locale.languageCode, // por ejemplo: "es"
     ),
   ),
 );

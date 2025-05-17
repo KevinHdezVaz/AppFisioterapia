@@ -561,8 +561,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => VoiceChatScreen(
-                                        sessionId: _currentSessionId,
-                                        language: context.locale.languageCode,
+                                         language: context.locale.languageCode,
                                       ),
                                     ),
                                   );

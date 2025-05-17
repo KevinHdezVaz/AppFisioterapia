@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:LumorahAI/model/ChatMessage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,8 +8,7 @@ import 'package:LumorahAI/model/ChatSession.dart';
 import 'package:LumorahAI/services/storage_service.dart';
 import 'package:LumorahAI/utils/constantes.dart';
 import 'package:http_parser/http_parser.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:mime/mime.dart';
 
 class ChatServiceApi {
   final StorageService storage = StorageService();
@@ -135,31 +135,48 @@ class ChatServiceApi {
     required int? sessionId,
     required String language,
   }) async {
-    final token = await storage.getToken();
-    if (token == null) throw Exception('No autenticado');
-
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    };
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/summarize'),
-      headers: headers,
-      body: jsonEncode({
+    final response = await _authenticatedRequest(
+      method: 'POST',
+      endpoint: 'summarize',
+      body: {
         'messages': messages,
         'session_id': sessionId,
         'language': language,
-      }),
+      },
     );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to summarize conversation: ${response.body}');
-    }
+    return response;
   }
+ 
+Future<void> processAudio(File audioFile) async {
+  final token = await storage.getToken();
+  if (token == null) throw Exception('No autenticado');
+
+  debugPrint('Token enviado: $token');
+  debugPrint('Enviando audio: ${audioFile.path}');
+
+  final request = http.MultipartRequest(
+    'POST',
+    Uri.parse('$baseUrl/chat/process-audio'),
+  );
+  request.headers['Authorization'] = 'Bearer $token';
+  request.headers['Accept'] = 'application/json';
+  request.files.add(await http.MultipartFile.fromPath(
+    'audio',
+    audioFile.path,
+    contentType: MediaType('audio', 'mp4'),
+  ));
+
+  final streamedResponse = await request.send();
+  final response = await http.Response.fromStream(streamedResponse);
+
+  debugPrint('Status Code: ${response.statusCode}');
+  debugPrint('Response Body: ${response.body}');
+  debugPrint('Headers: ${response.headers}');
+
+  if (response.statusCode != 200) {
+    throw Exception('Error al procesar audio: ${response.body}');
+  }
+}
 
   Future<ChatSession> saveChatSession({
     required String title,
@@ -217,79 +234,9 @@ class ChatServiceApi {
     return response;
   }
 
-  Future<Map<String, dynamic>> sendVoiceMessage({
-    required String message,
-    required int? sessionId,
+  Future<Map<String, dynamic>> startNewSession({
     required String language,
-    String? audioUrl,
   }) async {
-    final response = await _authenticatedRequest(
-      method: 'POST',
-      endpoint: 'chat/send-message',
-      body: {
-        'message': message,
-        'session_id': sessionId,
-        'language': language,
-        if (audioUrl != null) 'audio_url': audioUrl,
-      },
-    );
-    return response;
-  }
-
-  Future<String> transcribeAudio(File audioFile) async {
-    final token = await storage.getToken();
-    if (token == null) throw Exception('No autenticado');
-
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/chat/transcribe-audio'),
-    );
-
-    request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(await http.MultipartFile.fromPath(
-      'audio',
-      audioFile.path,
-    ));
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      return responseData['text'] ?? '';
-    } else {
-      throw Exception('Error al transcribir: ${response.body}');
-    }
-  }
-
-  Future<String> synthesizeSpeech(String text, {String voice = 'nova'}) async {
-    final response = await _authenticatedRequest(
-      method: 'POST',
-      endpoint: 'chat/speak',
-      body: {
-        'text': text,
-        'voice': voice,
-      },
-    );
-
-    if (response is Map<String, dynamic>) {
-      return response['url'] ?? '';
-    } else {
-      throw Exception('Error en TTS: Respuesta inesperada');
-    }
-  }
-
-  String _getMimeType(String path) {
-    if (path.endsWith('.m4a')) return 'mp4'; // m4a usualmente se maneja así
-    if (path.endsWith('.mp3')) return 'mpeg';
-    if (path.endsWith('.wav')) return 'wav';
-    if (path.endsWith('.ogg')) return 'ogg';
-    if (path.endsWith('.webm')) return 'webm';
-    return 'mpeg'; // valor por defecto
-  }
-
-  Future<Map<String, dynamic>> startNewSession(
-      {required String language}) async {
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/start-new-session',
@@ -312,58 +259,5 @@ class ChatServiceApi {
       endpoint: 'chat/sessions/$sessionId',
       body: {'title': title},
     );
-  } 
-
-  Map<String, dynamic> _parseVoiceResponse(dynamic response) {
-    if (response is! Map<String, dynamic>) {
-      throw Exception('Formato de respuesta inesperado');
-    }
-
-    return {
-      'ai_message': {
-        'text': response['response'] ?? response['text'] ?? '',
-        'emotional_state': response['emotional_state'] ?? 'neutral',
-        'conversation_level': response['conversation_level'] ?? 'basic',
-      },
-      'session_id': response['session_id'],
-    };
-  }
-
-  Future<String> uploadAudioFile(String filePath) async {
-    final token = await storage.getToken();
-    if (token == null) throw Exception('No autenticado');
-
-    final uri = Uri.parse('$baseUrl/upload-audio');
-    final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $token'
-      ..files.add(await http.MultipartFile.fromPath('audio', filePath));
-
-    final response = await request.send();
-    final responseData = await response.stream.bytesToString();
-
-    if (response.statusCode != 200) {
-      throw Exception(
-          'Error al subir audio: ${jsonDecode(responseData)['message']}');
-    }
-
-    return jsonDecode(responseData)['audio_url'];
-  }
-
-  Future<Map<String, dynamic>> processVoiceConversation({
-    required String audioUrl,
-    required String language,
-    int? sessionId,
-  }) async {
-    final response = await _authenticatedRequest(
-      method: 'POST',
-      endpoint: 'chat/process-voice',
-      body: {
-        'audio_url': audioUrl,
-        'language': language,
-        if (sessionId != null) 'session_id': sessionId,
-      },
-    );
-
-    return _parseVoiceResponse(response);
   }
 }

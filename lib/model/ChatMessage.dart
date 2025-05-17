@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ChatMessage {
   final int id;
   final int chatSessionId;
-  final int userId;
+  final int? userId;
   final String text;
   final bool isUser;
   final String? imageUrl;
