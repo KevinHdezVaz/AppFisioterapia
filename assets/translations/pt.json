@@ -113,7 +113,19 @@
               "close": "Fechar",
               "copy": "Copiar",
               "newChat": "Novo chat",
-              "errorSummarizingConversation": "Erro ao resumir a conversa: %s"
+              "continueWithFacebook": "Continuar com o Facebook",
+"facebookSignInError": "Falha ao entrar com o Facebook",
+"continueWithEmail": "Continuar com Email",
+  "hold_mic": "Segure o microfone para gravar",
+  "recording": "Gravando...",
+  "recording_locked": "Gravando (bloqueado)...",
+  "processing": "Processando...",
+  "playing_response": "Reproduzindo resposta...",
+  "no_transcription": "Nenhuma transcrição detectada",
+  "discarded": "Áudio descartado",
+  "speech_init_failed": "Falha ao inicializar o reconhecimento de voz",
+  "error": "Erro: ",
+  "stop_button": "Parar"
           
     
     

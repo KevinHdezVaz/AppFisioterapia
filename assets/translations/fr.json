@@ -114,10 +114,21 @@
                         "close": "Fermer",
                         "copy": "Copier",
                         "newChat": "Nouveau chat",
-                        "errorSummarizingConversation": "Erreur lors du résumé de la conversation : %s"
-                          
-        
-          
+                        "errorSummarizingConversation": "Erreur lors du résumé de la conversation : %s",
+                        "continueWithFacebook": "Continuer avec Facebook",
+"facebookSignInError": "Échec de la connexion avec Facebook",
+"continueWithEmail": "Continuer avec l’e-mail",
+    "hold_mic": "Maintenez le microphone pour enregistrer",
+    "recording": "Enregistrement...",
+    "recording_locked": "Enregistrement (verrouillé)...",
+    "processing": "Traitement...",
+    "playing_response": "Lecture de la réponse...",
+    "no_transcription": "Aucune transcription détectée",
+    "discarded": "Audio supprimé",
+    "speech_init_failed": "Échec de l’initialisation de la reconnaissance vocale",
+    "error": "Erreur : ",
+    "stop_button": "Arrêter"
+
       
       
 

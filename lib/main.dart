@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:LumorahAI/auth/auth_check.dart';
 import 'package:LumorahAI/auth/auth_service.dart';
- import 'package:LumorahAI/pages/Mercadopago/payment_service.dart';
+import 'package:LumorahAI/pages/Mercadopago/payment_service.dart';
 import 'package:LumorahAI/pages/bottom_nav.dart';
 import 'package:LumorahAI/pages/home_page.dart';
 import 'package:LumorahAI/services/functions/firebase_notification.dart';
@@ -30,21 +30,21 @@ Future<void> main() async {
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: '.env');
 
-try {
-  // Verifica si la app DEFAULT ya existe
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } else {
-    // Si ya existe, obtén la instancia existente
-    Firebase.app();
+  try {
+    // Verifica si la app DEFAULT ya existe
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } else {
+      // Si ya existe, obtén la instancia existente
+      Firebase.app();
+    }
+  } catch (e) {
+    debugPrint("Error inicializando Firebase: $e");
   }
-} catch (e) {
-  debugPrint("Error inicializando Firebase: $e");
-}
 
-  await FirebaseApi().initNotifications();
+  // await FirebaseApi().initNotifications();
 
   final prefs = await SharedPreferences.getInstance();
   const defaultLanguage = 'es'; // Español como idioma base
@@ -87,6 +87,7 @@ try {
     ),
   );
 }
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 

@@ -5,7 +5,6 @@ import 'package:LumorahAI/pages/screens/chats/RecordingScreen.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:avatar_glow/avatar_glow.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -29,12 +28,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   late PusherChannelsFlutter _pusher;
   late stt.SpeechToText _speech;
 
-  String _partialTranscription = '';
-  String _statusMessage = 'Toca el micrófono para comenzar';
-  bool _isRecording = false;
-
+  String _statusMessage = '';
   final Color _primaryColor = const Color.fromARGB(255, 255, 255, 255);
   final Color _backgroundColor = const Color(0xFF88D5C2);
+  bool _isLoading = true; // Nueva variable para controlar el estado de carga
 
   @override
   void initState() {
@@ -43,6 +40,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   }
 
   Future<void> _initializeServices() async {
+    setState(() {
+      _isLoading = true; // Establecer loading a true al inicio
+    });
+
     _flutterTts = FlutterTts();
     _conversationState = ConversationState();
     _chatService = ChatServiceApi();
@@ -52,14 +53,23 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     await _initializePusher();
     await _requestPermissions();
     await _checkSupportedLocales();
+
+    setState(() {
+      _isLoading =
+          false; // Cambiar a false cuando la inicialización esté completa
+    });
+
+    // Abrir RecordingScreen automáticamente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigateToRecordingScreen();
+    });
   }
 
   Future<void> _requestPermissions() async {
     var microphoneStatus = await Permission.microphone.request();
-
     if (microphoneStatus != PermissionStatus.granted) {
-      _showError('Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
-      return;
+      _showError(
+          'Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
     }
   }
 
@@ -88,7 +98,6 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               case 'ai_response':
                 final aiResponse = data['text'];
                 _conversationState.setCurrentMessage(aiResponse);
-                _playResponse(aiResponse);
                 _handleAIResponse({
                   'ai_message': {
                     'text': aiResponse,
@@ -96,7 +105,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                     'conversation_level': data['conversation_level'] ?? 'basic',
                   },
                 });
-                _statusMessage = 'Respuesta reproducida';
+                _statusMessage = 'Respuesta recibida';
                 break;
               case 'error':
                 _showError(data['message']);
@@ -113,140 +122,41 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     }
   }
 
-  Future<void> _startRecording() async {
-    if (!_isRecording) {
-      bool available = await _speech.initialize(
-        onStatus: (status) {
-          setState(() {
-            _statusMessage = 'Estado: $status';
-          });
-          debugPrint('Estado de escucha: $status');
-        },
-        onError: (error) {
-          setState(() {
-            _statusMessage = 'Error: ${error.errorMsg}';
-            _isRecording = false;
-          });
-          debugPrint('Error de escucha: ${error.errorMsg}');
-        },
-      );
-
-      if (available) {
-        _speech.listen(
-          onResult: (result) {
-            setState(() {
-              _partialTranscription = result.recognizedWords;
-              debugPrint('Transcripción parcial: $_partialTranscription');
-            });
-          },
-          localeId: widget.language == 'es' ? 'es_ES' : 'en_US',
-          listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(seconds: 5),
-          cancelOnError: false,
-          partialResults: true,
-        );
-
-        setState(() {
-          _isRecording = true;
-          _statusMessage = 'Grabando y transcribiendo...';
-        });
-      } else {
-        setState(() {
-          _statusMessage = 'No se pudo inicializar el reconocimiento de voz';
-        });
-      }
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    if (_isRecording) {
-      await _speech.stop();
-
-      setState(() {
-        _isRecording = false;
-        _statusMessage = 'Procesando...';
-      });
-
-      if (_partialTranscription.isNotEmpty) {
-        await _processTranscription();
-      } else {
-        _showError('No se detectó ninguna transcripción');
-      }
-    }
-  }
-
-  Future<void> _processTranscription() async {
-    try {
-      setState(() {
-        _conversationState.setCurrentMessage(_partialTranscription);
-      });
-
-      final response = await _chatService.sendMessage(
-        message: _partialTranscription,
-        language: widget.language,
-        sessionId: null,
-        isTemporary: true,
-      );
-      final aiResponse = response['ai_message']['text'];
-      final emotionalState = response['ai_message']['emotional_state'] ?? 'neutral';
-      final conversationLevel = response['ai_message']['conversation_level'] ?? 'basic';
-
-      Timer(const Duration(seconds: 5), () {
-        if (_statusMessage == 'Esperando respuesta del servidor...') {
-          _conversationState.setCurrentMessage(aiResponse);
-          _playResponse(aiResponse);
-          _handleAIResponse({
-            'ai_message': {
-              'text': aiResponse,
-              'emotional_state': emotionalState,
-              'conversation_level': conversationLevel,
-            },
-          });
-          setState(() {
-            _statusMessage = 'Respuesta reproducida (usando fallback)';
-          });
-        }
-      });
-
-      setState(() {
-        _statusMessage = 'Esperando respuesta del servidor...';
-      });
-    } catch (e) {
-      _showError('Error procesando transcripción: ${e.toString()}');
-    }
-  }
-
-  Future<void> _playResponse(String text) async {
-    await _flutterTts.speak(text);
-    setState(() {
-      _statusMessage = 'Toca el micrófono para continuar';
-    });
-  }
-
-    void _navigateToRecordingScreen() async {
+  void _navigateToRecordingScreen() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => RecordingScreen(
           language: widget.language,
+          chatService: _chatService,
         ),
       ),
     );
+
+    if (result != null &&
+        result['transcription'] != null &&
+        result['ai_response'] != null) {
+      setState(() {
+        _conversationState.addUserMessage(
+          result['transcription'],
+          emotionalState: 'neutral',
+        );
+        _conversationState.addAiMessage(
+          result['ai_response'],
+          emotionalState: result['emotional_state'] ?? 'neutral',
+          conversationLevel: result['conversation_level'] ?? 'basic',
+        );
+        _statusMessage = 'Conversación actualizada';
+      });
+    }
   }
 
   void _handleAIResponse(Map<String, dynamic> response) {
-    _conversationState.addUserMessage(
-      _partialTranscription,
-      emotionalState: response['ai_message']['emotional_state'],
-    );
     _conversationState.addAiMessage(
       response['ai_message']['text'],
       emotionalState: response['ai_message']['emotional_state'],
       conversationLevel: response['ai_message']['conversation_level'],
     );
-    setState(() {
-      _partialTranscription = '';
-    });
   }
 
   void _showError(String message) {
@@ -261,9 +171,9 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   void _startNewSession() {
     _conversationState.clearConversation();
     setState(() {
-      _partialTranscription = '';
-      _statusMessage = 'Nueva conversación iniciada. Toca el micrófono';
+      _statusMessage = 'Nueva conversación iniciada';
     });
+    _navigateToRecordingScreen();
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
@@ -383,97 +293,75 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        title: const Text('Desahógate con Lumorah'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _startNewSession,
-            tooltip: 'Nueva conversación',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              _statusMessage,
-              style: TextStyle(
-                fontSize: 16,
-                color: _primaryColor,
-                fontWeight: FontWeight.bold,
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  if (_conversationState.isThinking)
-                    const LinearProgressIndicator(),
-                  if (_partialTranscription.isNotEmpty && _isRecording)
-                    _buildMessageBubble(ChatMessage(
-                      id: -1,
-                      chatSessionId: -1,
-                      userId: 0,
-                      text: _partialTranscription,
-                      isUser: true,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    )),
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _conversationState.messages.length,
-                      itemBuilder: (context, index) {
-                        return _buildMessageBubble(
-                            _conversationState.messages[index]);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            )
+          : Column(
               children: [
-                ElevatedButton(
-                  onPressed: _navigateToRecordingScreen,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    _statusMessage,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _primaryColor,
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  child: const Icon(Icons.mic, color: Colors.white),
                 ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: _startNewSession,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        if (_conversationState.isThinking)
+                          const LinearProgressIndicator(),
+                        Expanded(
+                          child: ListView.builder(
+                            reverse: true,
+                            itemCount: _conversationState.messages.length,
+                            itemBuilder: (context, index) {
+                              return _buildMessageBubble(
+                                  _conversationState.messages[index]);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: const Text(
-                    'Nueva Sesión',
-                    style: TextStyle(color: Colors.white),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _navigateToRecordingScreen,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                15), // Bordes más redondeados
+                          ),
+                          padding: const EdgeInsets.all(20),
+                          minimumSize:
+                              const Size(50, 50), // Tamaño mínimo del botón
+                        ),
+                        child: const Icon(
+                          Icons.mic,
+                          size: 30, // Tamaño del ícono aumentado
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

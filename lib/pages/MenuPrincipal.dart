@@ -550,22 +550,29 @@ class _MenuprincipalState extends State<Menuprincipal>
                               ],
                             ),
                             child: IconButton(
-                                icon: Icon(
-                                  Icons.record_voice_over,
-                                  color: micButtonColor,
-                                  size: 22,
-                                ),
-                                tooltip: 'Chat de voz avanzado',
-                                onPressed: () {
+                              icon: Icon(
+                                Icons.record_voice_over,
+                                color: micButtonColor,
+                                size: 22,
+                              ),
+                              tooltip: 'Chat de voz avanzado',
+                              onPressed: () async {
+                                final isAuthenticated =
+                                    await _isUserAuthenticated();
+                                if (isAuthenticated) {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => VoiceChatScreen(
-                                         language: context.locale.languageCode,
+                                        language: context.locale.languageCode,
                                       ),
                                     ),
                                   );
-                                }),
+                                } else {
+                                  _showLoginModal(context);
+                                }
+                              },
+                            ),
                           ),
                       ],
                     ),

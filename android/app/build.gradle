@@ -48,6 +48,10 @@ android {
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
+
+          manifestPlaceholders = [
+            'appIdFacebook': '989413823307809'
+        ]
     }
 
     buildTypes {
@@ -71,6 +75,9 @@ dependencies {
     implementation('com.google.firebase:firebase-messaging:24.1.1') {
         exclude group: 'com.google.firebase', module: 'firebase-iid'
     }
+        implementation 'com.facebook.android:facebook-login:16.2.0' // Añade esta línea
+    implementation 'com.facebook.android:facebook-android-sdk:latest.release'  // Última versión
+
     // Agrega exclusión global para todas las dependencias de Firebase
     configurations.all {
         exclude group: 'com.google.firebase', module: 'firebase-iid'

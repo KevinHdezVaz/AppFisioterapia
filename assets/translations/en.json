@@ -20,8 +20,7 @@
   "helloUser": "Hello, {name}",
   "withYou": "I am with you...",
   "speakWhenever": "You can speak whenever you want",
-  "save": "Save",
-  "login": "Log In",
+   "login": "Log In",
   "welcomeToLumorah": "Welcome to Lumorah.ai ",
   "iAmHereToAccompany": "I am here to accompany you",
   "email": "Email",
@@ -114,8 +113,19 @@
           "close": "Close",
           "copy": "Copy",
           "newChat": "New chat",
-          "errorSummarizingConversation": "Error summarizing conversation: %s"
-        
+ "continueWithFacebook": "Continue with Facebook",
+  "facebookSignInError": "Failed to sign in with Facebook"     ,
+"continueWithEmail": "Continue with Email",
+  "hold_mic": "Hold the microphone to record",
+  "recording": "Recording...",
+  "recording_locked": "Recording (locked)...",
+  "processing": "Processing...",
+  "playing_response": "Playing response...",
+  "no_transcription": "No transcription detected",
+  "discarded": "Audio discarded",
+  "speech_init_failed": "Failed to initialize speech recognition",
+  "error": "Error: ",
+  "stop_button": "Stop"
       
     
   

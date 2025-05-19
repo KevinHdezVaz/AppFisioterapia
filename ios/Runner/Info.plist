@@ -3,18 +3,26 @@
 <plist version="1.0">
 <dict>
 	<!-- Esquemas para URL (Google Sign-In y deep links) -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-			<string>com.googleusercontent.apps.709069828022-dl6ee03rv72hbshc7d99jdfrpk993j8b</string>
-				<string>miapp</string>
-			</array>
-		</dict>
-	</array>
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <!-- Google Sign-In -->
+            <string>com.googleusercontent.apps.949136826033-t8qlmk4g0rvbrl2vr1l89441at29b81v</string>
+            <!-- Facebook Sign-In -->
+            <string>fb989413823307809</string>
+        </array>
+    </dict>
+</array>
+
+
+<key>keychain-access-groups</key>
+<array>
+  <string>$(AppIdentifierPrefix)com.lumorah.app</string>
+</array>
 
 	<!-- Permisos requeridos por las dependencias -->
 	<key>NSCameraUsageDescription</key>
@@ -33,6 +41,16 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+
+
+
+<key>FacebookAppID</key>
+<string>989413823307809</string>
+<key>FacebookDisplayName</key>
+<string>LumorahAI</string>
+<key>LSApplicationQueriesSchemes</key>
+<array>
+
 
 	<!-- Esquemas para url_launcher -->
 	<key>LSApplicationQueriesSchemes</key>

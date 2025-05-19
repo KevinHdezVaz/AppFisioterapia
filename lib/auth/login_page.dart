@@ -4,7 +4,7 @@ import 'package:LumorahAI/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:easy_localization/easy_localization.dart'; // Nuevo import
+import 'package:easy_localization/easy_localization.dart';
 
 class LoginModal extends StatefulWidget {
   final VoidCallback? showRegisterPage;
@@ -23,35 +23,35 @@ class LoginModal extends StatefulWidget {
 class _LoginModalState extends State<LoginModal> with TickerProviderStateMixin {
   bool isRember = false;
   bool isObscure = true;
+  bool _showEmailFields =
+      false; // Controla la visibilidad de los campos de email y contraseña
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
-late AnimationController _animationController;
-late Animation<double> _scaleAnimation;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
 
-@override
-void initState() {
-  super.initState();
-  _animationController = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 2),
-  )..repeat(reverse: true);
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
 
-  _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-    CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ),
-  );
-}
-
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-      _animationController.dispose();
-
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -116,12 +116,12 @@ void initState() {
     Fluttertoast.showToast(
       msg: message,
       toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.BOTTOM, // Muestra en la parte superior
+      gravity: ToastGravity.BOTTOM,
       timeInSecForIosWeb: 3,
       backgroundColor: LumorahColors.error,
       textColor: Colors.white,
       fontSize: 16.0,
-      webPosition: "center", // Para versión web
+      webPosition: "center",
       webBgColor: LumorahColors.error.toString(),
     );
   }
@@ -140,9 +140,9 @@ void initState() {
           // Custom AppBar
           Container(
             width: size.width * 0.9,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4BB6A8),
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              color: Color(0xFF4BB6A8),
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
@@ -155,7 +155,7 @@ void initState() {
                 children: [
                   const SizedBox(width: 48),
                   Text(
-                    'login'.tr(), // Traducción
+                    'login'.tr(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -175,9 +175,9 @@ void initState() {
           SingleChildScrollView(
             child: Container(
               width: size.width * 0.9,
-              decoration: BoxDecoration(
-                color: const Color(0xFF4BB6A8),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFF4BB6A8),
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),
                 ),
@@ -186,30 +186,8 @@ void initState() {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 16),
-                Center(
-  child: ScaleTransition(
-    scale: _scaleAnimation,
-    child: Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFFFE5B4).withOpacity(0.7),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFFE5B4).withOpacity(0.8),
-            blurRadius: 50,
-            spreadRadius: 4,
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-
-                  const SizedBox(height: 16),
                   Text(
-                    'welcomeToLumorah'.tr(), // Traducción
+                    'welcomeToLumorah'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -220,7 +198,7 @@ void initState() {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'iAmHereToAccompany'.tr(), // Traducción
+                      'iAmHereToAccompany'.tr(),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.lato(
                         fontSize: 16,
@@ -230,84 +208,260 @@ void initState() {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  // Botones de inicio de sesión (Google, Facebook, Email)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        TextField(
-                          controller: _emailController,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: InputDecoration(
-                            labelText: 'email'.tr(), // Traducción
-                            labelStyle: const TextStyle(
-                                color: LumorahColors.primaryDarker),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
-                            prefixIcon: const Icon(Icons.email,
-                                color: LumorahColors.primary),
-                            border: OutlineInputBorder(
+                        OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              showDialog(
+                                context: context,
+                                builder: (_) => Center(
+                                  child: CircularProgressIndicator(
+                                    color: LumorahColors.primary,
+                                  ),
+                                ),
+                              );
+
+                              final success =
+                                  await _authService.signInWithGoogle();
+
+                              if (!mounted) return;
+                              Navigator.pop(context); // Close loading
+
+                              if (success) {
+                                Navigator.pop(context); // Close LoginModal
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatScreen(
+                                      initialMessages: [],
+                                      inputMode: widget.inputMode ?? 'keyboard',
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                showErrorToast('googleSignInError'.tr());
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              Navigator.pop(context); // Close loading
+                              showErrorToast(
+                                  'generalError'.tr(args: [e.toString()]));
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: LumorahColors.textOnPrimary,
+                            side:
+                                BorderSide(color: LumorahColors.textOnPrimary),
+                            minimumSize: const Size(200, 50),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: LumorahColors.primary),
-                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/images/google.png',
+                                height: 24,
+                                width: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'continueWithGoogle'.tr(),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: isObscure,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: InputDecoration(
-                            labelText: 'password'.tr(), // Traducción
-                            labelStyle: const TextStyle(
-                                color: LumorahColors.primaryDarker),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
-                            prefixIcon: const Icon(Icons.lock,
-                                color: LumorahColors.primary),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                isObscure
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                                color: Colors.black,
+                        OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              showDialog(
+                                context: context,
+                                builder: (_) => Center(
+                                  child: CircularProgressIndicator(
+                                    color: LumorahColors.primary,
+                                  ),
+                                ),
+                              );
+
+                              final success =
+                                  await _authService.signInWithFacebook();
+
+                              if (!mounted) return;
+                              Navigator.pop(context); // Close loading
+
+                              if (success) {
+                                Navigator.pop(context); // Close LoginModal
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatScreen(
+                                      initialMessages: [],
+                                      inputMode: widget.inputMode ?? 'keyboard',
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                showErrorToast('facebookSignInError'.tr());
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              Navigator.pop(context); // Close loading
+                              showErrorToast(
+                                  'generalError'.tr(args: [e.toString()]));
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: LumorahColors.textOnPrimary,
+                            side:
+                                BorderSide(color: LumorahColors.textOnPrimary),
+                            minimumSize: const Size(200, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/images/facebook.png',
+                                height: 24,
+                                width: 24,
                               ),
-                              onPressed: () =>
-                                  setState(() => isObscure = !isObscure),
-                            ),
-                            border: OutlineInputBorder(
+                              const SizedBox(width: 8),
+                              Text(
+                                'continueWithFacebook'.tr(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showEmailFields = true;
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: LumorahColors.textOnPrimary,
+                            side:
+                                BorderSide(color: LumorahColors.textOnPrimary),
+                            minimumSize: const Size(200, 50),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: LumorahColors.primary),
-                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.email,
+                                size: 24,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'continueWithEmail'.tr(),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: signIn,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: LumorahColors.primaryDarker,
-                      minimumSize: const Size(200, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  // Campos de correo y contraseña (visibles solo si _showEmailFields es true)
+                  AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 300),
+                    crossFadeState: _showEmailFields
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                    firstChild: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _emailController,
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'email'.tr(),
+                              labelStyle: const TextStyle(
+                                  color: LumorahColors.primaryDarker),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.8),
+                              prefixIcon: const Icon(Icons.email,
+                                  color: LumorahColors.primary),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: LumorahColors.primary),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: isObscure,
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'password'.tr(),
+                              labelStyle: const TextStyle(
+                                  color: LumorahColors.primaryDarker),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.8),
+                              prefixIcon: const Icon(Icons.lock,
+                                  color: LumorahColors.primary),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  isObscure
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.black,
+                                ),
+                                onPressed: () =>
+                                    setState(() => isObscure = !isObscure),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: LumorahColors.primary),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: signIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: LumorahColors.primaryDarker,
+                              minimumSize: const Size(200, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'enter'.tr(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Text(
-                      'enter'.tr(), // Traducción
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                    secondChild: const SizedBox.shrink(),
                   ),
+                  const SizedBox(height: 20),
                   if (widget.showRegisterPage != null)
                     TextButton(
                       onPressed: () {
@@ -315,79 +469,10 @@ void initState() {
                         widget.showRegisterPage!();
                       },
                       child: Text(
-                        'noAccount'.tr(), // Traducción
+                        'noAccount'.tr(),
                         style: TextStyle(color: LumorahColors.primaryDarker),
                       ),
                     ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'orSignInWith'.tr(), // Traducción
-                    style: TextStyle(
-                      color: LumorahColors.textOnPrimary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton(
-                    onPressed: () async {
-                      try {
-                        showDialog(
-                          context: context,
-                          builder: (_) => Center(
-                            child: CircularProgressIndicator(
-                              color: LumorahColors.primary,
-                            ),
-                          ),
-                        );
-
-                        final success = await _authService.signInWithGoogle();
-
-                        if (!mounted) return;
-                        Navigator.pop(context); // Cerrar loading
-
-                        if (success) {
-                          Navigator.pop(context); // Cerrar LoginModal
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(
-                                initialMessages: [],
-                                inputMode: widget.inputMode ?? 'keyboard',
-                              ),
-                            ),
-                          );
-                        } else {
-                          showErrorToast('googleSignInError'.tr());
-                        }
-                      } catch (e) {
-                        if (!mounted) return;
-                        Navigator.pop(context); // Cerrar loading
-                        showErrorToast('generalError'.tr(args: [e.toString()]));
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: LumorahColors.textOnPrimary,
-                      side: BorderSide(color: LumorahColors.textOnPrimary),
-                      minimumSize: const Size(200, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/google.png',
-                          height: 24,
-                          width: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'continueWithGoogle'.tr(), // Traducción
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 20),
                 ],
               ),

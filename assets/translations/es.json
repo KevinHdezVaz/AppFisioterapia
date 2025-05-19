@@ -102,7 +102,22 @@
     "summaryCopied": "Resumen copiado al portapapeles",
     "close": "Cerrar",
     "copy": "Copiar",
-    "newChat": "Nuevo chat"
+    "newChat": "Nuevo chat",
+    "continueWithFacebook": "Continuar con Facebook",
+"facebookSignInError": "No se pudo iniciar sesión con Facebook",
+"continueWithEmail": "Continuar con Email",
+"hold_mic": "Mantén presionado el micrófono para grabar",
+  "recording": "Grabando...",
+  "recording_locked": "Grabando (bloqueado)...",
+  "processing": "Procesando...",
+  "playing_response": "Reproduciendo respuesta...",
+  "no_transcription": "No se detectó ninguna transcripción",
+  "discarded": "Audio descartado",
+  "speech_init_failed": "No se pudo inicializar el reconocimiento de voz",
+  "error": "Error: ",
+  "stop_button": "Detener"
+
+
    
     
 }

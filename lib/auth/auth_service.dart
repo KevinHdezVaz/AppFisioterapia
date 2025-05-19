@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:LumorahAI/model/User.dart';
@@ -12,12 +14,15 @@ import 'package:LumorahAI/model/User.dart' as lumorah;
 
 class AuthService {
   final storage = StorageService();
-  final firebase_auth.FirebaseAuth _firebaseAuth =
-      firebase_auth.FirebaseAuth.instance;
+
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    // Solo necesitas el serverClientId (Web Client ID)
+    // Configuración específica para iOS:
+    clientId: Platform.isIOS
+        ? '949136826033-t8qlmk4g0rvbrl2vr1l89441at29b81v.apps.googleusercontent.com'
+        : null,
     serverClientId:
         '949136826033-nlamtgceiqu3e3nhoobdvr8t5hkdlfbd.apps.googleusercontent.com',
   );
@@ -125,28 +130,97 @@ class AuthService {
     }
   }
 
+  Future<bool> signInWithFacebook() async {
+    try {
+      debugPrint('Iniciando login con Facebook...');
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
+      debugPrint('Resultado de login: ${result.status}');
+      if (result.status == LoginStatus.success) {
+        final accessToken = result.accessToken;
+        debugPrint('Token de acceso de Facebook: ${accessToken?.token}');
+        if (accessToken == null || accessToken.token.isEmpty) {
+          throw Exception("Token de Facebook inválido o vacío");
+        }
+        final OAuthCredential credential = FacebookAuthProvider.credential(
+          accessToken.token,
+        );
+        debugPrint('Credencial de Firebase creada');
+        final UserCredential userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+        debugPrint(
+            'Usuario autenticado en Firebase: ${userCredential.user?.uid}');
+        final String? firebaseToken = await userCredential.user?.getIdToken();
+        debugPrint('Token de Firebase: $firebaseToken');
+        if (firebaseToken == null)
+          throw Exception("No se obtuvo token de Firebase");
+        return await _sendTokenToBackend(firebaseToken, 'facebook');
+      } else {
+        throw Exception(
+            "Inicio de sesión con Facebook falló: ${result.status}");
+      }
+    } catch (e) {
+      debugPrint('Error en Facebook Sign-In: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _sendTokenToBackend(
+      String firebaseToken, String provider) async {
+    try {
+      final endpoint = provider == 'google' ? 'google-login' : 'facebook-login';
+      final response = await http.post(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id_token': firebaseToken}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Error ${response.statusCode}: ${response.body}');
+      }
+      final data = json.decode(response.body);
+      if (data['token'] != null) {
+        await storage.saveToken(data['token']);
+        if (data['user'] != null) {
+          await storage.saveUser(lumorah.User.fromJson(data['user']));
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error en _sendTokenToBackend: $e');
+      return false;
+    }
+  }
+
   Future<bool> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // 1. Autenticar con Firebase directamente
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) return false;
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
+      // 2. Crear credencial de Firebase
+      final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
+      // 3. Autenticar con Firebase
       final UserCredential userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
+      // 4. Obtener token de Firebase
       final String? firebaseToken = await userCredential.user?.getIdToken();
-      if (firebaseToken == null) throw Exception("No Firebase token");
+      if (firebaseToken == null)
+        throw Exception("No se obtuvo token de Firebase");
 
-      return await loginWithGoogle(firebaseToken);
+      // 5. Enviar token al endpoint específico de Google
+      return await _sendTokenToBackend(firebaseToken, 'google');
     } catch (e) {
-      print('Error en Google Sign-In: $e');
+      debugPrint('Error en Google Sign-In: $e');
       return false;
     }
   }
