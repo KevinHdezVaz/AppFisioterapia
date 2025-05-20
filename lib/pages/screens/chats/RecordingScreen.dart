@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'dart:ui';
-
+import 'package:LumorahAI/services/ElevenLabsService.dart';
 import 'package:flutter/material.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -9,7 +9,8 @@ import 'package:vibration/vibration.dart';
 import 'package:lottie/lottie.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
 import 'package:easy_localization/easy_localization.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+ 
 class RecordingScreen extends StatefulWidget {
   final String language;
   final ChatServiceApi chatService;
@@ -27,7 +28,8 @@ class RecordingScreen extends StatefulWidget {
 class _RecordingScreenState extends State<RecordingScreen>
     with TickerProviderStateMixin {
   late stt.SpeechToText _speech;
-  late FlutterTts _flutterTts;
+  late ElevenLabsService _elevenLabsService;
+  late FlutterTts _flutterTts; // Respaldo
   bool _isRecording = false;
   bool _isSpeaking = false;
   bool _isLocked = false;
@@ -73,6 +75,9 @@ class _RecordingScreenState extends State<RecordingScreen>
     super.initState();
     _speech = stt.SpeechToText();
     _flutterTts = FlutterTts();
+    _elevenLabsService = ElevenLabsService(
+      apiKey: "sk_5c7014c450eb767dbc8cd3ca2cdadadaceb4dbc52708cac9",
+    );
     _statusMessage = 'hold_mic'.tr();
     _initTts();
     _initVibration();
@@ -145,7 +150,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     );
     _rhythmValue = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-          parent: _rhythmAnimationController, curve: Curves.easeInOut),
+          parent: _rhythmAnimationController, curve: Curves.easeInOut  ),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           _rhythmAnimationController.reverse();
@@ -163,6 +168,24 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   Future<void> _initTts() async {
+    // Configurar ElevenLabs
+    _elevenLabsService.setOnComplete(() {
+      setState(() {
+        _isSpeaking = false;
+        _isProcessing = false;
+        _statusMessage = _isLocked ? 'recording_locked'.tr() : 'hold_mic'.tr();
+        _pulseAnimationController.forward();
+        _thinkingAnimationController.stop();
+        _rhythmAnimationController.stop();
+        _soundLevel = 0.0;
+        _smoothedSoundLevel = 0.0;
+        if (_hasVibrator) {
+          Vibration.cancel();
+        }
+      });
+    });
+
+    // Configurar FlutterTts como respaldo
     final languageMap = {
       'es': 'es-ES',
       'en': 'en-US',
@@ -171,7 +194,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     };
     final ttsLanguage = languageMap[widget.language] ?? 'es-ES';
     await _flutterTts.setLanguage(ttsLanguage);
-    await _flutterTts.setSpeechRate(0.6);
+    await _flutterTts.setSpeechRate(0.5);
     await _flutterTts.setPitch(1.1);
     await _flutterTts.setVolume(1.0);
     _flutterTts.setCompletionHandler(() {
@@ -236,12 +259,11 @@ class _RecordingScreenState extends State<RecordingScreen>
 
     if (available) {
       final localeId = {
-            'es': 'es_ES',
-            'en': 'en_US',
-            'fr': 'fr_FR',
-            'pt': 'pt_BR',
-          }[widget.language] ??
-          'es_ES';
+        'es': 'es_ES',
+        'en': 'en_US',
+        'fr': 'fr_FR',
+        'pt': 'pt_BR',
+      }[widget.language] ?? 'es_ES';
 
       _speech.listen(
         onResult: (result) {
@@ -352,7 +374,19 @@ class _RecordingScreenState extends State<RecordingScreen>
           Vibration.vibrate(pattern: [1000, 100, 1000, 100], repeat: -1);
         }
       });
-      await _flutterTts.speak(_aiResponse);
+
+      // Intentar con ElevenLabs primero
+      try {
+        await _elevenLabsService.speak(
+          _aiResponse,
+          'pFZP5JQG7iQjIQuC4Bku', // Voice ID de Laura
+          widget.language,
+        );
+      } catch (e) {
+        print('Error con ElevenLabs, usando FlutterTts: $e');
+        // Respaldo con FlutterTts
+        await _flutterTts.speak(_aiResponse);
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'error'.tr() + e.toString();
@@ -403,7 +437,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     });
   }
 
-  void _handleDragUpdate(LongPressMoveUpdateDetails details) {
+  void _handleDragUpdate(LongPressMoveUpdateDetails    details) {
     if (_isRecording && !_isLocked) {
       setState(() {
         final deltaX = details.localPosition.dx - _dragStartPosition.dx;
@@ -453,6 +487,7 @@ class _RecordingScreenState extends State<RecordingScreen>
   void dispose() {
     _speech.stop();
     _flutterTts.stop();
+    _elevenLabsService.dispose();
     _pulseAnimationController.dispose();
     _thinkingAnimationController.dispose();
     _iconAnimationController.dispose();
@@ -653,7 +688,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                           child: CircleAvatar(
                             radius: 40,
                             backgroundColor:
-                                _isRecording ? Colors.red : Colors.redAccent,
+                                _isRecording ? Colors.blueGrey : Colors.blueGrey,
                             child: AnimatedScale(
                               scale: _isRecording ? 1.2 : 1.0,
                               duration: const Duration(milliseconds: 300),
@@ -694,7 +729,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                   _statusMessage,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontSize: 18,
                   ),
                 ),

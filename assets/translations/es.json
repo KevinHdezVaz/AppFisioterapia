@@ -115,7 +115,8 @@
   "discarded": "Audio descartado",
   "speech_init_failed": "No se pudo inicializar el reconocimiento de voz",
   "error": "Error: ",
-  "stop_button": "Detener"
+  "stop_button": "Detener",
+"welcomeMessage": "Hola, soy Lumorah.ai. 🌟\nEste es un espacio seguro, donde puedes expresarte libremente.\nNada de lo que hablamos aquí se guarda, y estoy aquí para acompañarte en tu proceso emocional y ayudarte a encontrar claridad y bienestar.\n\nAntes de que sigamos, me gustaría preguntarte algo para poder acompañarte mejor:\n\n¿Cuál es tu nombre?\n\nAsí podré dirigirme a ti con más cercanía.\nEstoy aquí contigo, sin prisa, sin juicio. 💛"
 
 
    

@@ -125,7 +125,8 @@
   "discarded": "Audio discarded",
   "speech_init_failed": "Failed to initialize speech recognition",
   "error": "Error: ",
-  "stop_button": "Stop"
+  "stop_button": "Stop",
+"welcomeMessage": "Hi, I'm Lumorah.ai. 🌟\nThis is a safe space where you can express yourself freely.\nNothing we talk about here is stored, and I'm here to support you in your emotional journey and help you find clarity and well-being.\n\nBefore we continue, I’d like to ask you something to better support you:\n\nWhat’s your name?\n\nThat way, I can address you more personally.\nI’m here with you, no rush, no judgment. 💛"
       
     
   

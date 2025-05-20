@@ -139,13 +139,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initialMessageSent &&
-        widget.initialMessage != null &&
-        widget.initialMessage!.isNotEmpty) {
+    if (!_initialMessageSent) {
       _initialMessageSent = true;
-      _sendMessage(widget.initialMessage!);
-    } else if (_currentSessionId == null && _messages.isEmpty) {
-      _startNewSession();
+      if (_currentSessionId == null && _messages.isEmpty) {
+        // Iniciar una nueva sesión para mostrar el mensaje de bienvenida
+        _startNewSession().then((_) {
+          // Después de agregar el mensaje de bienvenida, procesar el mensaje inicial si existe
+          if (widget.initialMessage != null &&
+              widget.initialMessage!.isNotEmpty) {
+            _sendMessage(widget.initialMessage!);
+          }
+        });
+      } else if (widget.initialMessage != null &&
+          widget.initialMessage!.isNotEmpty) {
+        // Si ya existe una sesión, enviar el mensaje inicial directamente
+        _sendMessage(widget.initialMessage!);
+      }
     }
   }
 
@@ -316,7 +325,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           await _storageService.getString('sound_enabled') == 'true' ||
               await _storageService.getString('sound_enabled') == null;
       if (soundEnabled) {
-        await _audioPlayer.setVolume(0.2); // Establecer volumen al 50%
+        await _audioPlayer.setVolume(0.1); // Establecer volumen al 50%
 
         await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
         _audioPlayer.setReleaseMode(ReleaseMode.loop);
@@ -346,23 +355,28 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       if (!mounted) return;
 
+      final String welcomeText = response['ai_message']['text'];
+
       final welcomeMessage = ChatMessage(
         id: -1,
         chatSessionId: response['session_id'] ?? -1,
         userId: 0,
-        text: response['ai_message']['text'],
+        text: welcomeText,
         isUser: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
-        emotionalState: response['ai_message']['emotional_state'],
-        conversationLevel: response['ai_message']['conversation_level'],
+        emotionalState: response['ai_message']['emotional_state'] ?? 'neutral',
+        conversationLevel:
+            response['ai_message']['conversation_level'] ?? 'basic',
       );
 
       setState(() {
         _messages.insert(0, welcomeMessage);
         _currentSessionId = response['session_id'];
-        _emotionalState = response['ai_message']['emotional_state'];
-        _conversationLevel = response['ai_message']['conversation_level'];
+        _emotionalState =
+            response['ai_message']['emotional_state'] ?? 'neutral';
+        _conversationLevel =
+            response['ai_message']['conversation_level'] ?? 'basic';
         _updateTokenCount(welcomeMessage.text);
       });
     } catch (e) {
@@ -742,7 +756,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     style: TextStyle(
                       color: Colors.black87,
                       fontFamily: 'Lora',
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                     semanticsLabel: message.isUser
                         ? 'Mensaje del usuario: ${message.text}'
@@ -753,27 +767,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   SizedBox(height: 5),
                   Text(
                     time,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     semanticsLabel: 'Enviado a las $time',
                   ),
                 ],
               ),
             ),
           ),
-          if (!message.isUser && message.emotionalState != null)
-            Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                '${_getEmotionalStateText(message.emotionalState)} • ${_getConversationLevelText(message.conversationLevel)}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                ),
-                semanticsLabel:
-                    'Estado emocional: ${_getEmotionalStateText(message.emotionalState)}, Nivel: ${_getConversationLevelText(message.conversationLevel)}',
-              ),
-            ),
+          
         ],
       ),
     );
@@ -856,6 +857,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             fontFamily: 'Lora',
           ),
         ),
+        _buildAnimatedCircle()
+
       ],
     );
   }
@@ -923,130 +926,127 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildKeyboardInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          if (_isListening) _buildVoiceVisualizer(),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Calcular la altura basada en el contenido
-              final textPainter = TextPainter(
-                text: TextSpan(
-                  text: _controller.text.isEmpty ? ' ' : _controller.text,
-                  style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
-                ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: Column(
+      children: [
+        if (_isListening) _buildVoiceVisualizer(),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Calcular la altura basada en el contenido
+            final textPainter = TextPainter(
+              text: TextSpan(
+                text: _controller.text.isEmpty ? ' ' : _controller.text,
+                style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
+              ),
+              maxLines: null,
+              textDirection: painting.TextDirection.ltr,
+            )..layout(maxWidth: constraints.maxWidth - 80);
+
+            final lineCount = textPainter.computeLineMetrics().length;
+            final baseHeight = 60.0;
+            final lineHeight = 20.0;
+            final calculatedHeight = baseHeight + (lineCount - 1) * lineHeight;
+            final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              height: textFieldHeight,
+              child: TextField(
+                controller: _controller,
                 maxLines: null,
-                textDirection:
-                    painting.TextDirection.ltr, // Usar TextDirection de Flutter
-              )..layout(
-                  maxWidth:
-                      constraints.maxWidth - 80); // Ajuste por padding/iconos
-
-              final lineCount = textPainter.computeLineMetrics().length;
-              final baseHeight = 60.0;
-              final lineHeight = 20.0;
-              final calculatedHeight =
-                  baseHeight + (lineCount - 1) * lineHeight;
-              final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
-
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                height: textFieldHeight,
-                child: TextField(
-                  controller: _controller,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  style: const TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    hintText: 'writeHint'.tr(),
-                    hintStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.grey.shade200,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(color: Colors.black87),
+                decoration: InputDecoration(
+                  hintText: 'writeHint'.tr(),
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.stop_circle : Icons.mic_none,
+                          color: _isListening ? Colors.red : micButtonColor,
+                          size: _isListening ? 30 : 24,
+                        ),
+                        tooltip: _isListening
+                            ? 'Detener grabación'
+                            : 'Iniciar grabación',
+                        onPressed: () async {
+                          if (_isListening) {
+                            await _stopListening();
+                          } else {
+                            await _startListening();
+                          }
+                        },
+                      ),
+                      if (_controller.text.isNotEmpty)
                         IconButton(
-                          icon: Icon(
-                            _isListening ? Icons.stop_circle : Icons.mic_none,
-                            color: _isListening ? Colors.red : micButtonColor,
-                            size: _isListening ? 30 : 24,
-                          ),
-                          tooltip: _isListening
-                              ? 'Detener grabación'
-                              : 'Iniciar grabación',
-                          onPressed: () async {
-                            if (_isListening) {
-                              await _stopListening(); // Solo detener la grabación
-                            } else {
-                              await _startListening();
-                            }
+                          icon: Icon(Icons.send, color: micButtonColor),
+                          onPressed: () {
+                            _sendMessage(_controller.text);
+                            _controller.clear();
+                            // Ocultar el teclado
+                            FocusManager.instance.primaryFocus?.unfocus();
                           },
                         ),
-                        if (_controller.text.isNotEmpty)
-                          IconButton(
-                            icon: Icon(Icons.send, color: micButtonColor),
+                      if (_controller.text.isEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.record_voice_over,
+                              color: micButtonColor,
+                              size: 22,
+                            ),
+                            tooltip: 'Chat de voz avanzado',
                             onPressed: () {
-                              _sendMessage(_controller.text);
-                              _controller.clear();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VoiceChatScreen(
+                                    language: context.locale.languageCode,
+                                  ),
+                                ),
+                              );
                             },
                           ),
-                        if (_controller.text.isEmpty)
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.record_voice_over,
-                                color: micButtonColor,
-                                size: 22,
-                              ),
-                              tooltip: 'Chat de voz avanzado',
-                              onPressed: () {
-                              Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => VoiceChatScreen(
-       language: context.locale.languageCode, // por ejemplo: "es"
-    ),
-  ),
-);
-
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                  onChanged: (text) {
-                    setState(() {}); // Reconstruir para actualizar la altura
-                  },
-                  scrollController: ScrollController(),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 15),
-        ],
-      ),
-    );
-  }
+                onChanged: (text) {
+                  setState(() {}); // Reconstruir para actualizar la altura
+                },
+                scrollController: ScrollController(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 15),
+      ],
+    ),
+  );
+}
 
   Widget _buildVoiceInput() {
     return Column(
@@ -1181,12 +1181,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           _buildInput(),
                         ],
                       ),
-                      // Sol animado
-                      Positioned(
-                        top: 0,
-                        right: 30,
-                        child: _buildAnimatedCircle(),
-                      ),
+                      
                     ],
                   ),
                 ),
@@ -1198,7 +1193,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 }
-
 class _FloatingParticles extends StatefulWidget {
   @override
   __FloatingParticlesState createState() => __FloatingParticlesState();
@@ -1215,15 +1209,16 @@ class __FloatingParticlesState extends State<_FloatingParticles>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 30),
+      duration: const Duration(seconds: 10), // Reducido para movimiento más rápido
     )..repeat();
 
-    for (int i = 0; i < 10; i++) {
+    // Generar partículas con velocidades más visibles
+    for (int i = 0; i < 20; i++) { // Aumentar número de partículas
       _particles.add(Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        size: _random.nextDouble() * 2 + 1,
-        speed: _random.nextDouble() * 0.15 + 0.05,
+        size: _random.nextDouble() * 3 + 2, // Tamaños más grandes
+        speed: _random.nextDouble() * 0.3 + 0.1, // Velocidades más altas
       ));
     }
   }
@@ -1250,11 +1245,12 @@ class __FloatingParticlesState extends State<_FloatingParticles>
 
 class Particle {
   double x, y, size, speed;
-  Particle(
-      {required this.x,
-      required this.y,
-      required this.size,
-      required this.speed});
+  Particle({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.speed,
+  });
 }
 
 class _ParticlesPainter extends CustomPainter {
@@ -1266,7 +1262,7 @@ class _ParticlesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withOpacity(0.2) // Aumentar opacidad para mejor visibilidad
       ..style = PaintingStyle.fill;
 
     for (var particle in particles) {

@@ -127,7 +127,8 @@
     "discarded": "Audio supprimé",
     "speech_init_failed": "Échec de l’initialisation de la reconnaissance vocale",
     "error": "Erreur : ",
-    "stop_button": "Arrêter"
+    "stop_button": "Arrêter",
+"welcomeMessage": "Bonjour, je suis Lumorah.ai. 🌟\nCeci est un espace sûr, où tu peux t’exprimer librement.\nRien de ce que nous disons ici n’est enregistré, et je suis là pour t’accompagner dans ton cheminement émotionnel et t’aider à trouver de la clarté et du bien-être.\n\nAvant de continuer, j’aimerais te poser une question pour mieux t’accompagner :\n\nQuel est ton prénom ?\n\nAinsi, je pourrai m’adresser à toi plus personnellement.\nJe suis ici avec toi, sans précipitation, sans jugement. 💛"
 
       
       

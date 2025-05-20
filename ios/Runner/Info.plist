@@ -2,110 +2,139 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Esquemas para URL (Google Sign-In y deep links) -->
-<key>CFBundleURLTypes</key>
-<array>
+    <!-- Esquemas para URL -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.949136826033-t8qlmk4g0rvbrl2vr1l89441at29b81v</string>
+                <string>fb989413823307809</string>
+            </array>
+        </dict>
+    </array>
+
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.lumorah.app</string>
+    </array>
+
+    <!-- Permisos de audio y micrófono -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Se necesita acceso al micrófono para grabar voz y usar funciones de audio.</string>
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Se necesita acceso para reproducir respuestas de audio de la IA.</string>
+    
+    <!-- Modos en segundo plano -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+        <string>audio</string>
+        <string>processing</string>
+    </array>
+
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.lumorah.app.task.refresh</string>
+    </array>
+
+    <!-- Configuración de seguridad de transporte -->
+    <key>NSAppTransportSecurity</key>
     <dict>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>CFBundleURLSchemes</key>
-        <array>
-            <!-- Google Sign-In -->
-            <string>com.googleusercontent.apps.949136826033-t8qlmk4g0rvbrl2vr1l89441at29b81v</string>
-            <!-- Facebook Sign-In -->
-            <string>fb989413823307809</string>
-        </array>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>elevenlabs.io</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSTemporaryExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+            </dict>
+        </dict>
     </dict>
-</array>
 
+    <!-- Permisos requeridos -->
+    <key>NSCameraUsageDescription</key>
+    <string>Se necesita acceso a la cámara para tomar fotos.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Se necesita acceso a la galería para seleccionar fotos.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Se necesita el reconocimiento de voz para convertir tu habla en texto.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Se necesita acceder a tu ubicación para mejorar la experiencia del usuario basada en tu localización.</string>
 
-<key>keychain-access-groups</key>
-<array>
-  <string>$(AppIdentifierPrefix)com.lumorah.app</string>
-</array>
+    <!-- Configuración de Facebook -->
+    <key>FacebookAppID</key>
+    <string>989413823307809</string>
+    <key>FacebookClientToken</key>
+    <string>c57612fe75b4dfda4b11f1d6e195d922</string>
+    <key>FacebookDisplayName</key>
+    <string>LumorahAI</string>
 
-	<!-- Permisos requeridos por las dependencias -->
-	<key>NSCameraUsageDescription</key>
-	<string>Se necesita acceso a la cámara para tomar fotos.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Se necesita acceso al micrófono para grabar voz.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Se necesita acceso a la galería para seleccionar fotos.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Se necesita el reconocimiento de voz para convertir tu habla en texto.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Se necesita acceder a tu ubicación para mejorar la experiencia del usuario basada en tu localización.</string>
+    <!-- Esquemas para url_launcher y Facebook -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>https</string>
+        <string>http</string>
+        <string>tel</string>
+        <string>mailto</string>
+        <string>fbapi</string>
+        <string>fb-messenger-share-api</string>
+        <string>fbauth2</string>
+        <string>fbshareextension</string>
+    </array>
 
-	<!-- Notificaciones push y modos en segundo plano (para firebase_messaging) -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-
-
-
-<key>FacebookAppID</key>
-<string>989413823307809</string>
-<key>FacebookDisplayName</key>
-<string>LumorahAI</string>
-<key>LSApplicationQueriesSchemes</key>
-<array>
-
-
-	<!-- Esquemas para url_launcher -->
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>https</string>
-		<string>http</string>
-		<string>tel</string>
-		<string>mailto</string>
-	</array>
-
-	<!-- Configuraciones estándar de la app -->
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>LumorahAI</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.lumorah.app</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>LumorahAI</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>UIStatusBarHidden</key>
-	<false/>
+    <!-- Configuraciones estándar -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>LumorahAI</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.lumorah.app</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>LumorahAI</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UIStatusBarHidden</key>
+    <false/>
 </dict>
 </plist>

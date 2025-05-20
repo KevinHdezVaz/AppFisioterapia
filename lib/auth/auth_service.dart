@@ -135,6 +135,7 @@ class AuthService {
       debugPrint('Iniciando login con Facebook...');
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: ['email', 'public_profile'],
+        loginBehavior: LoginBehavior.nativeWithFallback, // Optimizado para iOS
       );
       debugPrint('Resultado de login: ${result.status}');
       if (result.status == LoginStatus.success) {

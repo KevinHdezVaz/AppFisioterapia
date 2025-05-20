@@ -29,8 +29,7 @@ class Menuprincipal extends StatefulWidget {
   _MenuprincipalState createState() => _MenuprincipalState();
 }
 
-class _MenuprincipalState extends State<Menuprincipal>
-    with TickerProviderStateMixin {
+class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   late Animation<double> _sunAnimation;
@@ -45,6 +44,7 @@ class _MenuprincipalState extends State<Menuprincipal>
   final Color micButtonColor = Color(0xFF4ECDC4);
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _currentSessionId;
+  late AnimationController _particlesController;
 
   bool _isListening = false;
   bool _isSpeechInitialized = false;
@@ -67,7 +67,12 @@ class _MenuprincipalState extends State<Menuprincipal>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
-
+    
+    // Controller for particle animation
+    _particlesController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 20),
+    )..repeat();
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
@@ -79,22 +84,38 @@ class _MenuprincipalState extends State<Menuprincipal>
 
   Future<void> _initializeSpeech() async {
     try {
-      final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        _showErrorSnackBar('Se requieren permisos de micrófono');
-        return;
+      // Verificar y solicitar permiso del micrófono al inicializar
+      var micStatus = await Permission.microphone.status;
+      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
+        micStatus = await Permission.microphone.request();
+        if (micStatus.isDenied) {
+          _showErrorSnackBar('Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
+          return;
+        }
+        if (micStatus.isPermanentlyDenied) {
+          _showErrorSnackBar('El permiso de micrófono está bloqueado. Actívalo en Configuración > Aplicaciones.');
+          await openAppSettings();
+          return;
+        }
       }
+
       _isSpeechInitialized = await _speech.initialize(
         onStatus: (status) => debugPrint('Status: $status'),
-        onError: (error) => debugPrint('Error: $error'),
+        onError: (error) {
+          debugPrint('Error: $error');
+          setState(() {
+            _isListening = false;
+            _soundLevel = 0.0;
+            _showErrorSnackBar('Error en reconocimiento de voz: ${error.errorMsg}');
+          });
+        },
       );
       if (!_isSpeechInitialized && mounted) {
         _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar(
-            'Error al inicializar reconocimiento de voz: ${e.toString()}');
+        _showErrorSnackBar('Error al inicializar reconocimiento de voz: ${e.toString()}');
       }
     }
   }
@@ -110,7 +131,8 @@ class _MenuprincipalState extends State<Menuprincipal>
   void dispose() {
     _sunController.dispose();
     _textController.dispose();
-    _audioPlayer.dispose();
+      _particlesController.dispose();
+  _audioPlayer.dispose();
     _speech.stop();
     _speech.cancel();
     super.dispose();
@@ -330,51 +352,93 @@ class _MenuprincipalState extends State<Menuprincipal>
   Future<void> _startListening() async {
     if (_isListening) return;
 
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      _showErrorSnackBar('Se requieren permisos de micrófono');
-      return;
-    }
-
-    if (!_isSpeechInitialized) {
-      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
-      return;
-    }
-
     try {
+      // 1. Verificar el estado del permiso del micrófono
+      var micStatus = await Permission.microphone.status;
+
+      // 2. Solicitar permiso si no está concedido
+      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
+        micStatus = await Permission.microphone.request();
+
+        if (micStatus.isDenied) {
+          _showErrorSnackBar('Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
+          return;
+        }
+
+        
+      }
+
+      // 3. Inicializar reconocimiento de voz si no está listo
+      if (!_isSpeechInitialized) {
+        _isSpeechInitialized = await _speech.initialize(
+          onStatus: (status) => debugPrint('Status: $status'),
+          onError: (error) {
+            debugPrint('Error: $error');
+            setState(() {
+              _isListening = false;
+              _soundLevel = 0.0;
+              _showErrorSnackBar('Error en reconocimiento de voz: ${error.errorMsg}');
+            });
+          },
+        );
+
+        if (!_isSpeechInitialized) {
+          _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
+          return;
+        }
+      }
+
+      // 4. Configurar el idioma para el reconocimiento
+      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+      debugPrint('Iniciando reconocimiento con locale: $localeId');
+
+      // 5. Iniciar la escucha
       setState(() {
         _isListening = true;
         _textController.clear();
       });
 
-      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
-      debugPrint('Starting speech recognition with locale: $localeId');
-
       _speech.listen(
         onResult: (result) {
-          debugPrint(
-              'Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+          debugPrint('Resultado: ${result.recognizedWords} (Confianza: ${result.confidence})');
           setState(() {
             _textController.text = result.recognizedWords;
-            _textController.selection =
-                TextSelection.collapsed(offset: _textController.text.length);
+            _textController.selection = TextSelection.collapsed(
+              offset: _textController.text.length,
+            );
+          });
+        },
+        onSoundLevelChange: (level) {
+          setState(() {
+            _soundLevel = level.clamp(0.0, 100.0);
           });
         },
         localeId: localeId,
         listenFor: const Duration(minutes: 5),
         pauseFor: const Duration(seconds: 3),
         partialResults: true,
-        onSoundLevelChange: (level) {
-          debugPrint('Sound level: $level');
-          setState(() {
-            _soundLevel = level;
-          });
-        },
+        cancelOnError: true,
+        listenMode: stt.ListenMode.dictation,
       );
+    } on PlatformException catch (e) {
+      debugPrint('Error de plataforma: ${e.toString()}');
+      setState(() {
+        _isListening = false;
+      });
+
+      if (e.code == 'speech_recognition_not_available') {
+        _showErrorSnackBar('Reconocimiento de voz no disponible');
+      } else if (e.code == 'microphone_access_denied') {
+        _showErrorSnackBar('Acceso al micrófono denegado');
+      } else {
+        _showErrorSnackBar('Error desconocido: ${e.message}');
+      }
     } catch (e) {
-      debugPrint('Error starting speech recognition: $e');
-      setState(() => _isListening = false);
-      _showErrorSnackBar('Error al iniciar: $e');
+      debugPrint('Error inesperado: ${e.toString()}');
+      setState(() {
+        _isListening = false;
+      });
+      _showErrorSnackBar('Error al iniciar: ${e.toString()}');
     }
   }
 
@@ -419,8 +483,7 @@ class _MenuprincipalState extends State<Menuprincipal>
     );
   }
 
-  Future<void> _handleAction(BuildContext context,
-      {bool isVoice = false}) async {
+  Future<void> _handleAction(BuildContext context, {bool isVoice = false}) async {
     final isAuthenticated = await _isUserAuthenticated();
     if (!isAuthenticated) {
       _showLoginModal(context);
@@ -444,8 +507,7 @@ class _MenuprincipalState extends State<Menuprincipal>
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
 
           return SlideTransition(
@@ -474,11 +536,9 @@ class _MenuprincipalState extends State<Menuprincipal>
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
-              // Calcular la altura basada en el contenido
               final textPainter = TextPainter(
                 text: TextSpan(
-                  text:
-                      _textController.text.isEmpty ? ' ' : _textController.text,
+                  text: _textController.text.isEmpty ? ' ' : _textController.text,
                   style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
                 ),
                 maxLines: null,
@@ -488,8 +548,7 @@ class _MenuprincipalState extends State<Menuprincipal>
               final lineCount = textPainter.computeLineMetrics().length;
               final baseHeight = 60.0;
               final lineHeight = 20.0;
-              final calculatedHeight =
-                  baseHeight + (lineCount - 1) * lineHeight;
+              final calculatedHeight = baseHeight + (lineCount - 1) * lineHeight;
               final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
 
               return AnimatedContainer(
@@ -519,9 +578,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                             color: _isListening ? Colors.red : micButtonColor,
                             size: _isListening ? 30 : 24,
                           ),
-                          tooltip: _isListening
-                              ? 'Detener grabación'
-                              : 'Iniciar grabación',
+                          tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
                           onPressed: () async {
                             if (_isListening) {
                               await _stopListening();
@@ -557,8 +614,7 @@ class _MenuprincipalState extends State<Menuprincipal>
                               ),
                               tooltip: 'Chat de voz avanzado',
                               onPressed: () async {
-                                final isAuthenticated =
-                                    await _isUserAuthenticated();
+                                final isAuthenticated = await _isUserAuthenticated();
                                 if (isAuthenticated) {
                                   Navigator.push(
                                     context,
@@ -651,21 +707,17 @@ class _MenuprincipalState extends State<Menuprincipal>
                       Navigator.push(
                         context,
                         PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  ChatScreen(
+                          pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
                             initialMessages: [],
                             inputMode: 'keyboard',
                             sessionId: null,
                           ),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             const begin = Offset(1.0, 0.0);
                             const end = Offset.zero;
                             const curve = Curves.easeInOut;
 
-                            var tween = Tween(begin: begin, end: end)
-                                .chain(CurveTween(curve: curve));
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
                             var slideAnimation = animation.drive(tween);
 
                             return SlideTransition(
@@ -831,7 +883,6 @@ class _MenuprincipalState extends State<Menuprincipal>
     );
   }
 }
-
 class ParticulasFlotantes extends StatefulWidget {
   @override
   _ParticulasFlotantesState createState() => _ParticulasFlotantesState();
@@ -848,15 +899,16 @@ class _ParticulasFlotantesState extends State<ParticulasFlotantes>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 30),
+      duration: const Duration(seconds: 15), // Reducido para movimiento más rápido
     )..repeat();
 
-    for (int i = 0; i < 10; i++) {
+    // Generar partículas con velocidades más visibles
+    for (int i = 0; i < 20; i++) { // Aumentar número de partículas
       _particles.add(Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        size: _random.nextDouble() * 2 + 1,
-        speed: _random.nextDouble() * 0.15 + 0.05,
+        size: _random.nextDouble() * 3 + 2, // Tamaños más grandes
+        speed: _random.nextDouble() * 0.3 + 0.1, // Velocidades más altas
       ));
     }
   }
@@ -901,7 +953,7 @@ class _ParticlesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withOpacity(0.2) // Aumentar opacidad para mejor visibilidad
       ..style = PaintingStyle.fill;
 
     for (var particle in particles) {

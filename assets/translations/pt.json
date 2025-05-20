@@ -125,7 +125,8 @@
   "discarded": "Áudio descartado",
   "speech_init_failed": "Falha ao inicializar o reconhecimento de voz",
   "error": "Erro: ",
-  "stop_button": "Parar"
+  "stop_button": "Parar",
+"welcomeMessage": "Olá, eu sou a Lumorah.ai. 🌟\nEste é um espaço seguro, onde você pode se expressar livremente.\nNada do que falamos aqui é armazenado, e estou aqui para te acompanhar no seu processo emocional e te ajudar a encontrar clareza e bem-estar.\n\nAntes de continuarmos, gostaria de te perguntar uma coisa para poder te acompanhar melhor:\n\nQual é o seu nome?\n\nAssim poderei me dirigir a você com mais proximidade.\nEstou aqui com você, sem pressa, sem julgamento. 💛"
           
     
     

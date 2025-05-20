@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:LumorahAI/model/ChatMessage.dart';
 import 'package:LumorahAI/pages/screens/chats/ConversationState.dart';
 import 'package:LumorahAI/pages/screens/chats/RecordingScreen.dart';
@@ -32,16 +33,15 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   final Color _primaryColor = const Color.fromARGB(255, 255, 255, 255);
   final Color _backgroundColor = const Color(0xFF88D5C2);
   bool _isLoading = true; // Nueva variable para controlar el estado de carga
-
+bool _showMicButton = false; // Nueva variable para controlar la visibilidad del botón
   @override
   void initState() {
     super.initState();
     _initializeServices();
   }
-
-  Future<void> _initializeServices() async {
+Future<void> _initializeServices() async {
     setState(() {
-      _isLoading = true; // Establecer loading a true al inicio
+      _isLoading = true;
     });
 
     _flutterTts = FlutterTts();
@@ -55,11 +55,17 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     await _checkSupportedLocales();
 
     setState(() {
-      _isLoading =
-          false; // Cambiar a false cuando la inicialización esté completa
+      _isLoading = false;
+      // Iniciar el temporizador para mostrar el botón después de 5-6 segundos
+      Timer(const Duration(seconds: 5), () {
+        if (mounted) { // Verificar que el widget esté montado
+          setState(() {
+            _showMicButton = true;
+          });
+        }
+      });
     });
 
-    // Abrir RecordingScreen automáticamente
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navigateToRecordingScreen();
     });
@@ -80,10 +86,14 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     }
   }
 
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage(widget.language);
-    await _flutterTts.setSpeechRate(0.5);
+Future<void> _initTts() async {
+  await _flutterTts.setLanguage(widget.language);
+  if (Platform.isIOS) {
+    await _flutterTts.setSpeechRate(0.3); // Valor más bajo para iOS
+  } else {
+    await _flutterTts.setSpeechRate(0.5); // Valor para Android/otros
   }
+}
 
   Future<void> _initializePusher() async {
     _pusher = PusherChannelsFlutter.getInstance();
@@ -288,11 +298,25 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     _pusher.disconnect();
     super.dispose();
   }
-
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
+      appBar: AppBar(
+        backgroundColor: _backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Chat de voz',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
@@ -336,28 +360,29 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _navigateToRecordingScreen,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                15), // Bordes más redondeados
+                  child: Visibility(
+                    visible: _showMicButton, // Controlar visibilidad del botón
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _navigateToRecordingScreen,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            minimumSize: const Size(50, 50),
                           ),
-                          padding: const EdgeInsets.all(20),
-                          minimumSize:
-                              const Size(50, 50), // Tamaño mínimo del botón
+                          child: const Icon(
+                            Icons.mic,
+                            size: 30,
+                            color: Colors.white,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.mic,
-                          size: 30, // Tamaño del ícono aumentado
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
