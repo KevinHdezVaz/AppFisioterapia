@@ -93,7 +93,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   Future<void> _requestPermissions() async {
     var microphoneStatus = await Permission.microphone.request();
     if (microphoneStatus != PermissionStatus.granted) {
-      _showError('Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
+      _showError(
+          'Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
     }
   }
 
@@ -123,7 +124,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                     'emotional_state': data['emotional_state'] ?? 'neutral',
                     'conversation_level': data['conversation_level'] ?? 'basic',
                   },
-                  'session_id': data['session_id'], // Capture session ID if provided
+                  'session_id':
+                      data['session_id'], // Capture session ID if provided
                 });
                 _statusMessage = 'Respuesta recibida';
                 break;
@@ -295,7 +297,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
           emotionalState: result['emotional_state'] ?? 'neutral',
           conversationLevel: result['conversation_level'] ?? 'basic',
         );
-        _currentSessionId = result['session_id']; // Update session ID if provided
+        _currentSessionId =
+            result['session_id']; // Update session ID if provided
         _statusMessage = 'Conversación actualizada';
       });
     }
@@ -362,7 +365,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             children: [
               Icon(
                 isUser ? Icons.person : Icons.auto_awesome,
-                color: isUser ? _primaryColor : Colors.deepPurple,
+                color: isUser ? _primaryColor : Colors.black,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -370,12 +373,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 isUser ? 'Tú' : 'Lumorah',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: isUser ? _primaryColor : Colors.deepPurple,
+                  color: isUser ? _primaryColor : Colors.black,
                 ),
               ),
               if (message.emotionalState != null) ...[
                 const Spacer(),
-                _buildEmotionIndicator(message.emotionalState!),
+                //    _buildEmotionIndicator(message.emotionalState!),
               ],
             ],
           ),

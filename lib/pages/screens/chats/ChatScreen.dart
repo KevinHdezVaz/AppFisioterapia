@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late AnimationController _sunController;
   late Animation<double> _sunAnimation;
   final AudioPlayer _audioPlayer = AudioPlayer();
-bool _isLoading = false;
+  bool _isLoading = false;
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
@@ -99,7 +99,8 @@ bool _isLoading = false;
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
-_sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
+    _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate(
+      // Reduced size
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
@@ -325,9 +326,9 @@ _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
           await _storageService.getString('sound_enabled') == 'true' ||
               await _storageService.getString('sound_enabled') == null;
       if (soundEnabled) {
-        await _audioPlayer.setVolume(0.1); // Establecer volumen al 50%
+        await _audioPlayer.setVolume(0.1);
 
-        await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
+        await _audioPlayer.play(AssetSource('sounds/pensandoIA.mp3'));
         _audioPlayer.setReleaseMode(ReleaseMode.loop);
       }
     } catch (e) {
@@ -751,16 +752,46 @@ _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  SelectableText(
                     message.text,
                     style: TextStyle(
                       color: Colors.black87,
                       fontFamily: 'Lora',
                       fontSize: 14,
                     ),
+                    textAlign: message.isUser ? TextAlign.end : TextAlign.start,
                     semanticsLabel: message.isUser
                         ? 'Mensaje del usuario: ${message.text}'
                         : 'Mensaje de Lumorah: ${message.text}',
+                    toolbarOptions: ToolbarOptions(
+                      copy: true,
+                      selectAll: true,
+                      cut: false,
+                      paste: false,
+                    ),
+                    onSelectionChanged: (selection, cause) async {
+                      if (cause == SelectionChangedCause.toolbar &&
+                          selection.textInside(message.text).isNotEmpty) {
+                        // Verificar si el texto seleccionado fue copiado
+                        final clipboardData =
+                            await Clipboard.getData('text/plain');
+                        if (clipboardData != null &&
+                            clipboardData.text ==
+                                selection.textInside(message.text)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('textCopied'.tr()),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
                   if (message.imageUrl != null)
                     Image.network(message.imageUrl!),
@@ -774,7 +805,6 @@ _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
               ),
             ),
           ),
-          
         ],
       ),
     );
@@ -831,7 +861,7 @@ _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
     );
   }
 
- Widget _buildHeader() {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
       child: Row(
@@ -868,7 +898,7 @@ _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
     );
   }
 
-Widget _buildAnimatedCircle() {
+  Widget _buildAnimatedCircle() {
     return AnimatedBuilder(
       animation: _sunAnimation,
       builder: (context, child) {
@@ -895,6 +925,7 @@ Widget _buildAnimatedCircle() {
       },
     );
   }
+
   Widget _buildInput() {
     switch (widget.inputMode) {
       case 'keyboard':
@@ -930,127 +961,128 @@ Widget _buildAnimatedCircle() {
   }
 
   Widget _buildKeyboardInput() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      children: [
-        if (_isListening) _buildVoiceVisualizer(),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // Calcular la altura basada en el contenido
-            final textPainter = TextPainter(
-              text: TextSpan(
-                text: _controller.text.isEmpty ? ' ' : _controller.text,
-                style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
-              ),
-              maxLines: null,
-              textDirection: painting.TextDirection.ltr,
-            )..layout(maxWidth: constraints.maxWidth - 80);
-
-            final lineCount = textPainter.computeLineMetrics().length;
-            final baseHeight = 60.0;
-            final lineHeight = 20.0;
-            final calculatedHeight = baseHeight + (lineCount - 1) * lineHeight;
-            final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              height: textFieldHeight,
-              child: TextField(
-                controller: _controller,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          if (_isListening) _buildVoiceVisualizer(),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Calcular la altura basada en el contenido
+              final textPainter = TextPainter(
+                text: TextSpan(
+                  text: _controller.text.isEmpty ? ' ' : _controller.text,
+                  style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
+                ),
                 maxLines: null,
-                keyboardType: TextInputType.multiline,
-                style: const TextStyle(color: Colors.black87),
-                decoration: InputDecoration(
-                  hintText: 'writeHint'.tr(),
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey.shade200,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _isListening ? Icons.stop_circle : Icons.mic_none,
-                          color: _isListening ? Colors.red : micButtonColor,
-                          size: _isListening ? 30 : 24,
-                        ),
-                        tooltip: _isListening
-                            ? 'Detener grabación'
-                            : 'Iniciar grabación',
-                        onPressed: () async {
-                          if (_isListening) {
-                            await _stopListening();
-                          } else {
-                            await _startListening();
-                          }
-                        },
-                      ),
-                      if (_controller.text.isNotEmpty)
+                textDirection: painting.TextDirection.ltr,
+              )..layout(maxWidth: constraints.maxWidth - 80);
+
+              final lineCount = textPainter.computeLineMetrics().length;
+              final baseHeight = 60.0;
+              final lineHeight = 20.0;
+              final calculatedHeight =
+                  baseHeight + (lineCount - 1) * lineHeight;
+              final textFieldHeight = calculatedHeight.clamp(baseHeight, 200.0);
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                height: textFieldHeight,
+                child: TextField(
+                  controller: _controller,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: InputDecoration(
+                    hintText: 'writeHint'.tr(),
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.grey.shade200,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         IconButton(
-                          icon: Icon(Icons.send, color: micButtonColor),
-                          onPressed: () {
-                            _sendMessage(_controller.text);
-                            _controller.clear();
-                            // Ocultar el teclado
-                            FocusManager.instance.primaryFocus?.unfocus();
+                          icon: Icon(
+                            _isListening ? Icons.stop_circle : Icons.mic_none,
+                            color: _isListening ? Colors.red : micButtonColor,
+                            size: _isListening ? 30 : 24,
+                          ),
+                          tooltip: _isListening
+                              ? 'Detener grabación'
+                              : 'Iniciar grabación',
+                          onPressed: () async {
+                            if (_isListening) {
+                              await _stopListening();
+                            } else {
+                              await _startListening();
+                            }
                           },
                         ),
-                      if (_controller.text.isEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.record_voice_over,
-                              color: micButtonColor,
-                              size: 22,
-                            ),
-                            tooltip: 'Chat de voz avanzado',
+                        if (_controller.text.isNotEmpty)
+                          IconButton(
+                            icon: Icon(Icons.send, color: micButtonColor),
                             onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => VoiceChatScreen(
-                                    language: context.locale.languageCode,
-                                  ),
-                                ),
-                              );
+                              _sendMessage(_controller.text);
+                              _controller.clear();
+                              // Ocultar el teclado
+                              FocusManager.instance.primaryFocus?.unfocus();
                             },
                           ),
-                        ),
-                    ],
+                        if (_controller.text.isEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.record_voice_over,
+                                color: micButtonColor,
+                                size: 22,
+                              ),
+                              tooltip: 'Chat de voz avanzado',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VoiceChatScreen(
+                                      language: context.locale.languageCode,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
+                  onChanged: (text) {
+                    setState(() {}); // Reconstruir para actualizar la altura
+                  },
+                  scrollController: ScrollController(),
                 ),
-                onChanged: (text) {
-                  setState(() {}); // Reconstruir para actualizar la altura
-                },
-                scrollController: ScrollController(),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 15),
-      ],
-    ),
-  );
-}
+              );
+            },
+          ),
+          const SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
 
   Widget _buildVoiceInput() {
     return Column(
@@ -1109,7 +1141,7 @@ Widget _buildAnimatedCircle() {
     );
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
@@ -1142,10 +1174,12 @@ Widget _buildAnimatedCircle() {
                         Padding(
                           padding: EdgeInsets.only(right: 10),
                           child: TextButton.icon(
-                            icon: Icon(Icons.save, color: Colors.black, size: 22),
+                            icon:
+                                Icon(Icons.save, color: Colors.black, size: 22),
                             label: Text(
                               'save'.tr(),
-                              style: TextStyle(color: Colors.black, fontSize: 14),
+                              style:
+                                  TextStyle(color: Colors.black, fontSize: 14),
                             ),
                             onPressed: _saveChat,
                             style: TextButton.styleFrom(
@@ -1153,7 +1187,8 @@ Widget _buildAnimatedCircle() {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                             ),
                           ),
                         ),
@@ -1171,13 +1206,16 @@ Widget _buildAnimatedCircle() {
                             Expanded(
                               child: ListView.builder(
                                 reverse: true,
-                                itemCount: _messages.length + (_isTyping ? 1 : 0),
+                                itemCount:
+                                    _messages.length + (_isTyping ? 1 : 0),
                                 itemBuilder: (context, index) {
                                   if (_isTyping && index == 0) {
                                     return _buildTypingIndicator();
                                   }
-                                  final messageIndex = _isTyping ? index - 1 : index;
-                                  return _buildMessageBubble(_messages[messageIndex]);
+                                  final messageIndex =
+                                      _isTyping ? index - 1 : index;
+                                  return _buildMessageBubble(
+                                      _messages[messageIndex]);
                                 },
                               ),
                             ),
@@ -1195,6 +1233,7 @@ Widget _buildAnimatedCircle() {
     );
   }
 }
+
 class _FloatingParticles extends StatefulWidget {
   @override
   __FloatingParticlesState createState() => __FloatingParticlesState();
@@ -1211,11 +1250,13 @@ class __FloatingParticlesState extends State<_FloatingParticles>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10), // Reducido para movimiento más rápido
+      duration:
+          const Duration(seconds: 10), // Reducido para movimiento más rápido
     )..repeat();
 
     // Generar partículas con velocidades más visibles
-    for (int i = 0; i < 20; i++) { // Aumentar número de partículas
+    for (int i = 0; i < 20; i++) {
+      // Aumentar número de partículas
       _particles.add(Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
@@ -1264,7 +1305,8 @@ class _ParticlesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.2) // Aumentar opacidad para mejor visibilidad
+      ..color = Colors.white
+          .withOpacity(0.2) // Aumentar opacidad para mejor visibilidad
       ..style = PaintingStyle.fill;
 
     for (var particle in particles) {

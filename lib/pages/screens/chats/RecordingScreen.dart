@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:LumorahAI/services/ElevenLabsService.dart';
@@ -10,7 +11,7 @@ import 'package:lottie/lottie.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
- 
+
 class RecordingScreen extends StatefulWidget {
   final String language;
   final ChatServiceApi chatService;
@@ -150,7 +151,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     );
     _rhythmValue = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-          parent: _rhythmAnimationController, curve: Curves.easeInOut  ),
+          parent: _rhythmAnimationController, curve: Curves.easeInOut),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           _rhythmAnimationController.reverse();
@@ -217,8 +218,14 @@ class _RecordingScreenState extends State<RecordingScreen>
   Future<void> _initVibration() async {
     try {
       bool? hasVibrator = await Vibration.hasVibrator();
+      bool? hasAmplitudeControl = await Vibration.hasAmplitudeControl();
+      bool? hasCustomVibrationsSupport =
+          await Vibration.hasCustomVibrationsSupport();
+
       setState(() {
-        _hasVibrator = hasVibrator ?? false;
+        _hasVibrator = (hasVibrator ?? false) &&
+            (hasAmplitudeControl ?? false) &&
+            (hasCustomVibrationsSupport ?? false);
       });
     } catch (e) {
       print('Error inicializando vibración: $e');
@@ -259,11 +266,12 @@ class _RecordingScreenState extends State<RecordingScreen>
 
     if (available) {
       final localeId = {
-        'es': 'es_ES',
-        'en': 'en_US',
-        'fr': 'fr_FR',
-        'pt': 'pt_BR',
-      }[widget.language] ?? 'es_ES';
+            'es': 'es_ES',
+            'en': 'en_US',
+            'fr': 'fr_FR',
+            'pt': 'pt_BR',
+          }[widget.language] ??
+          'es_ES';
 
       _speech.listen(
         onResult: (result) {
@@ -334,7 +342,13 @@ class _RecordingScreenState extends State<RecordingScreen>
       if (!discard && _partialTranscription.isNotEmpty) {
         _isProcessing = true;
         if (_hasVibrator) {
-          Vibration.vibrate(pattern: [500, 200, 500, 200], repeat: -1);
+          if (Platform.isIOS) {
+            // Vibración simple para iOS
+            Vibration.vibrate(duration: 500);
+          } else {
+            // Patrón complejo para Android
+            Vibration.vibrate(pattern: [500, 200, 500, 200], repeat: -1);
+          }
         }
       }
     });
@@ -437,7 +451,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     });
   }
 
-  void _handleDragUpdate(LongPressMoveUpdateDetails    details) {
+  void _handleDragUpdate(LongPressMoveUpdateDetails details) {
     if (_isRecording && !_isLocked) {
       setState(() {
         final deltaX = details.localPosition.dx - _dragStartPosition.dx;
@@ -687,8 +701,9 @@ class _RecordingScreenState extends State<RecordingScreen>
                           },
                           child: CircleAvatar(
                             radius: 40,
-                            backgroundColor:
-                                _isRecording ? Colors.blueGrey : Colors.blueGrey,
+                            backgroundColor: _isRecording
+                                ? Colors.blueGrey
+                                : Colors.blueGrey,
                             child: AnimatedScale(
                               scale: _isRecording ? 1.2 : 1.0,
                               duration: const Duration(milliseconds: 300),
