@@ -146,6 +146,7 @@ class ChatServiceApi {
     );
     return response;
   }
+  
  
 Future<void> processAudio(File audioFile) async {
   final token = await storage.getToken();

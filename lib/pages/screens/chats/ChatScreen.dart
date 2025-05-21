@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late AnimationController _sunController;
   late Animation<double> _sunAnimation;
   final AudioPlayer _audioPlayer = AudioPlayer();
-
+bool _isLoading = false;
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
@@ -99,7 +99,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
-    _sunAnimation = Tween<double>(begin: 50.0, end: 70.0).animate(
+_sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate( // Reduced size
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
@@ -831,39 +831,44 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Text(
-            'withYou'.tr(),
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: Colors.black.withOpacity(0.95),
-              fontFamily: 'Lora',
-            ),
-            textAlign: TextAlign.center,
+ Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'withYou'.tr(),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black.withOpacity(0.95),
+                  fontFamily: 'Lora',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 10),
+              Text(
+                'speakWhenever'.tr(),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.black.withOpacity(0.85),
+                  fontStyle: FontStyle.italic,
+                  fontFamily: 'Lora',
+                ),
+              ),
+            ],
           ),
-        ),
-        SizedBox(height: 10),
-        Text(
-          'speakWhenever'.tr(),
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.black.withOpacity(0.85),
-            fontStyle: FontStyle.italic,
-            fontFamily: 'Lora',
-          ),
-        ),
-        _buildAnimatedCircle()
-
-      ],
+          _buildAnimatedCircle(), // Sun moved to the right
+        ],
+      ),
     );
   }
 
-  Widget _buildAnimatedCircle() {
+Widget _buildAnimatedCircle() {
     return AnimatedBuilder(
       animation: _sunAnimation,
       builder: (context, child) {
@@ -890,7 +895,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       },
     );
   }
-
   Widget _buildInput() {
     switch (widget.inputMode) {
       case 'keyboard':
@@ -1105,7 +1109,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
@@ -1116,77 +1120,75 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         backgroundColor: tiffanyColor,
         body: Stack(
           children: [
-            // Fondo con partículas
             _FloatingParticles(),
-            // Contenido principal
-            Column(
-              children: [
-                // AppBar
-                AppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  leading: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => _navigateBack(context),
-                  ),
-                  actions: [
-                    if (!_isSaved)
-                      Padding(
-                        padding: EdgeInsets.only(right: 10),
-                        child: TextButton.icon(
-                          icon: Icon(Icons.save, color: Colors.black, size: 22),
-                          label: Text(
-                            'save'.tr(),
-                            style: TextStyle(color: Colors.black, fontSize: 14),
-                          ),
-                          onPressed: _saveChat,
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+            if (_isLoading)
+              Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(micButtonColor),
+                ),
+              )
+            else
+              Column(
+                children: [
+                  AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.black),
+                      onPressed: () => _navigateBack(context),
+                    ),
+                    actions: [
+                      if (!_isSaved)
+                        Padding(
+                          padding: EdgeInsets.only(right: 10),
+                          child: TextButton.icon(
+                            icon: Icon(Icons.save, color: Colors.black, size: 22),
+                            label: Text(
+                              'save'.tr(),
+                              style: TextStyle(color: Colors.black, fontSize: 14),
                             ),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                            onPressed: _saveChat,
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: _buildHeader(),
-                ),
-                // Lista de mensajes y entrada
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Column(
-                        children: [
-                          Expanded(
-                            child: ListView.builder(
-                              reverse: true,
-                              itemCount: _messages.length + (_isTyping ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (_isTyping && index == 0) {
-                                  return _buildTypingIndicator();
-                                }
-                                final messageIndex =
-                                    _isTyping ? index - 1 : index;
-                                return _buildMessageBubble(
-                                    _messages[messageIndex]);
-                              },
-                            ),
-                          ),
-                          _buildInput(),
-                        ],
-                      ),
-                      
                     ],
                   ),
-                ),
-              ],
-            ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: _buildHeader(),
+                  ),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Column(
+                          children: [
+                            Expanded(
+                              child: ListView.builder(
+                                reverse: true,
+                                itemCount: _messages.length + (_isTyping ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (_isTyping && index == 0) {
+                                    return _buildTypingIndicator();
+                                  }
+                                  final messageIndex = _isTyping ? index - 1 : index;
+                                  return _buildMessageBubble(_messages[messageIndex]);
+                                },
+                              ),
+                            ),
+                            _buildInput(),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

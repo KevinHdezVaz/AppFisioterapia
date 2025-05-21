@@ -647,54 +647,97 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: tiffanyColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: lightTextColor.withOpacity(0.9)),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: tiffanyColor,
+    appBar: AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: Icon(Icons.menu, color: lightTextColor.withOpacity(0.9)),
+          onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
-      drawer: Drawer(
-        child: Container(
-          color: tiffanyColor.withOpacity(0.95),
-          child: FutureBuilder<bool>(
-            future: _isUserAuthenticated(),
-            builder: (context, authSnapshot) {
-              bool isAuthenticated = authSnapshot.data ?? false;
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  FutureBuilder<String?>(
-                    future: _getUserName(),
-                    builder: (context, userSnapshot) {
-                      String headerText = 'helloLumorah'.tr();
-                      return DrawerHeader(
-                        decoration: BoxDecoration(
-                          color: ivoryColor.withOpacity(0.7),
+    ),
+    drawer: Drawer(
+      child: Container(
+        color: tiffanyColor.withOpacity(0.95),
+        child: FutureBuilder<bool>(
+          future: _isUserAuthenticated(),
+          builder: (context, authSnapshot) {
+            bool isAuthenticated = authSnapshot.data ?? false;
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                FutureBuilder<String?>(
+                  future: _getUserName(),
+                  builder: (context, userSnapshot) {
+                    String headerText = 'helloLumorah'.tr();
+                    return DrawerHeader(
+                      decoration: BoxDecoration(
+                        color: ivoryColor.withOpacity(0.7),
+                      ),
+                      child: Text(
+                        headerText,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: darkTextColor,
+                          fontFamily: 'Inter',
                         ),
-                        child: Text(
-                          headerText,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: darkTextColor,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.chat, color: lightTextColor),
+                  title: Text(
+                    'chat'.tr(),
+                    style: TextStyle(
+                      color: lightTextColor,
+                      fontSize: 16,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
+                          initialMessages: [],
+                          inputMode: 'keyboard',
+                          sessionId: null,
+                        ),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0);
+                          const end = Offset.zero;
+                          const curve = Curves.easeInOut;
+
+                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                          var slideAnimation = animation.drive(tween);
+
+                          return SlideTransition(
+                            position: slideAnimation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        transitionDuration: Duration(milliseconds: 300),
+                      ),
+                    );
+                  },
+                ),
+                if (isAuthenticated)
                   ListTile(
-                    leading: Icon(Icons.chat, color: lightTextColor),
+                    leading: Icon(Icons.history, color: lightTextColor),
                     title: Text(
-                      'chat'.tr(),
+                      'chatHistory'.tr(),
                       style: TextStyle(
                         color: lightTextColor,
                         fontSize: 16,
@@ -706,182 +749,139 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
-                            initialMessages: [],
-                            inputMode: 'keyboard',
-                            sessionId: null,
-                          ),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(1.0, 0.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
-
-                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                            var slideAnimation = animation.drive(tween);
-
-                            return SlideTransition(
-                              position: slideAnimation,
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            );
-                          },
-                          transitionDuration: Duration(milliseconds: 300),
+                        MaterialPageRoute(
+                          builder: (context) => ChatHistoryScreen(),
                         ),
                       );
                     },
                   ),
-                  if (isAuthenticated)
-                    ListTile(
-                      leading: Icon(Icons.history, color: lightTextColor),
-                      title: Text(
-                        'chatHistory'.tr(),
-                        style: TextStyle(
-                          color: lightTextColor,
-                          fontSize: 16,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatHistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ListTile(
-                    leading: Icon(Icons.language, color: lightTextColor),
-                    title: Text(
-                      'changeLanguage'.tr(),
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showLanguageSelector(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.settings, color: lightTextColor),
-                    title: Text(
-                      'settings'.tr(),
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showSettingsModal(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      isAuthenticated ? Icons.logout : Icons.login,
+                ListTile(
+                  leading: Icon(Icons.language, color: lightTextColor),
+                  title: Text(
+                    'changeLanguage'.tr(),
+                    style: TextStyle(
                       color: lightTextColor,
+                      fontSize: 16,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
                     ),
-                    title: Text(
-                      isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (isAuthenticated) {
-                        _signOut(context);
-                      } else {
-                        _showLoginModal(context);
-                      }
-                    },
                   ),
-                ],
-              );
-            },
-          ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showLanguageSelector(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, color: lightTextColor),
+                  title: Text(
+                    'settings'.tr(),
+                    style: TextStyle(
+                      color: lightTextColor,
+                      fontSize: 16,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showSettingsModal(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    isAuthenticated ? Icons.logout : Icons.login,
+                    color: lightTextColor,
+                  ),
+                  title: Text(
+                    isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
+                    style: TextStyle(
+                      color: lightTextColor,
+                      fontSize: 16,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (isAuthenticated) {
+                      _signOut(context);
+                    } else {
+                      _showLoginModal(context);
+                    }
+                  },
+                ),
+              ],
+            );
+          },
         ),
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(child: ParticulasFlotantes()),
-          Positioned(
-            top: 100,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _sunAnimation,
-                builder: (context, child) {
-                  return Container(
-                    width: _sunAnimation.value,
-                    height: _sunAnimation.value,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFFFE5B4).withOpacity(0.7),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFFFFE5B4).withOpacity(0.8),
-                          blurRadius: 50,
-                          spreadRadius: 10,
-                        ),
-                      ],
-                    ),
-                  );
-                },
+    ),
+    body: Stack(
+      children: [
+        Positioned.fill(child: ParticulasFlotantes()),
+        Positioned(
+          top: 50,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _sunAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: _sunAnimation.value,
+                  height: _sunAnimation.value,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFFFE5B4).withOpacity(0.7),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFFFFE5B4).withOpacity(0.8),
+                        blurRadius: 50,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 80), // Reduced from 180 to move content up
+              Text(
+                'writeOrSpeak'.tr(),
+                style: TextStyle(
+                  fontSize: 30,
+                  color: Colors.black,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 180),
-                Text(
-                  'writeOrSpeak'.tr(),
-                  style: TextStyle(
-                    fontSize: 30,
-                    color: Colors.black,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                  ),
-                  textAlign: TextAlign.center,
+              SizedBox(height: 20),
+              Text(
+                'iAmHere'.tr(),
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.black.withOpacity(0.9),
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
                 ),
-                SizedBox(height: 20),
-                Text(
-                  'iAmHere'.tr(),
-                  style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.black.withOpacity(0.9),
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 40),
-                _buildKeyboardInput(),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 40),
+              _buildKeyboardInput(),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
 class ParticulasFlotantes extends StatefulWidget {
   @override

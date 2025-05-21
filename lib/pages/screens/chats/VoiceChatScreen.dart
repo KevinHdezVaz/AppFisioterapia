@@ -1,14 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:LumorahAI/auth/auth_service.dart';
+import 'package:LumorahAI/auth/login_page.dart';
+import 'package:LumorahAI/auth/register_page.dart';
 import 'package:LumorahAI/model/ChatMessage.dart';
 import 'package:LumorahAI/pages/screens/chats/ConversationState.dart';
 import 'package:LumorahAI/pages/screens/chats/RecordingScreen.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
+import 'package:LumorahAI/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:easy_localization/easy_localization.dart';
 
 class VoiceChatScreen extends StatefulWidget {
   final String language;
@@ -28,18 +33,24 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   late ChatServiceApi _chatService;
   late PusherChannelsFlutter _pusher;
   late stt.SpeechToText _speech;
+  final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
 
   String _statusMessage = '';
   final Color _primaryColor = const Color.fromARGB(255, 255, 255, 255);
   final Color _backgroundColor = const Color(0xFF88D5C2);
-  bool _isLoading = true; // Nueva variable para controlar el estado de carga
-bool _showMicButton = false; // Nueva variable para controlar la visibilidad del botón
+  bool _isLoading = true;
+  bool _showMicButton = false;
+  bool _isSaved = false; // Track if chat is saved
+  int? _currentSessionId; // Store session ID
+
   @override
   void initState() {
     super.initState();
     _initializeServices();
   }
-Future<void> _initializeServices() async {
+
+  Future<void> _initializeServices() async {
     setState(() {
       _isLoading = true;
     });
@@ -56,9 +67,8 @@ Future<void> _initializeServices() async {
 
     setState(() {
       _isLoading = false;
-      // Iniciar el temporizador para mostrar el botón después de 5-6 segundos
       Timer(const Duration(seconds: 5), () {
-        if (mounted) { // Verificar que el widget esté montado
+        if (mounted) {
           setState(() {
             _showMicButton = true;
           });
@@ -71,11 +81,19 @@ Future<void> _initializeServices() async {
     });
   }
 
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage(widget.language);
+    if (Platform.isIOS) {
+      await _flutterTts.setSpeechRate(0.3);
+    } else {
+      await _flutterTts.setSpeechRate(0.5);
+    }
+  }
+
   Future<void> _requestPermissions() async {
     var microphoneStatus = await Permission.microphone.request();
     if (microphoneStatus != PermissionStatus.granted) {
-      _showError(
-          'Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
+      _showError('Permiso de micrófono denegado. Por favor, habilítalo en la configuración.');
     }
   }
 
@@ -85,15 +103,6 @@ Future<void> _initializeServices() async {
       debugPrint('Locale soportado: ${locale.localeId} - ${locale.name}');
     }
   }
-
-Future<void> _initTts() async {
-  await _flutterTts.setLanguage(widget.language);
-  if (Platform.isIOS) {
-    await _flutterTts.setSpeechRate(0.3); // Valor más bajo para iOS
-  } else {
-    await _flutterTts.setSpeechRate(0.5); // Valor para Android/otros
-  }
-}
 
   Future<void> _initializePusher() async {
     _pusher = PusherChannelsFlutter.getInstance();
@@ -114,6 +123,7 @@ Future<void> _initTts() async {
                     'emotional_state': data['emotional_state'] ?? 'neutral',
                     'conversation_level': data['conversation_level'] ?? 'basic',
                   },
+                  'session_id': data['session_id'], // Capture session ID if provided
                 });
                 _statusMessage = 'Respuesta recibida';
                 break;
@@ -129,6 +139,135 @@ Future<void> _initTts() async {
       await _pusher.connect();
     } catch (e) {
       _showError('Error al conectar con Pusher: ${e.toString()}');
+    }
+  }
+
+  Future<bool> _isUserAuthenticated() async {
+    final token = await _storageService.getToken();
+    return token != null && token.isNotEmpty;
+  }
+
+  void _showAuthModal() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => LoginModal(
+        showRegisterPage: () {
+          Navigator.pop(context);
+          showDialog(
+            context: context,
+            builder: (context) => RegisterModal(
+              showLoginPage: () {
+                Navigator.pop(context);
+                _showAuthModal();
+              },
+              inputMode: 'voice',
+            ),
+          );
+        },
+        inputMode: 'voice',
+      ),
+    );
+  }
+
+  Future<void> _saveChat() async {
+    if (!await _isUserAuthenticated()) {
+      if (!mounted) return;
+      _showAuthModal();
+      return;
+    }
+
+    if (_conversationState.messages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay mensajes para guardar'.tr()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController();
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Guardar conversación'.tr(),
+            style: TextStyle(color: Colors.black)),
+        content: TextField(
+          controller: titleController,
+          autofocus: true,
+          style: TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            labelText: 'Título'.tr(),
+            hintText: 'Ejemplo: Conversación 1'.tr(),
+            hintStyle: TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: Color(0xFFF6F6F6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Color(0xFF4BB6A8), width: 2),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'.tr(), style: TextStyle(color: Colors.black)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4BB6A8)),
+            onPressed: () {
+              if (titleController.text.trim().isNotEmpty) {
+                Navigator.pop(context, titleController.text.trim());
+              }
+            },
+            child: Text('Guardar'.tr(), style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (title == null || title.isEmpty) return;
+
+    try {
+      final session = await _chatService.saveChatSession(
+        title: title,
+        messages: _conversationState.messages.reversed
+            .map((m) => {
+                  'text': m.text,
+                  'is_user': m.isUser,
+                  'created_at': m.createdAt.toIso8601String(),
+                })
+            .toList(),
+        sessionId: _currentSessionId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSaved = true;
+        _currentSessionId = session.id;
+        _statusMessage = 'Chat guardado exitosamente';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Chat guardado exitosamente'.tr()),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar el chat: $e'.tr()),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -156,6 +295,7 @@ Future<void> _initTts() async {
           emotionalState: result['emotional_state'] ?? 'neutral',
           conversationLevel: result['conversation_level'] ?? 'basic',
         );
+        _currentSessionId = result['session_id']; // Update session ID if provided
         _statusMessage = 'Conversación actualizada';
       });
     }
@@ -167,6 +307,11 @@ Future<void> _initTts() async {
       emotionalState: response['ai_message']['emotional_state'],
       conversationLevel: response['ai_message']['conversation_level'],
     );
+    if (response['session_id'] != null) {
+      setState(() {
+        _currentSessionId = response['session_id'];
+      });
+    }
   }
 
   void _showError(String message) {
@@ -182,6 +327,8 @@ Future<void> _initTts() async {
     _conversationState.clearConversation();
     setState(() {
       _statusMessage = 'Nueva conversación iniciada';
+      _isSaved = false; // Reset save state for new session
+      _currentSessionId = null; // Reset session ID
     });
     _navigateToRecordingScreen();
   }
@@ -298,7 +445,8 @@ Future<void> _initTts() async {
     _pusher.disconnect();
     super.dispose();
   }
-@override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -316,6 +464,27 @@ Future<void> _initTts() async {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (!_isSaved)
+            Padding(
+              padding: EdgeInsets.only(right: 10),
+              child: TextButton.icon(
+                icon: Icon(Icons.save, color: Colors.white, size: 22),
+                label: Text(
+                  'Guardar'.tr(),
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                onPressed: _saveChat,
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(
@@ -361,7 +530,7 @@ Future<void> _initTts() async {
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Visibility(
-                    visible: _showMicButton, // Controlar visibilidad del botón
+                    visible: _showMicButton,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
