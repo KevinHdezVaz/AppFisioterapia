@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,96 +11,112 @@ class ElevenLabsService {
   final String baseUrl = 'https://api.elevenlabs.io/v1/text-to-speech';
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isSpeaking = false;
+  StreamSubscription? _completionSubscription;
 
   ElevenLabsService({required this.apiKey}) {
-    _configureAudioForPlatform();
+    _configureAudioPlayer();
   }
 
-  Future<void> _configureAudioForPlatform() async {
+  Future<void> _configureAudioPlayer() async {
+    await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+    await _audioPlayer.setVolume(1.0);
+    
     if (Platform.isIOS) {
-      await _audioPlayer.setAudioContext(AudioContext(
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.playAndRecord,
-          options: [
-            AVAudioSessionOptions.defaultToSpeaker,
-            AVAudioSessionOptions.mixWithOthers,
-          ],
+      await _audioPlayer.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: [AVAudioSessionOptions.defaultToSpeaker, AVAudioSessionOptions.mixWithOthers],
+          ),
         ),
-      ));
+      );
     }
   }
 
   Future<void> speak(String text, String voiceId, String language) async {
     try {
-      final languageMap = {
-        'es': 'es-ES',
-        'en': 'en-US',
-        'fr': 'fr-FR',
-        'pt': 'pt-BR',
-      };
-      final ttsLanguage = languageMap[language] ?? 'es-ES';
+      if (_isSpeaking) await stop();
 
       final response = await http.post(
         Uri.parse('$baseUrl/$voiceId'),
-        headers: {
-          'accept': 'audio/mpeg',
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          'User-Agent': 'LumorahAI/1.0.0',
-        },
-        body: json.encode({
-          'text': text,
-          'model_id': 'eleven_multilingual_v2',
-          'voice_settings': {
-            'stability': 0.5,
-            'similarity_boost': 0.75,
-          },
-          'language': ttsLanguage,
-          'output_format': 'mp3_44100_128',
-        }),
-      );
+        headers: _buildHeaders(),
+        body: _buildBody(text, language),
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        _isSpeaking = true;
-        final bytes = response.bodyBytes;
-
-        if (Platform.isIOS) {
-          // Para iOS: Guardar temporalmente y reproducir desde archivo
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/elevenlabs_temp.mp3');
-          await file.writeAsBytes(bytes);
-          await _audioPlayer.play(DeviceFileSource(file.path));
-          await file.delete(); // Limpiar después de reproducir
-        } else {
-          // Android: Reproducir directamente desde bytes
-          await _audioPlayer.play(BytesSource(bytes));
-        }
+        await _handleAudioResponse(response.bodyBytes);
       } else {
-        throw Exception('Failed to generate audio: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to generate audio: ${response.statusCode}');
       }
-    } catch (e, stack) {
+    } catch (e) {
       _isSpeaking = false;
-      print('ElevenLabs Error: $e');
-      print('Stack trace: $stack');
       rethrow;
     }
   }
 
-  bool get isSpeaking => _isSpeaking;
+  Map<String, String> _buildHeaders() => {
+    'accept': 'audio/mpeg',
+    'xi-api-key': apiKey,
+    'Content-Type': 'application/json',
+  };
 
-  Future<void> stop() async {
-    await _audioPlayer.stop();
-    _isSpeaking = false;
+  String _buildBody(String text, String language) => json.encode({
+    'text': text,
+    'model_id': 'eleven_multilingual_v2',
+    'voice_settings': {
+      'stability': 0.5,
+      'similarity_boost': 0.75,
+    },
+  });
+
+  Future<void> _handleAudioResponse(Uint8List bytes) async {
+    _isSpeaking = true;
+    
+    if (Platform.isIOS) {
+      await _playOnIOS(bytes);
+    } else {
+      await _audioPlayer.play(BytesSource(bytes));
+    }
   }
 
-  Future<void> dispose() async {
-    await _audioPlayer.dispose();
+  Future<void> _playOnIOS(Uint8List bytes) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/el_audio_${DateTime.now().millisecondsSinceEpoch}.mp3');
+    
+    try {
+      await file.writeAsBytes(bytes);
+      await _audioPlayer.play(DeviceFileSource(file.path));
+      
+      // Limpieza post-reproducción
+      _audioPlayer.onPlayerComplete.listen((_) async {
+        await file.delete();
+      });
+    } catch (e) {
+      await file.delete();
+      rethrow;
+    }
   }
 
   void setOnComplete(void Function() onComplete) {
-    _audioPlayer.onPlayerComplete.listen((_) {
+    // Cancelar cualquier suscripción previa
+    _completionSubscription?.cancel();
+    
+    _completionSubscription = _audioPlayer.onPlayerComplete.listen((_) {
       _isSpeaking = false;
       onComplete();
     });
   }
+
+  Future<void> stop() async {
+    await _audioPlayer.stop();
+    _isSpeaking = false;
+    _completionSubscription?.cancel();
+  }
+
+  Future<void> dispose() async {
+    await _audioPlayer.dispose();
+    _completionSubscription?.cancel();
+  }
+
+  bool get isSpeaking => _isSpeaking;
 }

@@ -12,17 +12,20 @@ import GoogleSignIn
   ) -> Bool {
     // Configuración avanzada de AVAudioSession
     do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(
-        .playAndRecord,
+    let session = AVAudioSession.sharedInstance()
+    try session.setCategory(
+        .playback, // Cambiado de .playAndRecord ya que solo necesitas reproducción
         mode: .default,
-        options: [.defaultToSpeaker, .allowBluetooth, .allowAirPlay, .mixWithOthers]
-      )
-      try session.setActive(true, options: .notifyOthersOnDeactivation)
-      try session.setPreferredIOBufferDuration(0.005)
-    } catch {
-      print("Error al configurar AVAudioSession: \(error.localizedDescription)")
-    }
+        policy: .default,
+        options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+    )
+    try session.setActive(true, options: .notifyOthersOnDeactivation)
+    try session.setPreferredSampleRate(44100) // Frecuencia estándar para audio
+    try session.setPreferredIOBufferDuration(0.005)
+    print("✅ Configuración de AVAudioSession completada con éxito")
+} catch {
+    print("❌ Error al configurar AVAudioSession: \(error.localizedDescription)")
+}
 
     // Inicializar Facebook SDK
     ApplicationDelegate.shared.application(

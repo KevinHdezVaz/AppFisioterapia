@@ -36,6 +36,7 @@ class ChatServiceApi {
     try {
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) {
+        debugPrint('Request body: $body'); // Log del cuerpo de la solicitud
         request.body = jsonEncode(body);
       }
 
@@ -62,6 +63,30 @@ class ChatServiceApi {
       throw Exception('Error de conexión: ${e.toString()}');
     }
   }
+
+
+  Future<Map<String, dynamic>> sendVoiceMessage({
+  required String message,
+  required String language,
+  int? sessionId,
+  String? userName,
+}) async {
+  final response = await _authenticatedRequest(
+    method: 'POST',
+    endpoint: 'chat/send-voice-message',
+    body: {
+      'message': message,
+      'language': language,
+      if (sessionId != null) 'session_id': sessionId,
+      if (userName != null) 'user_name': userName,
+    },
+  );
+  
+  debugPrint('Voice message response: $response');
+  return response;
+}
+
+
 
   Future<List<ChatSession>> getSessions({bool saved = true}) async {
     try {
@@ -146,38 +171,37 @@ class ChatServiceApi {
     );
     return response;
   }
-  
- 
-Future<void> processAudio(File audioFile) async {
-  final token = await storage.getToken();
-  if (token == null) throw Exception('No autenticado');
 
-  debugPrint('Token enviado: $token');
-  debugPrint('Enviando audio: ${audioFile.path}');
+  Future<void> processAudio(File audioFile) async {
+    final token = await storage.getToken();
+    if (token == null) throw Exception('No autenticado');
 
-  final request = http.MultipartRequest(
-    'POST',
-    Uri.parse('$baseUrl/chat/process-audio'),
-  );
-  request.headers['Authorization'] = 'Bearer $token';
-  request.headers['Accept'] = 'application/json';
-  request.files.add(await http.MultipartFile.fromPath(
-    'audio',
-    audioFile.path,
-    contentType: MediaType('audio', 'mp4'),
-  ));
+    debugPrint('Token enviado: $token');
+    debugPrint('Enviando audio: ${audioFile.path}');
 
-  final streamedResponse = await request.send();
-  final response = await http.Response.fromStream(streamedResponse);
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/process-audio'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+    request.files.add(await http.MultipartFile.fromPath(
+      'audio',
+      audioFile.path,
+      contentType: MediaType('audio', 'mp4'),
+    ));
 
-  debugPrint('Status Code: ${response.statusCode}');
-  debugPrint('Response Body: ${response.body}');
-  debugPrint('Headers: ${response.headers}');
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
-  if (response.statusCode != 200) {
-    throw Exception('Error al procesar audio: ${response.body}');
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Response Body: ${response.body}');
+    debugPrint('Headers: ${response.headers}');
+
+    if (response.statusCode != 200) {
+      throw Exception('Error al procesar audio: ${response.body}');
+    }
   }
-}
 
   Future<ChatSession> saveChatSession({
     required String title,
@@ -206,7 +230,9 @@ Future<void> processAudio(File audioFile) async {
     int? sessionId,
     bool isTemporary = false,
     required String language,
+    String? userName,
   }) async {
+    debugPrint('Sending message with userName: $userName'); // Log del userName
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/send-message',
@@ -215,44 +241,60 @@ Future<void> processAudio(File audioFile) async {
         'session_id': sessionId,
         'is_temporary': isTemporary,
         'language': language,
+        if (userName != null) 'user_name': userName,
       },
     );
+    debugPrint('Send message response: $response'); // Log de la respuesta
     return response;
   }
 
   Future<Map<String, dynamic>> sendTemporaryMessage(
     String message, {
     required String language,
+    String? userName,
   }) async {
+    debugPrint('Sending temporary message with userName: $userName');
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/send-temporary-message',
       body: {
         'message': message,
         'language': language,
+        if (userName != null) 'user_name': userName,
       },
     );
+    debugPrint('Send temporary message response: $response');
     return response;
   }
 
   Future<Map<String, dynamic>> startNewSession({
     required String language,
+    String? userName,
   }) async {
+    debugPrint('Starting new session with userName: $userName');
     final response = await _authenticatedRequest(
       method: 'POST',
       endpoint: 'chat/start-new-session',
-      body: {'language': language},
+      body: {
+        'language': language,
+        if (userName != null) 'user_name': userName,
+      },
     );
+    debugPrint('Start new session response: $response');
     return response;
   }
 
   Future<void> updateUserName(String name, {required String language}) async {
+    debugPrint('Updating userName to: $name');
     await _authenticatedRequest(
       method: 'POST',
       endpoint: 'update-name',
       body: {'name': name, 'language': language},
     );
   }
+
+  // Eliminado el método saveSession porque no hay endpoint correspondiente
+  // Si necesitas este método, implementa el endpoint en ChatController.php
 
   Future<void> saveSession(int sessionId, String title) async {
     await _authenticatedRequest(

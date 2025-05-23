@@ -92,11 +92,7 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
           _showErrorSnackBar('Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
           return;
         }
-        if (micStatus.isPermanentlyDenied) {
-          _showErrorSnackBar('El permiso de micrófono está bloqueado. Actívalo en Configuración > Aplicaciones.');
-          await openAppSettings();
-          return;
-        }
+  
       }
 
       _isSpeechInitialized = await _speech.initialize(
@@ -661,161 +657,166 @@ Widget build(BuildContext context) {
         ),
       ),
     ),
-    drawer: Drawer(
-      child: Container(
-        color: tiffanyColor.withOpacity(0.95),
-        child: FutureBuilder<bool>(
-          future: _isUserAuthenticated(),
-          builder: (context, authSnapshot) {
-            bool isAuthenticated = authSnapshot.data ?? false;
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                FutureBuilder<String?>(
-                  future: _getUserName(),
-                  builder: (context, userSnapshot) {
-                    String headerText = 'helloLumorah'.tr();
-                    return DrawerHeader(
-                      decoration: BoxDecoration(
-                        color: ivoryColor.withOpacity(0.7),
-                      ),
-                      child: Text(
-                        headerText,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: darkTextColor,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.chat, color: lightTextColor),
-                  title: Text(
-                    'chat'.tr(),
+ drawer: Drawer(
+  child: Container(
+    color: tiffanyColor.withOpacity(0.95),
+    child: FutureBuilder<bool>(
+      future: _isUserAuthenticated(),
+      builder: (context, authSnapshot) {
+        bool isAuthenticated = authSnapshot.data ?? false;
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            FutureBuilder<String?>(
+              future: _getUserName(),
+              builder: (context, userSnapshot) {
+                String headerText;
+                if (isAuthenticated && userSnapshot.hasData && userSnapshot.data != null) {
+                  headerText = 'Hola, ${userSnapshot.data}!'.tr();
+                } else {
+                  headerText = 'helloLumorah'.tr();
+                }
+                return DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: ivoryColor.withOpacity(0.7),
+                  ),
+                  child: Text(
+                    headerText,
                     style: TextStyle(
-                      color: lightTextColor,
-                      fontSize: 16,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: darkTextColor,
                       fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
-                          initialMessages: [],
-                          inputMode: 'keyboard',
-                          sessionId: null,
-                        ),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          const begin = Offset(1.0, 0.0);
-                          const end = Offset.zero;
-                          const curve = Curves.easeInOut;
-
-                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                          var slideAnimation = animation.drive(tween);
-
-                          return SlideTransition(
-                            position: slideAnimation,
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        transitionDuration: Duration(milliseconds: 300),
-                      ),
-                    );
-                  },
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.chat, color: lightTextColor),
+              title: Text(
+                'chat'.tr(),
+                style: TextStyle(
+                  color: lightTextColor,
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
                 ),
-                if (isAuthenticated)
-                  ListTile(
-                    leading: Icon(Icons.history, color: lightTextColor),
-                    title: Text(
-                      'chatHistory'.tr(),
-                      style: TextStyle(
-                        color: lightTextColor,
-                        fontSize: 16,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                      ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
+                      initialMessages: [],
+                      inputMode: 'keyboard',
+                      sessionId: null,
                     ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatHistoryScreen(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var slideAnimation = animation.drive(tween);
+
+                      return SlideTransition(
+                        position: slideAnimation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
                         ),
                       );
                     },
+                    transitionDuration: Duration(milliseconds: 300),
                   ),
-                ListTile(
-                  leading: Icon(Icons.language, color: lightTextColor),
-                  title: Text(
-                    'changeLanguage'.tr(),
-                    style: TextStyle(
-                      color: lightTextColor,
-                      fontSize: 16,
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showLanguageSelector(context);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, color: lightTextColor),
-                  title: Text(
-                    'settings'.tr(),
-                    style: TextStyle(
-                      color: lightTextColor,
-                      fontSize: 16,
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showSettingsModal(context);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    isAuthenticated ? Icons.logout : Icons.login,
+                );
+              },
+            ),
+            if (isAuthenticated)
+              ListTile(
+                leading: Icon(Icons.history, color: lightTextColor),
+                title: Text(
+                  'chatHistory'.tr(),
+                  style: TextStyle(
                     color: lightTextColor,
+                    fontSize: 16,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
                   ),
-                  title: Text(
-                    isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
-                    style: TextStyle(
-                      color: lightTextColor,
-                      fontSize: 16,
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (isAuthenticated) {
-                      _signOut(context);
-                    } else {
-                      _showLoginModal(context);
-                    }
-                  },
                 ),
-              ],
-            );
-          },
-        ),
-      ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatHistoryScreen(),
+                    ),
+                  );
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.language, color: lightTextColor),
+              title: Text(
+                'changeLanguage'.tr(),
+                style: TextStyle(
+                  color: lightTextColor,
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showLanguageSelector(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.settings, color: lightTextColor),
+              title: Text(
+                'settings'.tr(),
+                style: TextStyle(
+                  color: lightTextColor,
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showSettingsModal(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                isAuthenticated ? Icons.logout : Icons.login,
+                color: lightTextColor,
+              ),
+              title: Text(
+                isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
+                style: TextStyle(
+                  color: lightTextColor,
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                if (isAuthenticated) {
+                  _signOut(context);
+                } else {
+                  _showLoginModal(context);
+                }
+              },
+            ),
+          ],
+        );
+      },
     ),
+  ),
+),
     body: Stack(
       children: [
         Positioned.fill(child: ParticulasFlotantes()),

@@ -58,6 +58,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
 
+ 
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
@@ -82,6 +83,66 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     'fr': 'fr_FR',
     'pt': 'pt_BR',
   };
+
+  List<TextSpan> _parseTextToSpans(String text) {
+    final List<TextSpan> spans = [];
+    final RegExp boldRegex = RegExp(r'\*\*(.*?)\*\*');
+    int lastIndex = 0;
+
+    for (final match in boldRegex.allMatches(text)) {
+      // Texto antes del match
+      if (match.start > lastIndex) {
+        spans.add(
+          TextSpan(
+            text: text.substring(lastIndex, match.start),
+            style: const TextStyle(
+              color: Colors.black87,
+              fontFamily: 'Lora',
+              fontSize: 15,
+              height: 1.6,
+              letterSpacing: 0.2,
+            ),
+          ),
+        );
+      }
+
+      // Texto en negrita
+      spans.add(
+        TextSpan(
+          text: match.group(1), // El texto dentro de **
+          style: const TextStyle(
+            color: Colors.black87,
+            fontFamily: 'Lora',
+            fontSize: 15,
+            height: 1.6,
+            letterSpacing: 0.2,
+            fontWeight: FontWeight.bold, // Negrita
+          ),
+        ),
+      );
+
+      lastIndex = match.end;
+    }
+
+    // Texto restante después del último match
+    if (lastIndex < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastIndex),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontFamily: 'Lora',
+            fontSize: 15,
+            height: 1.6,
+            letterSpacing: 0.2,
+          ),
+        ),
+      );
+    }
+
+    return spans;
+  }
+
 
   @override
   void initState() {
@@ -136,29 +197,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _showErrorSnackBar('Error initializing speech recognition');
     }
   }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialMessageSent) {
-      _initialMessageSent = true;
-      if (_currentSessionId == null && _messages.isEmpty) {
-        // Iniciar una nueva sesión para mostrar el mensaje de bienvenida
-        _startNewSession().then((_) {
-          // Después de agregar el mensaje de bienvenida, procesar el mensaje inicial si existe
-          if (widget.initialMessage != null &&
-              widget.initialMessage!.isNotEmpty) {
-            _sendMessage(widget.initialMessage!);
-          }
-        });
-      } else if (widget.initialMessage != null &&
-          widget.initialMessage!.isNotEmpty) {
-        // Si ya existe una sesión, enviar el mensaje inicial directamente
-        _sendMessage(widget.initialMessage!);
-      }
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  if (!_initialMessageSent) {
+    _initialMessageSent = true;
+    if (_currentSessionId == null && _messages.isEmpty) {
+      _startNewSession().then((_) {
+        if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+          _sendMessage(widget.initialMessage!);
+        }
+      });
+    } else if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      _sendMessage(widget.initialMessage!);
     }
   }
-
+}
   @override
   void dispose() {
     _speech.stop();
@@ -348,170 +402,133 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _startNewSession() async {
-    try {
-      final response = await _chatService.startNewSession(
-        language: context.locale.languageCode,
-      );
+Future<void> _startNewSession() async {
+  setState(() {
+    _isLoading = true;
+  });
+  try {
+    final currentUser = await _storageService.getUser();
+    final userName = currentUser?.nombre ?? 'Amig@';
+    final response = await _chatService.startNewSession(
+      language: context.locale.languageCode,
+      userName: userName,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      final String welcomeText = response['ai_message']['text'];
-
-      final welcomeMessage = ChatMessage(
-        id: -1,
-        chatSessionId: response['session_id'] ?? -1,
-        userId: 0,
-        text: welcomeText,
-        isUser: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        emotionalState: response['ai_message']['emotional_state'] ?? 'neutral',
-        conversationLevel:
-            response['ai_message']['conversation_level'] ?? 'basic',
-      );
-
+    setState(() {
+      _currentSessionId = response['session_id'];
+      _emotionalState = response['ai_message']['emotional_state'] ?? 'neutral';
+      _conversationLevel = response['ai_message']['conversation_level'] ?? 'basic';
+      _isLoading = false;
+    });
+  } catch (e) {
+    if (mounted) {
       setState(() {
-        _messages.insert(0, welcomeMessage);
-        _currentSessionId = response['session_id'];
-        _emotionalState =
-            response['ai_message']['emotional_state'] ?? 'neutral';
-        _conversationLevel =
-            response['ai_message']['conversation_level'] ?? 'basic';
-        _updateTokenCount(welcomeMessage.text);
+        _isLoading = false;
       });
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar('errorStartingSession'.tr(args: [e.toString()]));
-      }
+      _showErrorSnackBar('errorStartingSession'.tr(args: [e.toString()]));
     }
   }
+}
 
-  Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
-    if (!await _isUserAuthenticated()) {
-      if (!mounted) return;
-      _showAuthModal();
+Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
+  if (!await _isUserAuthenticated()) {
+    if (!mounted) return;
+    _showAuthModal();
+    return;
+  }
+
+  if (message.trim().isEmpty) return;
+
+  final currentUser = await _storageService.getUser();
+  final newMessage = ChatMessage(
+    id: -1,
+    chatSessionId: _currentSessionId ?? -1,
+    userId: currentUser?.id ?? -1,
+    text: message,
+    isUser: true,
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
+  );
+
+  setState(() {
+    _messages.insert(0, newMessage);
+    _isTyping = true;
+    _typingIndex = 0;
+    _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+      if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
+    });
+    _updateTokenCount(newMessage.text);
+  });
+  _controller.clear();
+
+  await _playThinkingSound();
+
+  try {
+    print('Sending message with session_id: $_currentSessionId');
+    final response = isTemporary
+        ? await _chatService.sendTemporaryMessage(
+            message,
+            language: context.locale.languageCode,
+            userName: currentUser?.nombre ?? 'Amig@',
+          )
+        : await _chatService.sendMessage(
+            message: message,
+            sessionId: _currentSessionId,
+            isTemporary: false,
+            language: context.locale.languageCode,
+            userName: currentUser?.nombre ?? 'Amig@',
+          );
+
+    if (!mounted) {
+      await _stopThinkingSound();
       return;
     }
 
-    if (message.trim().isEmpty) return;
-
-    final currentUser = await _storageService.getUser();
-    final newMessage = ChatMessage(
+    print('Received response: $response');
+    final aiMessage = ChatMessage(
       id: -1,
-      chatSessionId: _currentSessionId ?? -1,
-      userId: currentUser?.id ?? -1,
-      text: message,
-      isUser: true,
+      chatSessionId: response['session_id'] ?? _currentSessionId ?? -1,
+      userId: 0,
+      text: response['ai_message']['text'],
+      isUser: false,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      emotionalState: response['ai_message']['emotional_state'],
+      conversationLevel: response['ai_message']['conversation_level'],
     );
 
     setState(() {
-      _messages.insert(0, newMessage);
-      _isTyping = true;
-      _typingIndex = 0;
-      _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
-        if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
-      });
-      _updateTokenCount(newMessage.text);
+      _messages.insert(0, aiMessage);
+      _isTyping = false;
+      _typingTimer.cancel();
+      if (!isTemporary && response['session_id'] != null) {
+        _currentSessionId = response['session_id'];
+      }
+      _updateTokenCount(aiMessage.text);
     });
-    _controller.clear();
 
-    await _playThinkingSound();
-
-    await Future.delayed(Duration(seconds: 1));
-
-    try {
-      final response = isTemporary
-          ? await _chatService.sendTemporaryMessage(
-              message,
-              language: context.locale.languageCode,
-            )
-          : await _chatService.sendMessage(
-              message: message,
-              sessionId: _currentSessionId,
-              isTemporary: false,
-              language: context.locale.languageCode,
-            );
-
-      if (!mounted) {
-        await _stopThinkingSound();
-        return;
-      }
-
-      final aiMessage = ChatMessage(
-        id: -1,
-        chatSessionId: response['session_id'] ?? _currentSessionId ?? -1,
-        userId: 0,
-        text: response['ai_message']['text'],
-        isUser: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        emotionalState: response['ai_message']['emotional_state'],
-        conversationLevel: response['ai_message']['conversation_level'],
-      );
-
-      setState(() {
-        _messages.insert(0, aiMessage);
-        _isTyping = false;
-        _emotionalState = response['ai_message']['emotional_state'];
-        _conversationLevel = response['ai_message']['conversation_level'];
-        _typingTimer.cancel();
-        if (!isTemporary && response['session_id'] != null) {
-          _currentSessionId = response['session_id'];
-        }
-        _updateTokenCount(aiMessage.text);
-      });
-
-      if (_emotionalState == 'crisis') {
-        _showCrisisAlert();
-      } else if (_emotionalState == 'sensitive') {
-        _messages.insert(
-          0,
-          ChatMessage(
-            id: -1,
-            chatSessionId: _currentSessionId ?? -1,
-            userId: 0,
-            text: _getSensitiveValidationText(context.locale.languageCode),
-            isUser: false,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            emotionalState: 'sensitive',
-            conversationLevel: _conversationLevel,
-          ),
-        );
-        _updateTokenCount(
-            _getSensitiveValidationText(context.locale.languageCode));
-      }
-
-      await _stopThinkingSound();
-    } catch (e) {
-      if (!mounted) {
-        await _stopThinkingSound();
-        return;
-      }
-      setState(() {
-        _isTyping = false;
-        _typingTimer.cancel();
-      });
-      await _stopThinkingSound();
-      _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
+    if (aiMessage.emotionalState == 'crisis') {
+      _showCrisisAlert();
     }
-  }
 
-  String _getSensitiveValidationText(String languageCode) {
-    switch (languageCode) {
-      case 'en':
-        return "I'm here with you… take all the time you need.";
-      case 'fr':
-        return "Je suis là avec vous… prenez tout le temps dont vous avez besoin.";
-      case 'pt':
-        return "Estou aqui com você… leve o tempo que precisar.";
-      default:
-        return "Estoy contigo… tómate todo el tiempo que necesites.";
+    await _stopThinkingSound();
+  } catch (e) {
+    if (!mounted) {
+      await _stopThinkingSound();
+      return;
     }
+    setState(() {
+      _isTyping = false;
+      _typingTimer.cancel();
+    });
+    await _stopThinkingSound();
+    _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
   }
+}
+ 
+ 
 
   void _showCrisisAlert() {
     showDialog(
@@ -723,92 +740,57 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    final time =
-        "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
+Widget _buildMessageBubble(ChatMessage message) {
+  final time = "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: Column(
-        crossAxisAlignment:
-            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          ChatBubble(
-            clipper: ChatBubbleClipper1(
-              type: message.isUser
-                  ? BubbleType.sendBubble
-                  : BubbleType.receiverBubble,
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    child: Column(
+      crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        ChatBubble(
+          clipper: ChatBubbleClipper1(
+            type: message.isUser ? BubbleType.sendBubble : BubbleType.receiverBubble,
+          ),
+          alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
+          margin: EdgeInsets.only(top: 5),
+          backGroundColor: message.isUser
+              ? Color(0xFFFFE0B2).withOpacity(0.9)
+              : message.emotionalState == 'sensitive'
+                  ? Color(0xFFF6F6F6).withOpacity(0.8)
+                  : Colors.white.withOpacity(0.8),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.7,
+              minWidth: 0, // Permitir que el contenedor se ajuste al contenido
             ),
-            alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
-            margin: EdgeInsets.only(top: 5),
-            backGroundColor: message.isUser
-                ? Color(0xFFFFE0B2).withOpacity(0.9)
-                : Colors.white.withOpacity(0.8),
-            child: Container(
-              constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7),
-              child: Column(
-                crossAxisAlignment: message.isUser
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  SelectableText(
-                    message.text,
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontFamily: 'Lora',
-                      fontSize: 14,
-                    ),
-                    textAlign: message.isUser ? TextAlign.end : TextAlign.start,
-                    semanticsLabel: message.isUser
-                        ? 'Mensaje del usuario: ${message.text}'
-                        : 'Mensaje de Lumorah: ${message.text}',
-                    toolbarOptions: ToolbarOptions(
-                      copy: true,
-                      selectAll: true,
-                      cut: false,
-                      paste: false,
-                    ),
-                    onSelectionChanged: (selection, cause) async {
-                      if (cause == SelectionChangedCause.toolbar &&
-                          selection.textInside(message.text).isNotEmpty) {
-                        // Verificar si el texto seleccionado fue copiado
-                        final clipboardData =
-                            await Clipboard.getData('text/plain');
-                        if (clipboardData != null &&
-                            clipboardData.text ==
-                                selection.textInside(message.text)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('textCopied'.tr()),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                  if (message.imageUrl != null)
-                    Image.network(message.imageUrl!),
-                  SizedBox(height: 5),
-                  Text(
-                    time,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    semanticsLabel: 'Enviado a las $time',
-                  ),
-                ],
-              ),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Más espacio interno
+            child: Column(
+              crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+            RichText(
+            text: TextSpan(
+              children: _parseTextToSpans(message.text),
+            ),
+            textAlign: message.isUser ? TextAlign.end : TextAlign.start,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+           ),
+                if (message.imageUrl != null) Image.network(message.imageUrl!),
+                SizedBox(height: 5),
+                Text(
+                  time,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  semanticsLabel: 'Enviado a las $time',
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   String _getEmotionalStateText(String? state) {
     switch (state) {
@@ -1156,14 +1138,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             if (_isLoading)
               Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(micButtonColor),
+               valueColor: AlwaysStoppedAnimation<Color>(ivoryColor), // Color is here
+        strokeWidth: 6.0,
+        backgroundColor: Colors.white.withOpacity(0.3),
                 ),
               )
             else
               Column(
                 children: [
                   AppBar(
-                    backgroundColor: Colors.transparent,
+                    backgroundColor:Color(0xFF88D5C2),
                     elevation: 0,
                     leading: IconButton(
                       icon: Icon(Icons.arrow_back, color: Colors.black),

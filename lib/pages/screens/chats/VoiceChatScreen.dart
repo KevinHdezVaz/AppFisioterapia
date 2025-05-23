@@ -35,7 +35,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   late stt.SpeechToText _speech;
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
-
+ 
   String _statusMessage = '';
   final Color _primaryColor = const Color.fromARGB(255, 255, 255, 255);
   final Color _backgroundColor = const Color(0xFF88D5C2);
@@ -43,6 +43,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   bool _showMicButton = false;
   bool _isSaved = false; // Track if chat is saved
   int? _currentSessionId; // Store session ID
+     Color ivoryColor = Color(0xFFFDF8F2);
 
   @override
   void initState() {
@@ -490,11 +491,14 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
+          ?   Center(
+  child: CircularProgressIndicator(
+    strokeWidth: 6.0,
+    valueColor: AlwaysStoppedAnimation<Color>(ivoryColor),
+    backgroundColor: Colors.white.withOpacity(0.3),
+  ),
+)
+
           : Column(
               children: [
                 Padding(
