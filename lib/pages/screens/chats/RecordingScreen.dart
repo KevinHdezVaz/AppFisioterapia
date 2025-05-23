@@ -26,7 +26,7 @@ class RecordingScreen extends StatefulWidget {
   _RecordingScreenState createState() => _RecordingScreenState();
 }
 
-class _RecordingScreenState extends State<RecordingScreen> 
+class _RecordingScreenState extends State<RecordingScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late stt.SpeechToText _speech;
   late ElevenLabsService _elevenLabsService;
@@ -62,14 +62,15 @@ class _RecordingScreenState extends State<RecordingScreen>
       apiKey: "sk_5c7014c450eb767dbc8cd3ca2cdadadaceb4dbc52708cac9",
     );
     _statusMessage = 'listening'.tr();
-    
+
     _pulseAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
-    
+
     _pulseScale = Tween<double>(begin: 130.0, end: 200.0).animate(
-      CurvedAnimation(parent: _pulseAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+          parent: _pulseAnimationController, curve: Curves.easeInOut),
     );
 
     _thinkingAnimationController = AnimationController(
@@ -81,9 +82,10 @@ class _RecordingScreenState extends State<RecordingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    
+
     _rhythmValue = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _rhythmAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+          parent: _rhythmAnimationController, curve: Curves.easeInOut),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           _rhythmAnimationController.reverse();
@@ -101,14 +103,14 @@ class _RecordingScreenState extends State<RecordingScreen>
 
   Future<void> _initTts() async {
     _elevenLabsService.setOnComplete(() => _handleAudioCompletion());
-    
+
     final languageMap = {
       'es': 'es-ES',
       'en': 'en-US',
       'fr': 'fr-FR',
       'pt': 'pt-BR',
     };
-    
+
     final ttsLanguage = languageMap[widget.language] ?? 'es-ES';
     await _flutterTts.setLanguage(ttsLanguage);
     await _flutterTts.setSpeechRate(0.5);
@@ -118,17 +120,18 @@ class _RecordingScreenState extends State<RecordingScreen>
 
   void _handleAudioCompletion() {
     if (!mounted) return;
-    
+
     setState(() {
       _isSpeaking = false;
       _isProcessing = false;
       _statusMessage = 'listening'.tr();
+      _showListeningIndicator = true; // Mantener true para el estado de escucha
       _pulseAnimationController.forward();
       _thinkingAnimationController.stop();
       _rhythmAnimationController.stop();
-      
+
       if (_hasVibrator) Vibration.cancel();
-      
+
       Future.delayed(Duration(milliseconds: 500), () {
         if (mounted) _startRecording();
       });
@@ -157,8 +160,12 @@ class _RecordingScreenState extends State<RecordingScreen>
 
     if (available) {
       final localeId = {
-        'es': 'es_ES', 'en': 'en_US', 'fr': 'fr_FR', 'pt': 'pt_BR'
-      }[widget.language] ?? 'es_ES';
+            'es': 'es_ES',
+            'en': 'en_US',
+            'fr': 'fr_FR',
+            'pt': 'pt_BR'
+          }[widget.language] ??
+          'es_ES';
 
       _speech.listen(
         onResult: (result) {
@@ -176,8 +183,8 @@ class _RecordingScreenState extends State<RecordingScreen>
             final newLevel = ((level + 160) / 160).clamp(0.0, 1.0);
             setState(() {
               _soundLevel = newLevel;
-              _smoothedSoundLevel = lerpDouble(
-                _smoothedSoundLevel, _soundLevel, 0.1)!;
+              _smoothedSoundLevel =
+                  lerpDouble(_smoothedSoundLevel, _soundLevel, 0.1)!;
               if (newLevel > 0.1) {
                 _showListeningIndicator = true;
                 _resetSilenceTimer();
@@ -233,8 +240,9 @@ class _RecordingScreenState extends State<RecordingScreen>
     setState(() {
       _isRecording = false;
       _isProcessing = true;
-      _statusMessage = 'processing'.tr();
-      _showListeningIndicator = false;
+      _statusMessage = 'Procesando...';
+      _showListeningIndicator =
+          true; // Cambiado de false a true para mostrar "Procesando..."
       _pulseAnimationController.stop();
       _thinkingAnimationController.forward();
     });
@@ -256,18 +264,21 @@ class _RecordingScreenState extends State<RecordingScreen>
         message: _partialTranscription,
         language: widget.language,
         sessionId: null,
-       );
+      );
 
       setState(() {
         _aiResponse = response['ai_message']['text'];
-        _emotionalState = response['ai_message']['emotional_state'] ?? 'neutral';
-        _conversationLevel = response['ai_message']['conversation_level'] ?? 'basic';
-        _statusMessage = 'responding'.tr();
+        _emotionalState =
+            response['ai_message']['emotional_state'] ?? 'neutral';
+        _conversationLevel =
+            response['ai_message']['conversation_level'] ?? 'basic';
+        _statusMessage = 'Hablando IA...';
         _isSpeaking = true;
         _isProcessing = false;
+        _showListeningIndicator = true; // Añadido para mostrar "Hablando IA..."
         _thinkingAnimationController.forward();
         _rhythmAnimationController.forward();
-        
+
         if (_hasVibrator) {
           Vibration.cancel();
           Vibration.vibrate(pattern: [1000, 100, 1000, 100], repeat: -1);
@@ -338,7 +349,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                         Icon(Icons.mic, color: Colors.red, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          'Escuchando...',
+                          _statusMessage, // Dynamically displays "Escuchando...", "Procesando...", or "Expresando respuesta..."
                           style: TextStyle(color: Colors.white),
                         ),
                         SizedBox(width: 8),
@@ -355,6 +366,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                     ),
                   ),
                 ),
+                // Rest of the build method remains unchanged
                 Expanded(
                   child: Center(
                     child: AnimatedSwitcher(
@@ -375,20 +387,23 @@ class _RecordingScreenState extends State<RecordingScreen>
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: Color(0xFFFFE5B4).withOpacity(0.7),
-                                ));
+                                  ),
+                                );
                               },
                             ),
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       CircleAvatar(
                         radius: 40,
-                        backgroundColor: _isRecording ? Colors.red : Colors.blueGrey,
+                        backgroundColor:
+                            _isRecording ? Colors.red : Colors.blueGrey,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -423,14 +438,14 @@ class _RecordingScreenState extends State<RecordingScreen>
                         radius: 40,
                         backgroundColor: Colors.blueGrey,
                         child: IconButton(
-                          icon: Icon(Icons.close, color: Colors.white, size: 35),
+                          icon:
+                              Icon(Icons.close, color: Colors.white, size: 35),
                           onPressed: _closeScreen,
                         ),
                       ),
                     ],
                   ),
                 ),
-                
               ],
             ),
           ],
