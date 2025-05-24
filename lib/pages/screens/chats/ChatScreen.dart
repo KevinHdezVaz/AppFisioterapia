@@ -1,6 +1,5 @@
 import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
-import 'package:LumorahAI/utils/PermissionHandler.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -58,8 +57,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
-bool _isMicPermissionGranted = false;
- 
+
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
@@ -144,8 +142,7 @@ bool _isMicPermissionGranted = false;
     return spans;
   }
 
-
- @override
+  @override
   void initState() {
     super.initState();
     _messages = widget.initialMessages?.reversed.toList() ?? [];
@@ -162,6 +159,7 @@ bool _isMicPermissionGranted = false;
     )..repeat(reverse: true);
 
     _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate(
+      // Reduced size
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
@@ -169,56 +167,54 @@ bool _isMicPermissionGranted = false;
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
   }
 
- 
- 
-
- Future<void> _initializeSpeech() async {
+  Future<void> _initializeSpeech() async {
     try {
-      _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
-      if (!_isMicPermissionGranted) {
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        _showErrorSnackBar('Se requieren permisos de micrófono');
         return;
       }
-
       _isSpeechAvailable = await _speech.initialize(
         onStatus: (status) => debugPrint('Speech status: $status'),
-        onError: (error) {
-          debugPrint('Speech error: $error');
-          _showErrorSnackBar('Error en reconocimiento de voz: ${error.errorMsg}');
-        },
+        onError: (error) => debugPrint('Speech error: $error'),
       );
-
       if (_isSpeechAvailable) {
         setState(() {
           _isSpeechInitialized = true;
         });
+        // Lista los idiomas disponibles
+        final locales = await _speech.locales();
+        debugPrint(
+            'Available locales: ${locales.map((l) => l.localeId).toList()}');
         debugPrint('Speech initialized successfully');
       } else {
         debugPrint('Speech initialization failed');
-        _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
       }
     } catch (e) {
       debugPrint('Error initializing speech: $e');
-      _showErrorSnackBar('Error al inicializar el reconocimiento de voz');
+      _showErrorSnackBar('Error initializing speech recognition');
     }
   }
 
-  
-@override
-void didChangeDependencies() {
-  super.didChangeDependencies();
-  if (!_initialMessageSent) {
-    _initialMessageSent = true;
-    if (_currentSessionId == null && _messages.isEmpty) {
-      _startNewSession().then((_) {
-        if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
-          _sendMessage(widget.initialMessage!);
-        }
-      });
-    } else if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
-      _sendMessage(widget.initialMessage!);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialMessageSent) {
+      _initialMessageSent = true;
+      if (_currentSessionId == null && _messages.isEmpty) {
+        _startNewSession().then((_) {
+          if (widget.initialMessage != null &&
+              widget.initialMessage!.isNotEmpty) {
+            _sendMessage(widget.initialMessage!);
+          }
+        });
+      } else if (widget.initialMessage != null &&
+          widget.initialMessage!.isNotEmpty) {
+        _sendMessage(widget.initialMessage!);
+      }
     }
   }
-}
+
   @override
   void dispose() {
     _speech.stop();
@@ -408,133 +404,133 @@ void didChangeDependencies() {
     }
   }
 
-Future<void> _startNewSession() async {
-  setState(() {
-    _isLoading = true;
-  });
-  try {
-    final currentUser = await _storageService.getUser();
-    final userName = currentUser?.nombre ?? 'Amig@';
-    final response = await _chatService.startNewSession(
-      language: context.locale.languageCode,
-      userName: userName,
-    );
-
-    if (!mounted) return;
-
+  Future<void> _startNewSession() async {
     setState(() {
-      _currentSessionId = response['session_id'];
-      _emotionalState = response['ai_message']['emotional_state'] ?? 'neutral';
-      _conversationLevel = response['ai_message']['conversation_level'] ?? 'basic';
-      _isLoading = false;
+      _isLoading = true;
     });
-  } catch (e) {
-    if (mounted) {
+    try {
+      final currentUser = await _storageService.getUser();
+      final userName = currentUser?.nombre ?? 'Amig@';
+      final response = await _chatService.startNewSession(
+        language: context.locale.languageCode,
+        userName: userName,
+      );
+
+      if (!mounted) return;
+
       setState(() {
+        _currentSessionId = response['session_id'];
+        _emotionalState =
+            response['ai_message']['emotional_state'] ?? 'neutral';
+        _conversationLevel =
+            response['ai_message']['conversation_level'] ?? 'basic';
         _isLoading = false;
       });
-      _showErrorSnackBar('errorStartingSession'.tr(args: [e.toString()]));
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar('errorStartingSession'.tr(args: [e.toString()]));
+      }
     }
   }
-}
 
-Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
-  if (!await _isUserAuthenticated()) {
-    if (!mounted) return;
-    _showAuthModal();
-    return;
-  }
-
-  if (message.trim().isEmpty) return;
-
-  final currentUser = await _storageService.getUser();
-  final newMessage = ChatMessage(
-    id: -1,
-    chatSessionId: _currentSessionId ?? -1,
-    userId: currentUser?.id ?? -1,
-    text: message,
-    isUser: true,
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-  );
-
-  setState(() {
-    _messages.insert(0, newMessage);
-    _isTyping = true;
-    _typingIndex = 0;
-    _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
-      if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
-    });
-    _updateTokenCount(newMessage.text);
-  });
-  _controller.clear();
-
-  await _playThinkingSound();
-
-  try {
-    print('Sending message with session_id: $_currentSessionId');
-    final response = isTemporary
-        ? await _chatService.sendTemporaryMessage(
-            message,
-            language: context.locale.languageCode,
-            userName: currentUser?.nombre ?? 'Amig@',
-          )
-        : await _chatService.sendMessage(
-            message: message,
-            sessionId: _currentSessionId,
-            isTemporary: false,
-            language: context.locale.languageCode,
-            userName: currentUser?.nombre ?? 'Amig@',
-          );
-
-    if (!mounted) {
-      await _stopThinkingSound();
+  Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
+    if (!await _isUserAuthenticated()) {
+      if (!mounted) return;
+      _showAuthModal();
       return;
     }
 
-    print('Received response: $response');
-    final aiMessage = ChatMessage(
+    if (message.trim().isEmpty) return;
+
+    final currentUser = await _storageService.getUser();
+    final newMessage = ChatMessage(
       id: -1,
-      chatSessionId: response['session_id'] ?? _currentSessionId ?? -1,
-      userId: 0,
-      text: response['ai_message']['text'],
-      isUser: false,
+      chatSessionId: _currentSessionId ?? -1,
+      userId: currentUser?.id ?? -1,
+      text: message,
+      isUser: true,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      emotionalState: response['ai_message']['emotional_state'],
-      conversationLevel: response['ai_message']['conversation_level'],
     );
 
     setState(() {
-      _messages.insert(0, aiMessage);
-      _isTyping = false;
-      _typingTimer.cancel();
-      if (!isTemporary && response['session_id'] != null) {
-        _currentSessionId = response['session_id'];
+      _messages.insert(0, newMessage);
+      _isTyping = true;
+      _typingIndex = 0;
+      _typingTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+        if (mounted) setState(() => _typingIndex = (_typingIndex + 1) % 3);
+      });
+      _updateTokenCount(newMessage.text);
+    });
+    _controller.clear();
+
+    await _playThinkingSound();
+
+    try {
+      print('Sending message with session_id: $_currentSessionId');
+      final response = isTemporary
+          ? await _chatService.sendTemporaryMessage(
+              message,
+              language: context.locale.languageCode,
+              userName: currentUser?.nombre ?? 'Amig@',
+            )
+          : await _chatService.sendMessage(
+              message: message,
+              sessionId: _currentSessionId,
+              isTemporary: false,
+              language: context.locale.languageCode,
+              userName: currentUser?.nombre ?? 'Amig@',
+            );
+
+      if (!mounted) {
+        await _stopThinkingSound();
+        return;
       }
-      _updateTokenCount(aiMessage.text);
-    });
 
-    if (aiMessage.emotionalState == 'crisis') {
-      _showCrisisAlert();
-    }
+      print('Received response: $response');
+      final aiMessage = ChatMessage(
+        id: -1,
+        chatSessionId: response['session_id'] ?? _currentSessionId ?? -1,
+        userId: 0,
+        text: response['ai_message']['text'],
+        isUser: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        emotionalState: response['ai_message']['emotional_state'],
+        conversationLevel: response['ai_message']['conversation_level'],
+      );
 
-    await _stopThinkingSound();
-  } catch (e) {
-    if (!mounted) {
+      setState(() {
+        _messages.insert(0, aiMessage);
+        _isTyping = false;
+        _typingTimer.cancel();
+        if (!isTemporary && response['session_id'] != null) {
+          _currentSessionId = response['session_id'];
+        }
+        _updateTokenCount(aiMessage.text);
+      });
+
+      if (aiMessage.emotionalState == 'crisis') {
+        _showCrisisAlert();
+      }
+
       await _stopThinkingSound();
-      return;
+    } catch (e) {
+      if (!mounted) {
+        await _stopThinkingSound();
+        return;
+      }
+      setState(() {
+        _isTyping = false;
+        _typingTimer.cancel();
+      });
+      await _stopThinkingSound();
+      _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
     }
-    setState(() {
-      _isTyping = false;
-      _typingTimer.cancel();
-    });
-    await _stopThinkingSound();
-    _showErrorSnackBar('errorSendingMessage'.tr(args: [e.toString()]));
   }
-}
- 
- 
 
   void _showCrisisAlert() {
     showDialog(
@@ -655,14 +651,18 @@ Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
   // Elimina esta línea:
 // String _transcribedText = '';
 
-Future<void> _startListening() async {
-    if (_isListening || !_isSpeechInitialized || !_isMicPermissionGranted) {
-      if (!_isMicPermissionGranted) {
-        _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
-      }
-      if (!_isSpeechInitialized || !_isMicPermissionGranted) {
-        return;
-      }
+  Future<void> _startListening() async {
+    if (_isListening) return;
+
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
+      _showErrorSnackBar('Se requieren permisos de micrófono');
+      return;
+    }
+
+    if (!_isSpeechInitialized) {
+      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
+      return;
     }
 
     try {
@@ -676,10 +676,13 @@ Future<void> _startListening() async {
 
       _speech.listen(
         onResult: (result) {
-          debugPrint('Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+          debugPrint(
+              'Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
           setState(() {
             _controller.text = result.recognizedWords;
-            _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+            // Keep cursor at the end
+            _controller.selection =
+                TextSelection.collapsed(offset: _controller.text.length);
           });
         },
         localeId: localeId,
@@ -699,6 +702,7 @@ Future<void> _startListening() async {
       _showErrorSnackBar('Error al iniciar: $e');
     }
   }
+
   Future<void> _stopListening() async {
     if (!_isListening) return;
 
@@ -730,7 +734,7 @@ Future<void> _startListening() async {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message.tr()),
+        content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -738,57 +742,66 @@ Future<void> _startListening() async {
     );
   }
 
-Widget _buildMessageBubble(ChatMessage message) {
-  final time = "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
+  Widget _buildMessageBubble(ChatMessage message) {
+    final time =
+        "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}";
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    child: Column(
-      crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        ChatBubble(
-          clipper: ChatBubbleClipper1(
-            type: message.isUser ? BubbleType.sendBubble : BubbleType.receiverBubble,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: Column(
+        crossAxisAlignment:
+            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          ChatBubble(
+            clipper: ChatBubbleClipper1(
+              type: message.isUser
+                  ? BubbleType.sendBubble
+                  : BubbleType.receiverBubble,
+            ),
+            alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
+            margin: EdgeInsets.only(top: 5),
+            backGroundColor: message.isUser
+                ? Color(0xFFFFE0B2).withOpacity(0.9)
+                : message.emotionalState == 'sensitive'
+                    ? Color(0xFFF6F6F6).withOpacity(0.8)
+                    : Colors.white.withOpacity(0.8),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+                minWidth:
+                    0, // Permitir que el contenedor se ajuste al contenido
+              ),
+              padding: EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8), // Más espacio interno
+              child: Column(
+                crossAxisAlignment: message.isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      children: _parseTextToSpans(message.text),
+                    ),
+                    textAlign: message.isUser ? TextAlign.end : TextAlign.start,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
+                  ),
+                  if (message.imageUrl != null)
+                    Image.network(message.imageUrl!),
+                  SizedBox(height: 5),
+                  Text(
+                    time,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    semanticsLabel: 'Enviado a las $time',
+                  ),
+                ],
+              ),
+            ),
           ),
-          alignment: message.isUser ? Alignment.topRight : Alignment.topLeft,
-          margin: EdgeInsets.only(top: 5),
-          backGroundColor: message.isUser
-              ? Color(0xFFFFE0B2).withOpacity(0.9)
-              : message.emotionalState == 'sensitive'
-                  ? Color(0xFFF6F6F6).withOpacity(0.8)
-                  : Colors.white.withOpacity(0.8),
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.7,
-              minWidth: 0, // Permitir que el contenedor se ajuste al contenido
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Más espacio interno
-            child: Column(
-              crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-            RichText(
-            text: TextSpan(
-              children: _parseTextToSpans(message.text),
-            ),
-            textAlign: message.isUser ? TextAlign.end : TextAlign.start,
-            softWrap: true,
-            overflow: TextOverflow.visible,
-           ),
-                if (message.imageUrl != null) Image.network(message.imageUrl!),
-                SizedBox(height: 5),
-                Text(
-                  time,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  semanticsLabel: 'Enviado a las $time',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   String _getEmotionalStateText(String? state) {
     switch (state) {
@@ -1136,16 +1149,17 @@ Widget _buildMessageBubble(ChatMessage message) {
             if (_isLoading)
               Center(
                 child: CircularProgressIndicator(
-               valueColor: AlwaysStoppedAnimation<Color>(ivoryColor), // Color is here
-        strokeWidth: 6.0,
-        backgroundColor: Colors.white.withOpacity(0.3),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      ivoryColor), // Color is here
+                  strokeWidth: 6.0,
+                  backgroundColor: Colors.white.withOpacity(0.3),
                 ),
               )
             else
               Column(
                 children: [
                   AppBar(
-                    backgroundColor:Color(0xFF88D5C2),
+                    backgroundColor: Color(0xFF88D5C2),
                     elevation: 0,
                     leading: IconButton(
                       icon: Icon(Icons.arrow_back, color: Colors.black),

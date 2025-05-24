@@ -1,20 +1,17 @@
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:LumorahAI/services/ElevenLabsService.dart';
-import 'package:LumorahAI/utils/PermissionHandler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vibration/vibration.dart';
 import 'package:lottie/lottie.dart';
 import 'package:LumorahAI/services/ChatServiceApi.dart';
 import 'package:easy_localization/easy_localization.dart';
- 
+
 class RecordingScreen extends StatefulWidget {
   final String language;
   final ChatServiceApi chatService;
@@ -48,8 +45,6 @@ class _RecordingScreenState extends State<RecordingScreen>
   Timer? _silenceTimer;
   final int _silenceTimeout = 5000;
   bool _showListeningIndicator = false;
-  bool _isMicPermissionGranted = false;
-  bool _isSpeechInitialized = false;
 
   late AnimationController _pulseAnimationController;
   late Animation<double> _pulseScale;
@@ -101,44 +96,9 @@ class _RecordingScreenState extends State<RecordingScreen>
 
     _initTts();
     _initVibration();
-    _initializeSpeech();
-  }
-
-  Future<void> _initializeSpeech() async {
-    try {
-      _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
-      if (!_isMicPermissionGranted) {
-        setState(() {
-          _statusMessage = 'microphonePermissionRequired'.tr();
-          _showListeningIndicator = true;
-        });
-        return;
-      }
-
-      _isSpeechInitialized = await _speech.initialize(
-        onStatus: (status) {
-          if (mounted) {
-            setState(() {
-              _statusMessage = 'listening'.tr();
-              _showListeningIndicator = true;
-            });
-          }
-        },
-        onError: (error) {
-          _handleRecordingError('Error en reconocimiento de voz: ${error.errorMsg}');
-        },
-      );
-
-      if (_isSpeechInitialized && mounted) {
-        Future.delayed(Duration(milliseconds: 800), () {
-          if (mounted) _startRecording();
-        });
-      } else {
-        _handleRecordingError('No se pudo inicializar el reconocimiento de voz');
-      }
-    } catch (e) {
-      _handleRecordingError('Error al inicializar el reconocimiento de voz: $e');
-    }
+    Future.delayed(Duration(milliseconds: 800), () {
+      if (mounted) _startRecording();
+    });
   }
 
   Future<void> _initTts() async {
@@ -165,7 +125,7 @@ class _RecordingScreenState extends State<RecordingScreen>
       _isSpeaking = false;
       _isProcessing = false;
       _statusMessage = 'listening'.tr();
-      _showListeningIndicator = true;
+      _showListeningIndicator = true; // Mantener true para el estado de escucha
       _pulseAnimationController.forward();
       _thinkingAnimationController.stop();
       _rhythmAnimationController.stop();
@@ -188,30 +148,24 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   Future<void> _startRecording() async {
-    if (_isRecording || _isSpeaking || !_isMicPermissionGranted || !_isSpeechInitialized) {
-      if (!_isMicPermissionGranted) {
-        _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
-        if (!_isMicPermissionGranted) {
-          setState(() {
-            _statusMessage = 'microphonePermissionRequired'.tr();
-            _showListeningIndicator = true;
-          });
-          return;
-        }
-      }
-      if (!_isSpeechInitialized) {
-        await _initializeSpeech();
-        return;
-      }
-    }
+    if (_isRecording || _isSpeaking) return;
 
-    try {
+    bool available = await _speech.initialize(
+      onStatus: (status) => setState(() {
+        _statusMessage = 'listening'.tr();
+        _showListeningIndicator = true;
+      }),
+      onError: (error) => _handleRecordingError(error.errorMsg),
+    );
+
+    if (available) {
       final localeId = {
-        'es': 'es_ES',
-        'en': 'en_US',
-        'fr': 'fr_FR',
-        'pt': 'pt_BR'
-      }[widget.language] ?? 'es_ES';
+            'es': 'es_ES',
+            'en': 'en_US',
+            'fr': 'fr_FR',
+            'pt': 'pt_BR'
+          }[widget.language] ??
+          'es_ES';
 
       _speech.listen(
         onResult: (result) {
@@ -229,7 +183,8 @@ class _RecordingScreenState extends State<RecordingScreen>
             final newLevel = ((level + 160) / 160).clamp(0.0, 1.0);
             setState(() {
               _soundLevel = newLevel;
-              _smoothedSoundLevel = lerpDouble(_smoothedSoundLevel, _soundLevel, 0.1)!;
+              _smoothedSoundLevel =
+                  lerpDouble(_smoothedSoundLevel, _soundLevel, 0.1)!;
               if (newLevel > 0.1) {
                 _showListeningIndicator = true;
                 _resetSilenceTimer();
@@ -249,8 +204,6 @@ class _RecordingScreenState extends State<RecordingScreen>
         _pulseAnimationController.forward();
       });
       _startSilenceTimer();
-    } catch (e) {
-      _handleRecordingError('Error al iniciar el reconocimiento de voz: $e');
     }
   }
 
@@ -269,9 +222,8 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   void _handleRecordingError(String errorMsg) {
-    if (!mounted) return;
     setState(() {
-      _statusMessage = 'error'.tr() + ': $errorMsg';
+      _statusMessage = 'error'.tr() + errorMsg;
       _isRecording = false;
       _isProcessing = false;
       _soundLevel = 0.0;
@@ -279,11 +231,6 @@ class _RecordingScreenState extends State<RecordingScreen>
       _pulseAnimationController.stop();
       _thinkingAnimationController.stop();
       if (_hasVibrator) Vibration.cancel();
-    });
-    PermissionHandler.checkAndRequestMicrophonePermission(context).then((granted) {
-      if (granted && mounted) {
-        _startRecording();
-      }
     });
   }
 
@@ -293,8 +240,9 @@ class _RecordingScreenState extends State<RecordingScreen>
     setState(() {
       _isRecording = false;
       _isProcessing = true;
-      _statusMessage = 'Procesando...'.tr();
-      _showListeningIndicator = true;
+      _statusMessage = 'Procesando...';
+      _showListeningIndicator =
+          true; // Cambiado de false a true para mostrar "Procesando..."
       _pulseAnimationController.stop();
       _thinkingAnimationController.forward();
     });
@@ -305,10 +253,7 @@ class _RecordingScreenState extends State<RecordingScreen>
       setState(() {
         _statusMessage = 'no_speech_detected'.tr();
         _isProcessing = false;
-        _showListeningIndicator = true;
-      });
-      Future.delayed(Duration(milliseconds: 500), () {
-        if (mounted) _startRecording();
+        _startRecording();
       });
     }
   }
@@ -323,12 +268,14 @@ class _RecordingScreenState extends State<RecordingScreen>
 
       setState(() {
         _aiResponse = response['ai_message']['text'];
-        _emotionalState = response['ai_message']['emotional_state'] ?? 'neutral';
-        _conversationLevel = response['ai_message']['conversation_level'] ?? 'basic';
-        _statusMessage = 'Hablando IA...'.tr();
+        _emotionalState =
+            response['ai_message']['emotional_state'] ?? 'neutral';
+        _conversationLevel =
+            response['ai_message']['conversation_level'] ?? 'basic';
+        _statusMessage = 'Hablando IA...';
         _isSpeaking = true;
         _isProcessing = false;
-        _showListeningIndicator = true;
+        _showListeningIndicator = true; // Añadido para mostrar "Hablando IA..."
         _thinkingAnimationController.forward();
         _rhythmAnimationController.forward();
 
@@ -338,16 +285,18 @@ class _RecordingScreenState extends State<RecordingScreen>
         }
       });
 
-      await _elevenLabsService.speak(
-        _aiResponse,
-        'JEzse6GMhKZ6wrVNFZTq',
-        widget.language,
-      );
+      try {
+        await _elevenLabsService.speak(
+          _aiResponse,
+          'pFZP5JQG7iQjIQuC4Bku',
+          widget.language,
+        );
+      } catch (e) {
+        await _flutterTts.speak(_aiResponse);
+      }
     } catch (e) {
-      _handleRecordingError('Error en ElevenLabs: $e');
-      Future.delayed(Duration(milliseconds: 500), () {
-        if (mounted) _startRecording();
-      });
+      _handleRecordingError(e.toString());
+      _startRecording();
     }
   }
 
@@ -368,11 +317,7 @@ class _RecordingScreenState extends State<RecordingScreen>
     if (state == AppLifecycleState.paused) {
       _stopRecording();
     } else if (state == AppLifecycleState.resumed) {
-      if (_isMicPermissionGranted && _isSpeechInitialized) {
-        _startRecording();
-      } else {
-        _initializeSpeech();
-      }
+      _startRecording();
     }
   }
 
@@ -404,7 +349,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                         Icon(Icons.mic, color: Colors.red, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          _statusMessage,
+                          _statusMessage, // Dynamically displays "Escuchando...", "Procesando...", or "Expresando respuesta..."
                           style: TextStyle(color: Colors.white),
                         ),
                         SizedBox(width: 8),
@@ -421,6 +366,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                     ),
                   ),
                 ),
+                // Rest of the build method remains unchanged
                 Expanded(
                   child: Center(
                     child: AnimatedSwitcher(
@@ -522,7 +468,6 @@ class _RecordingScreenState extends State<RecordingScreen>
     super.dispose();
   }
 }
- 
 
 class ParticulasFlotantes extends StatefulWidget {
   @override
