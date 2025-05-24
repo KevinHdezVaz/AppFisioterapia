@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:LumorahAI/pages/home_page.dart';
 import 'package:LumorahAI/pages/screens/SettingsModal.dart';
+import 'package:LumorahAI/utils/PermissionHandler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +19,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:flutter/painting.dart' as painting;
-
+ 
 class Menuprincipal extends StatefulWidget {
   final int? sessionId;
 
@@ -36,21 +38,20 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   late AnimationController _sunController;
   final TextEditingController _textController = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  int? _currentSessionId;
+  late AnimationController _particlesController;
+  bool _isListening = false;
+  bool _isSpeechInitialized = false;
+  bool _isMicPermissionGranted = false;
+  double _soundLevel = 0.0;
 
   final Color tiffanyColor = Color(0xFF88D5C2);
   final Color ivoryColor = Color(0xFFFDF8F2);
   final Color darkTextColor = Colors.black87;
   final Color lightTextColor = Colors.black;
   final Color micButtonColor = Color(0xFF4ECDC4);
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  int? _currentSessionId;
-  late AnimationController _particlesController;
 
-  bool _isListening = false;
-  bool _isSpeechInitialized = false;
-  double _soundLevel = 0.0;
-
-  // Mapa de códigos de idioma para reconocimiento de voz
   final Map<String, String> _speechLocales = {
     'es': 'es_ES',
     'en': 'en_US',
@@ -61,44 +62,51 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
+    debugPrint('Menuprincipal initState started');
     _currentSessionId = widget.sessionId;
 
     _sunController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
-    )..repeat(reverse: true);
-    
-    // Controller for particle animation
+    )..repeat();
+
     _particlesController = AnimationController(
       vsync: this,
       duration: Duration(seconds: 20),
     )..repeat();
+
     _sunAnimation = Tween<double>(begin: 130.0, end: 200.0).animate(
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
-    _initializeSpeech();
-    _loadStoredLanguage();
-    _playStartupSound();
+    // Ejecuta las inicializaciones de manera segura con manejo de errores
+    _initializeApp();
   }
 
+ Future<void> _initializeApp() async {
+  try {
+    debugPrint('Starting app initialization');
+    await _loadStoredLanguage();
+    debugPrint('Language loaded');
+    await _playStartupSound();
+    debugPrint('Startup sound completed');
+    await _initializeSpeech(); // Asegúrate de que se ejecute aquí
+    debugPrint('Speech initialization completed');
+  } catch (e, stack) {
+    debugPrint('Error during initialization: $e\nStack trace: $stack');
+    _showErrorSnackBar('Error durante la inicialización: $e');
+  }
+}
   Future<void> _initializeSpeech() async {
-    try {
-      // Verificar y solicitar permiso del micrófono al inicializar
-      var micStatus = await Permission.microphone.status;
-      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
-        micStatus = await Permission.microphone.request();
-        if (micStatus.isDenied) {
-          _showErrorSnackBar('Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
-          return;
-        }
-  
-      }
+    debugPrint('Initializing speech - Permission check started');
+    _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
+    debugPrint('Permission status: $_isMicPermissionGranted');
 
+    if (_isMicPermissionGranted) {
       _isSpeechInitialized = await _speech.initialize(
-        onStatus: (status) => debugPrint('Status: $status'),
+        onStatus: (status) => debugPrint('Speech status: $status'),
         onError: (error) {
-          debugPrint('Error: $error');
+          debugPrint('Speech error: $error');
           setState(() {
             _isListening = false;
             _soundLevel = 0.0;
@@ -106,20 +114,45 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
           });
         },
       );
-      if (!_isSpeechInitialized && mounted) {
+      debugPrint('Speech initialized: $_isSpeechInitialized');
+      if (_isSpeechInitialized && mounted) {
+        Future.delayed(Duration(milliseconds: 500), () {
+          if (mounted) _startListening();
+        });
+      } else {
         _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
       }
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar('Error al inicializar reconocimiento de voz: ${e.toString()}');
-      }
+    } else {
+      _showErrorSnackBar('Se requiere permiso de micrófono para continuar.');
     }
   }
 
   Future<void> _loadStoredLanguage() async {
-    final storedLanguage = await _storageService.getLanguage();
-    if (storedLanguage != null && mounted) {
-      context.setLocale(Locale(storedLanguage));
+    try {
+      final storedLanguage = await _storageService.getLanguage();
+      if (storedLanguage != null && mounted) {
+        context.setLocale(Locale(storedLanguage));
+      }
+    } catch (e) {
+      debugPrint('Error loading stored language: $e');
+    }
+  }
+
+  Future<void> _playStartupSound() async {
+    try {
+      final soundPref = await _storageService.getString('sound_enabled');
+      final soundEnabled = soundPref == null ? true : soundPref == 'true';
+      if (soundEnabled) {
+        await _audioPlayer.setVolume(0.2);
+        await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
+      }
+    } catch (e) {
+      debugPrint('Error playing startup sound: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('errorPlayingSound'.tr())),
+        );
+      }
     }
   }
 
@@ -127,8 +160,8 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   void dispose() {
     _sunController.dispose();
     _textController.dispose();
-      _particlesController.dispose();
-  _audioPlayer.dispose();
+    _particlesController.dispose();
+    _audioPlayer.dispose();
     _speech.stop();
     _speech.cancel();
     super.dispose();
@@ -142,24 +175,6 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   Future<String?> _getUserName() async {
     final user = await _storageService.getUser();
     return user?.nombre;
-  }
-
-  Future<void> _playStartupSound() async {
-    try {
-      final soundPref = await _storageService.getString('sound_enabled');
-      final soundEnabled = soundPref == null ? true : soundPref == 'true';
-      if (soundEnabled) {
-        await _audioPlayer.setVolume(0.2);
-        await _audioPlayer.play(AssetSource('sounds/inicio.mp3'));
-      }
-    } catch (e) {
-      debugPrint('Error al reproducir sonido de inicio: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('errorPlayingSound'.tr())),
-        );
-      }
-    }
   }
 
   Future<void> _signOut(BuildContext context) async {
@@ -197,9 +212,7 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
     showDialog(
       context: context,
       builder: (context) => LoginModal(
-        showRegisterPage: () {
-          _showRegisterModal(context);
-        },
+        showRegisterPage: () => _showRegisterModal(context),
         inputMode: 'keyboard',
       ),
     );
@@ -222,9 +235,7 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 8,
         child: Container(
           padding: EdgeInsets.all(16),
@@ -245,34 +256,10 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _buildLanguageCard(
-                    context,
-                    'Español',
-                    'es',
-                    '🇪🇸',
-                    Colors.red[700]!,
-                  ),
-                  _buildLanguageCard(
-                    context,
-                    'English',
-                    'en',
-                    '🇬🇧',
-                    Colors.blue[700]!,
-                  ),
-                  _buildLanguageCard(
-                    context,
-                    'Français',
-                    'fr',
-                    '🇫🇷',
-                    Colors.blue[600]!,
-                  ),
-                  _buildLanguageCard(
-                    context,
-                    'Português',
-                    'pt',
-                    '🇵🇹',
-                    Colors.green[700]!,
-                  ),
+                  _buildLanguageCard(context, 'Español', 'es', '🇪🇸', Colors.red[700]!),
+                  _buildLanguageCard(context, 'English', 'en', '🇬🇧', Colors.blue[700]!),
+                  _buildLanguageCard(context, 'Français', 'fr', '🇫🇷', Colors.blue[600]!),
+                  _buildLanguageCard(context, 'Português', 'pt', '🇵🇹', Colors.green[700]!),
                 ],
               ),
             ],
@@ -282,8 +269,7 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
     );
   }
 
-  Widget _buildLanguageCard(BuildContext context, String languageName,
-      String languageCode, String flag, Color color) {
+  Widget _buildLanguageCard(BuildContext context, String languageName, String languageCode, String flag, Color color) {
     return GestureDetector(
       onTap: () async {
         await _storageService.saveLanguage(languageCode);
@@ -305,31 +291,14 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
         decoration: BoxDecoration(
           color: ivoryColor,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 5,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5, offset: Offset(0, 2))],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              flag,
-              style: TextStyle(fontSize: 24),
-            ),
+            Text(flag, style: TextStyle(fontSize: 24)),
             SizedBox(width: 10),
-            Text(
-              languageName,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-            ),
+            Text(languageName, style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500, fontSize: 16, color: Colors.black87)),
           ],
         ),
       ),
@@ -339,69 +308,40 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   void _showSettingsModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => SettingsModal(
-        onSignOut: () => _signOut(context),
-      ),
+      builder: (context) => SettingsModal(onSignOut: () => _signOut(context)),
     );
   }
 
   Future<void> _startListening() async {
-    if (_isListening) return;
+    if (_isListening || !_isSpeechInitialized || !_isMicPermissionGranted) {
+      if (!_isMicPermissionGranted) {
+        debugPrint('Permission not granted, requesting again');
+        _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
+        if (!_isMicPermissionGranted) {
+          return;
+        }
+      }
+      if (!_isSpeechInitialized) {
+        await _initializeSpeech();
+        return;
+      }
+    }
 
     try {
-      // 1. Verificar el estado del permiso del micrófono
-      var micStatus = await Permission.microphone.status;
-
-      // 2. Solicitar permiso si no está concedido
-      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
-        micStatus = await Permission.microphone.request();
-
-        if (micStatus.isDenied) {
-          _showErrorSnackBar('Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
-          return;
-        }
-
-        
-      }
-
-      // 3. Inicializar reconocimiento de voz si no está listo
-      if (!_isSpeechInitialized) {
-        _isSpeechInitialized = await _speech.initialize(
-          onStatus: (status) => debugPrint('Status: $status'),
-          onError: (error) {
-            debugPrint('Error: $error');
-            setState(() {
-              _isListening = false;
-              _soundLevel = 0.0;
-              _showErrorSnackBar('Error en reconocimiento de voz: ${error.errorMsg}');
-            });
-          },
-        );
-
-        if (!_isSpeechInitialized) {
-          _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
-          return;
-        }
-      }
-
-      // 4. Configurar el idioma para el reconocimiento
-      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
-      debugPrint('Iniciando reconocimiento con locale: $localeId');
-
-      // 5. Iniciar la escucha
       setState(() {
         _isListening = true;
         _textController.clear();
       });
 
+      final localeId = _speechLocales[context.locale.languageCode] ?? 'es_ES';
+      debugPrint('Starting speech recognition with locale: $localeId');
+
       _speech.listen(
         onResult: (result) {
-          debugPrint('Resultado: ${result.recognizedWords} (Confianza: ${result.confidence})');
+          debugPrint('Result: ${result.recognizedWords} (Confidence: ${result.confidence})');
           setState(() {
             _textController.text = result.recognizedWords;
-            _textController.selection = TextSelection.collapsed(
-              offset: _textController.text.length,
-            );
+            _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
           });
         },
         onSoundLevelChange: (level) {
@@ -416,25 +356,10 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
         cancelOnError: true,
         listenMode: stt.ListenMode.dictation,
       );
-    } on PlatformException catch (e) {
-      debugPrint('Error de plataforma: ${e.toString()}');
-      setState(() {
-        _isListening = false;
-      });
-
-      if (e.code == 'speech_recognition_not_available') {
-        _showErrorSnackBar('Reconocimiento de voz no disponible');
-      } else if (e.code == 'microphone_access_denied') {
-        _showErrorSnackBar('Acceso al micrófono denegado');
-      } else {
-        _showErrorSnackBar('Error desconocido: ${e.message}');
-      }
     } catch (e) {
-      debugPrint('Error inesperado: ${e.toString()}');
-      setState(() {
-        _isListening = false;
-      });
-      _showErrorSnackBar('Error al iniciar: ${e.toString()}');
+      debugPrint('Error starting speech recognition: $e');
+      setState(() => _isListening = false);
+      _showErrorSnackBar('Error al iniciar: $e');
     }
   }
 
@@ -469,12 +394,10 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message.tr()),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -502,17 +425,9 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
-
           var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           var slideAnimation = animation.drive(tween);
-
-          return SlideTransition(
-            position: slideAnimation,
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
-          );
+          return SlideTransition(position: slideAnimation, child: FadeTransition(opacity: animation, child: child));
         },
         transitionDuration: Duration(milliseconds: 300),
       ),
@@ -533,14 +448,10 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
           LayoutBuilder(
             builder: (context, constraints) {
               final textPainter = TextPainter(
-                text: TextSpan(
-                  text: _textController.text.isEmpty ? ' ' : _textController.text,
-                  style: const TextStyle(fontSize: 16, fontFamily: 'Lora'),
-                ),
+                text: TextSpan(text: _textController.text.isEmpty ? ' ' : _textController.text, style: const TextStyle(fontSize: 16, fontFamily: 'Lora')),
                 maxLines: null,
                 textDirection: painting.TextDirection.ltr,
               )..layout(maxWidth: constraints.maxWidth - 80);
-
               final lineCount = textPainter.computeLineMetrics().length;
               final baseHeight = 60.0;
               final lineHeight = 20.0;
@@ -561,19 +472,12 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey.shade200,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(
-                            _isListening ? Icons.stop_circle : Icons.mic_none,
-                            color: _isListening ? Colors.red : micButtonColor,
-                            size: _isListening ? 30 : 24,
-                          ),
+                          icon: Icon(_isListening ? Icons.stop_circle : Icons.mic_none, color: _isListening ? Colors.red : micButtonColor, size: _isListening ? 30 : 24),
                           tooltip: _isListening ? 'Detener grabación' : 'Iniciar grabación',
                           onPressed: () async {
                             if (_isListening) {
@@ -591,35 +495,14 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
                         if (_textController.text.isEmpty)
                           Container(
                             margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]),
                             child: IconButton(
-                              icon: Icon(
-                                Icons.record_voice_over,
-                                color: micButtonColor,
-                                size: 22,
-                              ),
+                              icon: Icon(Icons.record_voice_over, color: micButtonColor, size: 22),
                               tooltip: 'Chat de voz avanzado',
                               onPressed: () async {
                                 final isAuthenticated = await _isUserAuthenticated();
                                 if (isAuthenticated) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => VoiceChatScreen(
-                                        language: context.locale.languageCode,
-                                      ),
-                                    ),
-                                  );
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => VoiceChatScreen(language: context.locale.languageCode)));
                                 } else {
                                   _showLoginModal(context);
                                 }
@@ -629,9 +512,7 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
                       ],
                     ),
                   ),
-                  onChanged: (text) {
-                    setState(() {}); // Reconstruir para actualizar la altura
-                  },
+                  onChanged: (text) => setState(() {}),
                   scrollController: ScrollController(),
                 ),
               );
@@ -643,246 +524,161 @@ class _MenuprincipalState extends State<Menuprincipal> with TickerProviderStateM
     );
   }
 
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: tiffanyColor,
-    appBar: AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: Icon(Icons.menu, color: lightTextColor.withOpacity(0.9)),
-          onPressed: () => Scaffold.of(context).openDrawer(),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: tiffanyColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(icon: Icon(Icons.menu, color: lightTextColor.withOpacity(0.9)), onPressed: () => Scaffold.of(context).openDrawer()),
         ),
       ),
-    ),
- drawer: Drawer(
-  child: Container(
-    color: tiffanyColor.withOpacity(0.95),
-    child: FutureBuilder<bool>(
-      future: _isUserAuthenticated(),
-      builder: (context, authSnapshot) {
-        bool isAuthenticated = authSnapshot.data ?? false;
-        return ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            FutureBuilder<String?>(
-              future: _getUserName(),
-              builder: (context, userSnapshot) {
-                String headerText;
-                if (isAuthenticated && userSnapshot.hasData && userSnapshot.data != null) {
-                  headerText = 'Hola, ${userSnapshot.data}!'.tr();
-                } else {
-                  headerText = 'helloLumorah'.tr();
-                }
-                return DrawerHeader(
-                  decoration: BoxDecoration(
-                    color: ivoryColor.withOpacity(0.7),
+      drawer: Drawer(
+        child: Container(
+          color: tiffanyColor.withOpacity(0.95),
+          child: FutureBuilder<bool>(
+            future: _isUserAuthenticated(),
+            builder: (context, authSnapshot) {
+              bool isAuthenticated = authSnapshot.data ?? false;
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  FutureBuilder<String?>(
+                    future: _getUserName(),
+                    builder: (context, userSnapshot) {
+                      String headerText = isAuthenticated && userSnapshot.hasData && userSnapshot.data != null
+                          ? 'Hola, ${userSnapshot.data}!'.tr()
+                          : 'helloLumorah'.tr();
+                      return DrawerHeader(
+                        decoration: BoxDecoration(color: ivoryColor.withOpacity(0.7)),
+                        child: Text(headerText, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkTextColor, fontFamily: 'Inter')),
+                      );
+                    },
                   ),
-                  child: Text(
-                    headerText,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: darkTextColor,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.chat, color: lightTextColor),
-              title: Text(
-                'chat'.tr(),
-                style: TextStyle(
-                  color: lightTextColor,
-                  fontSize: 16,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
-                      initialMessages: [],
-                      inputMode: 'keyboard',
-                      sessionId: null,
-                    ),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(1.0, 0.0);
-                      const end = Offset.zero;
-                      const curve = Curves.easeInOut;
-
-                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                      var slideAnimation = animation.drive(tween);
-
-                      return SlideTransition(
-                        position: slideAnimation,
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
+                  ListTile(
+                    leading: Icon(Icons.chat, color: lightTextColor),
+                    title: Text('chat'.tr(), style: TextStyle(color: lightTextColor, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(initialMessages: [], inputMode: 'keyboard', sessionId: null),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            var slideAnimation = animation.drive(tween);
+                            return SlideTransition(position: slideAnimation, child: FadeTransition(opacity: animation, child: child));
+                          },
+                          transitionDuration: Duration(milliseconds: 300),
                         ),
                       );
                     },
-                    transitionDuration: Duration(milliseconds: 300),
                   ),
-                );
-              },
-            ),
-            if (isAuthenticated)
-              ListTile(
-                leading: Icon(Icons.history, color: lightTextColor),
-                title: Text(
-                  'chatHistory'.tr(),
-                  style: TextStyle(
-                    color: lightTextColor,
-                    fontSize: 16,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w500,
+                  if (isAuthenticated)
+                    ListTile(
+                      leading: Icon(Icons.history, color: lightTextColor),
+                      title: Text('chatHistory'.tr(), style: TextStyle(color: lightTextColor, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => ChatHistoryScreen()));
+                      },
+                    ),
+                  ListTile(
+                    leading: Icon(Icons.language, color: lightTextColor),
+                    title: Text('changeLanguage'.tr(), style: TextStyle(color: lightTextColor, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showLanguageSelector(context);
+                    },
                   ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatHistoryScreen(),
+                  ListTile(
+                    leading: Icon(Icons.settings, color: lightTextColor),
+                    title: Text('settings'.tr(), style: TextStyle(color: lightTextColor, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showSettingsModal(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(isAuthenticated ? Icons.logout : Icons.login, color: lightTextColor),
+                    title: Text(isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(), style: TextStyle(color: lightTextColor, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (isAuthenticated) {
+                        _signOut(context);
+                      } else {
+                        _showLoginModal(context);
+                      }
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(child: ParticulasFlotantes()),
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _sunAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: _sunAnimation.value,
+                    height: _sunAnimation.value,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFFFE5B4).withOpacity(0.7),
+                      boxShadow: [BoxShadow(color: Color(0xFFFFE5B4).withOpacity(0.8), blurRadius: 50, spreadRadius: 10)],
                     ),
                   );
                 },
               ),
-            ListTile(
-              leading: Icon(Icons.language, color: lightTextColor),
-              title: Text(
-                'changeLanguage'.tr(),
-                style: TextStyle(
-                  color: lightTextColor,
-                  fontSize: 16,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showLanguageSelector(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.settings, color: lightTextColor),
-              title: Text(
-                'settings'.tr(),
-                style: TextStyle(
-                  color: lightTextColor,
-                  fontSize: 16,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showSettingsModal(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                isAuthenticated ? Icons.logout : Icons.login,
-                color: lightTextColor,
-              ),
-              title: Text(
-                isAuthenticated ? 'logOut'.tr() : 'logIn'.tr(),
-                style: TextStyle(
-                  color: lightTextColor,
-                  fontSize: 16,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                if (isAuthenticated) {
-                  _signOut(context);
-                } else {
-                  _showLoginModal(context);
-                }
-              },
-            ),
-          ],
-        );
-      },
-    ),
-  ),
-),
-    body: Stack(
-      children: [
-        Positioned.fill(child: ParticulasFlotantes()),
-        Positioned(
-          top: 50,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: AnimatedBuilder(
-              animation: _sunAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: _sunAnimation.value,
-                  height: _sunAnimation.value,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFFFE5B4).withOpacity(0.7),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFFFFE5B4).withOpacity(0.8),
-                        blurRadius: 50,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
           ),
-        ),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: 80), // Reduced from 180 to move content up
-              Text(
-                'writeOrSpeak'.tr(),
-                style: TextStyle(
-                  fontSize: 30,
-                  color: Colors.black,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  height: 1.3,
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: 80),
+                Text('writeOrSpeak'.tr(), style: TextStyle(fontSize: 30, color: Colors.black, fontFamily: 'Inter', fontWeight: FontWeight.w600, height: 1.3), textAlign: TextAlign.center),
+                SizedBox(height: 20),
+                Text('iAmHere'.tr(), style: TextStyle(fontSize: 20, color: Colors.black.withOpacity(0.9), fontFamily: 'Inter', fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+                SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: () async {
+                    debugPrint('Forcing microphone permission request');
+                    var status = await Permission.microphone.request();
+                    debugPrint('Forced permission status: $status');
+                    setState(() {
+                      _isMicPermissionGranted = status.isGranted;
+                    });
+                    if (status.isGranted) {
+                      await _initializeSpeech();
+                    }
+                  },
+                  child: Text('Solicitar permiso de micrófono'),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              Text(
-                'iAmHere'.tr(),
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.black.withOpacity(0.9),
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 40),
-              _buildKeyboardInput(),
-            ],
+                SizedBox(height: 20),
+                _buildKeyboardInput(),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
 }
 class ParticulasFlotantes extends StatefulWidget {
   @override

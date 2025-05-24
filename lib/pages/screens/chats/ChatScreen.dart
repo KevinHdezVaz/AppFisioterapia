@@ -1,5 +1,6 @@
 import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
+import 'package:LumorahAI/utils/PermissionHandler.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -57,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ChatServiceApi _chatService = ChatServiceApi();
-
+bool _isMicPermissionGranted = false;
  
   // Color palette
   final Color tiffanyColor = Color(0xFF88D5C2);
@@ -144,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
 
-  @override
+ @override
   void initState() {
     super.initState();
     _messages = widget.initialMessages?.reversed.toList() ?? [];
@@ -161,7 +162,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     )..repeat(reverse: true);
 
     _sunAnimation = Tween<double>(begin: 30.0, end: 40.0).animate(
-      // Reduced size
       CurvedAnimation(parent: _sunController, curve: Curves.easeInOut),
     );
 
@@ -169,34 +169,40 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _typingTimer = Timer.periodic(Duration.zero, (_) {});
   }
 
-  Future<void> _initializeSpeech() async {
+ 
+ 
+
+ Future<void> _initializeSpeech() async {
     try {
-      final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        _showErrorSnackBar('Se requieren permisos de micrófono');
+      _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
+      if (!_isMicPermissionGranted) {
         return;
       }
+
       _isSpeechAvailable = await _speech.initialize(
         onStatus: (status) => debugPrint('Speech status: $status'),
-        onError: (error) => debugPrint('Speech error: $error'),
+        onError: (error) {
+          debugPrint('Speech error: $error');
+          _showErrorSnackBar('Error en reconocimiento de voz: ${error.errorMsg}');
+        },
       );
+
       if (_isSpeechAvailable) {
         setState(() {
           _isSpeechInitialized = true;
         });
-        // Lista los idiomas disponibles
-        final locales = await _speech.locales();
-        debugPrint(
-            'Available locales: ${locales.map((l) => l.localeId).toList()}');
         debugPrint('Speech initialized successfully');
       } else {
         debugPrint('Speech initialization failed');
+        _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
       }
     } catch (e) {
       debugPrint('Error initializing speech: $e');
-      _showErrorSnackBar('Error initializing speech recognition');
+      _showErrorSnackBar('Error al inicializar el reconocimiento de voz');
     }
   }
+
+  
 @override
 void didChangeDependencies() {
   super.didChangeDependencies();
@@ -649,18 +655,14 @@ Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
   // Elimina esta línea:
 // String _transcribedText = '';
 
-  Future<void> _startListening() async {
-    if (_isListening) return;
-
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      _showErrorSnackBar('Se requieren permisos de micrófono');
-      return;
-    }
-
-    if (!_isSpeechInitialized) {
-      _showErrorSnackBar('El reconocimiento de voz no está inicializado');
-      return;
+Future<void> _startListening() async {
+    if (_isListening || !_isSpeechInitialized || !_isMicPermissionGranted) {
+      if (!_isMicPermissionGranted) {
+        _isMicPermissionGranted = await PermissionHandler.checkAndRequestMicrophonePermission(context);
+      }
+      if (!_isSpeechInitialized || !_isMicPermissionGranted) {
+        return;
+      }
     }
 
     try {
@@ -674,13 +676,10 @@ Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
 
       _speech.listen(
         onResult: (result) {
-          debugPrint(
-              'Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+          debugPrint('Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
           setState(() {
             _controller.text = result.recognizedWords;
-            // Keep cursor at the end
-            _controller.selection =
-                TextSelection.collapsed(offset: _controller.text.length);
+            _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
           });
         },
         localeId: localeId,
@@ -700,7 +699,6 @@ Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
       _showErrorSnackBar('Error al iniciar: $e');
     }
   }
-
   Future<void> _stopListening() async {
     if (!_isListening) return;
 
@@ -732,7 +730,7 @@ Future<void> _sendMessage(String message, {bool isTemporary = false}) async {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message.tr()),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

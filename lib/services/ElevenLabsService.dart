@@ -33,26 +33,26 @@ class ElevenLabsService {
     }
   }
 
-  Future<void> speak(String text, String voiceId, String language) async {
-    try {
-      if (_isSpeaking) await stop();
+Future<void> speak(String text, String voiceId, String language) async {
+  try {
+    if (_isSpeaking) await stop();
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/$voiceId'),
-        headers: _buildHeaders(),
-        body: _buildBody(text, language),
-      ).timeout(const Duration(seconds: 15));
+    final response = await http.post(
+      Uri.parse('$baseUrl/$voiceId'),
+      headers: _buildHeaders(),
+      body: _buildBody(text, language),
+    ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        await _handleAudioResponse(response.bodyBytes);
-      } else {
-        throw Exception('Failed to generate audio: ${response.statusCode}');
-      }
-    } catch (e) {
-      _isSpeaking = false;
-      rethrow;
+    if (response.statusCode != 200) {
+      throw Exception("❌ ElevenLabs Error (${response.statusCode}): ${response.body}");
     }
+
+    await _handleAudioResponse(response.bodyBytes);
+  } catch (e) {
+    _isSpeaking = false;
+    rethrow; // Propaga el error para manejarlo en RecordingScreen
   }
+}
 
   Map<String, String> _buildHeaders() => {
     'accept': 'audio/mpeg',

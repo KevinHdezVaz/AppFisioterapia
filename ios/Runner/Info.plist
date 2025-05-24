@@ -27,6 +27,11 @@
     <key>NSAppleMusicUsageDescription</key>
     <string>Se necesita acceso para reproducir respuestas de audio de la IA.</string>
     
+
+    <key>NSLocalNetworkUsageDescription</key>
+<string>Se necesita acceso a la red local para conectar con las herramientas de depuración durante el desarrollo.</string>
+
+
     <!-- Modos en segundo plano -->
     <key>UIBackgroundModes</key>
     <array>
