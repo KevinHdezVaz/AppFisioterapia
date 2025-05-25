@@ -1,5 +1,6 @@
 import 'package:LumorahAI/pages/screens/WaveVisualizer.dart';
 import 'package:LumorahAI/pages/screens/chats/VoiceChatScreen.dart';
+import 'package:LumorahAI/utils/PermissionService.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -19,7 +20,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart'; // Para Clipboard
+import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart'; // Para Clipboard
 
 class ChatScreen extends StatefulWidget {
   final String inputMode;
@@ -418,12 +420,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       if (!mounted) return;
 
+      // Crear el mensaje de la IA desde la respuesta
+      final aiMessage = ChatMessage(
+        id: -1,
+        chatSessionId: response['session_id'] ?? -1,
+        userId: 0,
+        text: response['ai_message']['text'],
+        isUser: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        emotionalState: response['ai_message']['emotional_state'],
+        conversationLevel: response['ai_message']['conversation_level'],
+      );
+
       setState(() {
         _currentSessionId = response['session_id'];
         _emotionalState =
             response['ai_message']['emotional_state'] ?? 'neutral';
         _conversationLevel =
             response['ai_message']['conversation_level'] ?? 'basic';
+        _messages.insert(0, aiMessage); // Agregar el mensaje inicial a la lista
         _isLoading = false;
       });
     } catch (e) {
@@ -518,6 +534,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       }
 
       await _stopThinkingSound();
+      Vibration.vibrate(duration: 200); // Vibración de 200ms para Android e iOS
     } catch (e) {
       if (!mounted) {
         await _stopThinkingSound();
@@ -651,12 +668,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   // Elimina esta línea:
 // String _transcribedText = '';
 
+// En ChatScreen
   Future<void> _startListening() async {
     if (_isListening) return;
 
-    final micStatus = await Permission.microphone.request();
+    final permissionService = PermissionService();
+    final micStatus =
+        await permissionService.checkOrRequest(Permission.microphone);
+
     if (!micStatus.isGranted) {
-      _showErrorSnackBar('Se requieren permisos de micrófono');
+      if (micStatus.isPermanentlyDenied) {
+        _showErrorSnackBar(
+            'Por favor habilita los permisos de micrófono en Configuración');
+        await openAppSettings();
+      }
       return;
     }
 
@@ -676,13 +701,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       _speech.listen(
         onResult: (result) {
-          debugPrint(
-              'Recognized words: ${result.recognizedWords}, Confidence: ${result.confidence}');
+          debugPrint('Recognized words: ${result.recognizedWords}');
           setState(() {
             _controller.text = result.recognizedWords;
-            // Keep cursor at the end
-            _controller.selection =
-                TextSelection.collapsed(offset: _controller.text.length);
+            _controller.selection = TextSelection.collapsed(
+              offset: _controller.text.length,
+            );
           });
         },
         localeId: localeId,

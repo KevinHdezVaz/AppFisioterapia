@@ -28,6 +28,8 @@ dependencies:
   firebase_auth: ^5.5.3
   shared_preferences: ^2.0.8
   flutter_sound: ^9.28.0
+  audio_session: ^0.1.18
+
   audioplayers: ^5.0.0
   http: ^1.1.0
   permission_handler: ^10.4.5

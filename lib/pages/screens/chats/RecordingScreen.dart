@@ -3,8 +3,11 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:LumorahAI/services/ElevenLabsService.dart';
+import 'package:LumorahAI/utils/PermissionService.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vibration/vibration.dart';
@@ -52,6 +55,8 @@ class _RecordingScreenState extends State<RecordingScreen>
   late AnimationController _rhythmAnimationController;
   late Animation<double> _rhythmValue;
 
+  StreamSubscription<AudioInterruptionEvent>? _audioSessionSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -96,9 +101,74 @@ class _RecordingScreenState extends State<RecordingScreen>
 
     _initTts();
     _initVibration();
-    Future.delayed(Duration(milliseconds: 800), () {
-      if (mounted) _startRecording();
+    _configureAudioSession().then((_) {
+      _checkPermissionsBeforeRecording();
     });
+  }
+
+  Future<void> _configureAudioSession() async {
+    if (Platform.isIOS) {
+      try {
+        final session = await AudioSession.instance;
+        await session.configure(AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
+          avAudioSessionCategoryOptions:
+              AVAudioSessionCategoryOptions.defaultToSpeaker |
+                  AVAudioSessionCategoryOptions.allowBluetooth |
+                  AVAudioSessionCategoryOptions.mixWithOthers,
+          avAudioSessionMode: AVAudioSessionMode.spokenAudio,
+          avAudioSessionRouteSharingPolicy:
+              AVAudioSessionRouteSharingPolicy.defaultPolicy,
+          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+        ));
+        await session.setActive(true);
+
+        _audioSessionSubscription =
+            session.interruptionEventStream.listen((event) {
+          if (event.begin) {
+            _stopRecording();
+          } else {
+            _startRecording();
+          }
+        });
+      } catch (e) {
+        debugPrint('Error configuring audio session: $e');
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkPermissionsBeforeRecording() async {
+    final permissionService = PermissionService();
+    final micStatus =
+        await permissionService.checkOrRequest(Permission.microphone);
+
+    if (!micStatus.isGranted) {
+      if (micStatus.isPermanentlyDenied && mounted) {
+        _showErrorSnackBar(
+            'Por favor habilita los permisos de micrófono en Configuración');
+        await openAppSettings();
+        return;
+      }
+    }
+
+    if (mounted && micStatus.isGranted) {
+      Future.delayed(Duration(milliseconds: 800), () {
+        if (mounted) _startRecording();
+      });
+    }
   }
 
   Future<void> _initTts() async {
@@ -125,7 +195,7 @@ class _RecordingScreenState extends State<RecordingScreen>
       _isSpeaking = false;
       _isProcessing = false;
       _statusMessage = 'listening'.tr();
-      _showListeningIndicator = true; // Mantener true para el estado de escucha
+      _showListeningIndicator = true;
       _pulseAnimationController.forward();
       _thinkingAnimationController.stop();
       _rhythmAnimationController.stop();
@@ -150,11 +220,45 @@ class _RecordingScreenState extends State<RecordingScreen>
   Future<void> _startRecording() async {
     if (_isRecording || _isSpeaking) return;
 
+    if (Platform.isIOS) {
+      try {
+        final session = await AudioSession.instance;
+        final micStatus = await Permission.microphone.status;
+        if (!micStatus.isGranted) {
+          final status = await Permission.microphone.request();
+          if (!status.isGranted) {
+            if (mounted) {
+              _showErrorSnackBar('Se requieren permisos de micrófono');
+              if (status.isPermanentlyDenied) {
+                await openAppSettings();
+              }
+            }
+            return;
+          }
+        }
+
+        if (!await session.setActive(true)) {
+          if (mounted) {
+            _showErrorSnackBar(
+                'El micrófono está siendo usado por otra aplicación');
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking iOS microphone: $e');
+        return;
+      }
+    }
+
     bool available = await _speech.initialize(
-      onStatus: (status) => setState(() {
-        _statusMessage = 'listening'.tr();
-        _showListeningIndicator = true;
-      }),
+      onStatus: (status) {
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'listening'.tr();
+            _showListeningIndicator = true;
+          });
+        }
+      },
       onError: (error) => _handleRecordingError(error.errorMsg),
     );
 
@@ -169,7 +273,7 @@ class _RecordingScreenState extends State<RecordingScreen>
 
       _speech.listen(
         onResult: (result) {
-          if (result.recognizedWords.isNotEmpty) {
+          if (result.recognizedWords.isNotEmpty && mounted) {
             setState(() {
               _partialTranscription = result.recognizedWords;
               _showListeningIndicator = true;
@@ -179,7 +283,7 @@ class _RecordingScreenState extends State<RecordingScreen>
           }
         },
         onSoundLevelChange: (level) {
-          if (_isRecording) {
+          if (_isRecording && mounted) {
             final newLevel = ((level + 160) / 160).clamp(0.0, 1.0);
             setState(() {
               _soundLevel = newLevel;
@@ -197,12 +301,14 @@ class _RecordingScreenState extends State<RecordingScreen>
         partialResults: true,
       );
 
-      setState(() {
-        _isRecording = true;
-        _statusMessage = 'listening'.tr();
-        _showListeningIndicator = true;
-        _pulseAnimationController.forward();
-      });
+      if (mounted) {
+        setState(() {
+          _isRecording = true;
+          _statusMessage = 'listening'.tr();
+          _showListeningIndicator = true;
+          _pulseAnimationController.forward();
+        });
+      }
       _startSilenceTimer();
     }
   }
@@ -213,6 +319,7 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   void _startSilenceTimer() {
+    _silenceTimer?.cancel(); // Cancelar cualquier timer existente
     _silenceTimer = Timer(Duration(milliseconds: _silenceTimeout), () {
       if (_isRecording && mounted) {
         setState(() => _showListeningIndicator = false);
@@ -222,6 +329,7 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   void _handleRecordingError(String errorMsg) {
+    if (!mounted) return;
     setState(() {
       _statusMessage = 'error'.tr() + errorMsg;
       _isRecording = false;
@@ -232,6 +340,11 @@ class _RecordingScreenState extends State<RecordingScreen>
       _thinkingAnimationController.stop();
       if (_hasVibrator) Vibration.cancel();
     });
+    if (!errorMsg.toLowerCase().contains('permission')) {
+      Future.delayed(Duration(seconds: 2), () {
+        if (mounted) _startRecording();
+      });
+    }
   }
 
   Future<void> _stopRecording() async {
@@ -241,8 +354,7 @@ class _RecordingScreenState extends State<RecordingScreen>
       _isRecording = false;
       _isProcessing = true;
       _statusMessage = 'Procesando...';
-      _showListeningIndicator =
-          true; // Cambiado de false a true para mostrar "Procesando..."
+      _showListeningIndicator = true;
       _pulseAnimationController.stop();
       _thinkingAnimationController.forward();
     });
@@ -266,24 +378,26 @@ class _RecordingScreenState extends State<RecordingScreen>
         sessionId: null,
       );
 
-      setState(() {
-        _aiResponse = response['ai_message']['text'];
-        _emotionalState =
-            response['ai_message']['emotional_state'] ?? 'neutral';
-        _conversationLevel =
-            response['ai_message']['conversation_level'] ?? 'basic';
-        _statusMessage = 'Hablando IA...';
-        _isSpeaking = true;
-        _isProcessing = false;
-        _showListeningIndicator = true; // Añadido para mostrar "Hablando IA..."
-        _thinkingAnimationController.forward();
-        _rhythmAnimationController.forward();
+      if (mounted) {
+        setState(() {
+          _aiResponse = response['ai_message']['text'];
+          _emotionalState =
+              response['ai_message']['emotional_state'] ?? 'neutral';
+          _conversationLevel =
+              response['ai_message']['conversation_level'] ?? 'basic';
+          _statusMessage = 'Hablando IA...';
+          _isSpeaking = true;
+          _isProcessing = false;
+          _showListeningIndicator = true;
+          _thinkingAnimationController.forward();
+          _rhythmAnimationController.forward();
 
-        if (_hasVibrator) {
-          Vibration.cancel();
-          Vibration.vibrate(pattern: [1000, 100, 1000, 100], repeat: -1);
-        }
-      });
+          if (_hasVibrator) {
+            Vibration.cancel();
+            Vibration.vibrate(pattern: [1000, 100, 1000, 100], repeat: -1);
+          }
+        });
+      }
 
       try {
         await _elevenLabsService.speak(
@@ -301,22 +415,35 @@ class _RecordingScreenState extends State<RecordingScreen>
   }
 
   void _closeScreen() {
+    _silenceTimer?.cancel();
     _speech.stop();
     _flutterTts.stop();
+    _elevenLabsService
+        .stop(); // Asegúrate de que ElevenLabsService tenga un método stop
+    _pulseAnimationController.stop();
+    _thinkingAnimationController.stop();
+    _rhythmAnimationController.stop();
+    if (_hasVibrator) Vibration.cancel();
+
     Navigator.pop(context, {
       'transcription': _partialTranscription,
       'ai_response': _aiResponse,
       'emotional_state': _emotionalState,
       'conversation_level': _conversationLevel,
     });
-    if (_hasVibrator) Vibration.cancel();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _stopRecording();
+      if (Platform.isIOS) {
+        AudioSession.instance.then((session) => session.setActive(false));
+      }
     } else if (state == AppLifecycleState.resumed) {
+      if (Platform.isIOS) {
+        AudioSession.instance.then((session) => session.setActive(true));
+      }
       _startRecording();
     }
   }
@@ -349,7 +476,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                         Icon(Icons.mic, color: Colors.red, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          _statusMessage, // Dynamically displays "Escuchando...", "Procesando...", or "Expresando respuesta..."
+                          _statusMessage,
                           style: TextStyle(color: Colors.white),
                         ),
                         SizedBox(width: 8),
@@ -366,7 +493,6 @@ class _RecordingScreenState extends State<RecordingScreen>
                     ),
                   ),
                 ),
-                // Rest of the build method remains unchanged
                 Expanded(
                   child: Center(
                     child: AnimatedSwitcher(
@@ -458,13 +584,25 @@ class _RecordingScreenState extends State<RecordingScreen>
   void dispose() {
     _silenceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+
+    // Cancelar el stream de interrupciones de audio
+    _audioSessionSubscription?.cancel();
+
+    if (Platform.isIOS) {
+      AudioSession.instance.then((session) {
+        session.setActive(false);
+      });
+    }
+
     _speech.stop();
     _flutterTts.stop();
     _elevenLabsService.dispose();
     _pulseAnimationController.dispose();
     _thinkingAnimationController.dispose();
     _rhythmAnimationController.dispose();
+
     if (_hasVibrator) Vibration.cancel();
+
     super.dispose();
   }
 }

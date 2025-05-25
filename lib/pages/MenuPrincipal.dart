@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:LumorahAI/pages/home_page.dart';
 import 'package:LumorahAI/pages/screens/SettingsModal.dart';
+import 'package:LumorahAI/utils/PermissionService.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -83,17 +84,20 @@ class _MenuprincipalState extends State<Menuprincipal>
     _playStartupSound();
   }
 
+  // En Menuprincipal
   Future<void> _initializeSpeech() async {
     try {
-      // Verificar y solicitar permiso del micrófono al inicializar
-      var micStatus = await Permission.microphone.status;
-      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
-        micStatus = await Permission.microphone.request();
-        if (micStatus.isDenied) {
+      final permissionService = PermissionService();
+      final micStatus =
+          await permissionService.checkOrRequest(Permission.microphone);
+
+      if (!micStatus.isGranted) {
+        if (micStatus.isPermanentlyDenied) {
           _showErrorSnackBar(
-              'Se requieren permisos de micrófono para continuar. Habilítalos en Configuración.');
-          return;
+              'Por favor habilita los permisos de micrófono en Configuración');
+          await openAppSettings();
         }
+        return;
       }
 
       _isSpeechInitialized = await _speech.initialize(
@@ -108,6 +112,7 @@ class _MenuprincipalState extends State<Menuprincipal>
           });
         },
       );
+
       if (!_isSpeechInitialized && mounted) {
         _showErrorSnackBar('No se pudo inicializar el reconocimiento de voz');
       }
