@@ -58,6 +58,8 @@ dependencies:
   flutter_facebook_auth: ^6.0.2
   vibration: ^1.8.1
   device_info_plus: ^9.0.0 # Añade explícitamente si es necesario
+  webview_flutter: ^4.9.0
+
 
 dev_dependencies:
   flutter_test:
